@@ -3,7 +3,10 @@ export interface ApiOptions extends RequestInit {
   attachTenant?: boolean;
 }
 
-export const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
+// Check for explicit API URL first (for Netlify deployment pointing to Railway backend)
+// Otherwise use relative paths in production or localhost in development
+export const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? '' : 'http://localhost:3001');
 
 export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Response> {
   const token = localStorage.getItem('auth_token') || '';
