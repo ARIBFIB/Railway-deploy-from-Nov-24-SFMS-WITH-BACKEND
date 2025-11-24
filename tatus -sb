@@ -1,0 +1,172 @@
+warning: in the working copy of 'src/components/SettingsModal.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/components/SettingsModal.tsx b/src/components/SettingsModal.tsx[m
+[1mindex 73250e8..8b9dcd3 100644[m
+[1m--- a/src/components/SettingsModal.tsx[m
+[1m+++ b/src/components/SettingsModal.tsx[m
+[36m@@ -503,6 +503,63 @@[m [mconst createEmptyAccountingCertificateNoticesData = (): AccountingCertificateNot[m
+   smsMessage: ''[m
+ });[m
+ [m
+[32m+[m[32mconst DEFAULT_ACCOUNTS_PLACEHOLDER: DefaultAccountsSettings = {[m
+[32m+[m[32m  bankTransfer: '1930',[m
+[32m+[m[32m  plusgiro: '1920',[m
+[32m+[m[32m  cashPayment: '1910',[m
+[32m+[m[32m  cashPaymentCreditCard: '1913',[m
+[32m+[m[32m  directDebit: '1931',[m
+[32m+[m[32m  purchase: '4010',[m
+[32m+[m[32m  billingFeeLevfakt: '6570',[m
+[32m+[m[32m  accountsPayable: '2440',[m
+[32m+[m[32m  shippingLifeFacts: '5710',[m
+[32m+[m[32m  cashDiscountReceived: '3740',[m
+[32m+[m[32m  sales25Be: '3010',[m
+[32m+[m[32m  sales25Service: '3040',[m
+[32m+[m[32m  sales12Be: '3050',[m
+[32m+[m[32m  sales12Service: '3055',[m
+[32m+[m[32m  sales6Be: '3060',[m
+[32m+[m[32m  sales6Service: '3065',[m
+[32m+[m[32m  sales0Be: '3100',[m
+[32m+[m[32m  sales0Service: '3110',[m
+[32m+[m[32m  salesSeReverseChargeBe: '3230',[m
+[32m+[m[32m  salesSeReverseChargeService: '3240',[m
+[32m+[m[32m  salesEuReverseChargeBe: '3305',[m
+[32m+[m[32m  salesEuReverseChargeService: '3315',[m
+[32m+[m[32m  salesEuVatCompliantBe: '3320',[m
+[32m+[m[32m  salesEuVatCompliantService: '3321',[m
+[32m+[m[32m  salesExportBe: '3300',[m
+[32m+[m[32m  salesExportService: '3310',[m
+[32m+[m[32m  defaultVatRateBe: '2610',[m
+[32m+[m[32m  defaultVatRateService: '2620',[m
+[32m+[m[32m  accountsReceivable: '1510',[m
+[32m+[m[32m  shipping: '5710',[m
+[32m+[m[32m  latePaymentInterest: '3960',[m
+[32m+[m[32m  billingFee: '3540',[m
+[32m+[m[32m  cashDiscountLeft: '3745',[m
+[32m+[m[32m  rounding: '3741',[m
+[32m+[m[32m  reminderFee: '3590',[m
+[32m+[m[32m  outputVatMp1_25: '2610',[m
+[32m+[m[32m  outputVatMp2_12: '2621',[m
+[32m+[m[32m  outgoingVatMp3_6: '2622',[m
+[32m+[m[32m  outputVatMp4Customer_12: '2623',[m
+[32m+[m[32m  outputVatMp5Customer_7: '2624',[m
+[32m+[m[32m  outgoingVatMp6Customer_50: '2625',[m
+[32m+[m[32m  inputVat: '2640',[m
+[32m+[m[32m  beIntraUnionAcquisitionDebit: '4056',[m
+[32m+[m[32m  beIntraUnionAcquisitionCredit: '2615',[m
+[32m+[m[32m  intraUnionAcquisitionServiceDebit: '4535',[m
+[32m+[m[32m  intraUnionAcquisitionServiceCredit: '2614',[m
+[32m+[m[32m  purchaseSeReverseChargeDebit: '4531',[m
+[32m+[m[32m  purchaseSeReverseChargeCredit: '2617',[m
+[32m+[m[32m  accrualAccountLevfakt: '2990',[m
+[32m+[m[32m  revenueAccountAccrual: '3970',[m
+[32m+[m[32m  accrualAccountCustomerFacts: '1790',[m
+[32m+[m[32m  costAccountAccrual: '2999',[m
+[32m+[m[32m  exchangeRateGains: '3968',[m
+[32m+[m[32m  exchangeRateLosses: '7968'[m
+[32m+[m[32m};[m
+[32m+[m
+ const createEmptyDefaultAccountsSettings = (): DefaultAccountsSettings => ({[m
+   bankTransfer: '',[m
+   plusgiro: '',[m
+[36m@@ -560,6 +617,36 @@[m [mconst createEmptyDefaultAccountsSettings = (): DefaultAccountsSettings => ({[m
+   exchangeRateLosses: ''[m
+ });[m
+ [m
+[32m+[m[32mconst normalizeDefaultAccountsResponse = (apiData: any): DefaultAccountsSettings => {[m
+[32m+[m[32m  const normalized = createEmptyDefaultAccountsSettings();[m
+[32m+[m
+[32m+[m[32m  if (!apiData || typeof apiData !== 'object') {[m
+[32m+[m[32m    return normalized;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  (Object.keys(normalized) as Array<keyof DefaultAccountsSettings>).forEach((key) => {[m
+[32m+[m[32m    const value = apiData[key];[m
+[32m+[m[32m    if (value !== null && value !== undefined) {[m
+[32m+[m[32m      normalized[key] = String(value);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  return normalized;[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mconst buildDefaultAccountsPayload = (values: DefaultAccountsSettings): DefaultAccountsSettings => {[m
+[32m+[m[32m  const payload: DefaultAccountsSettings = { ...DEFAULT_ACCOUNTS_PLACEHOLDER };[m
+[32m+[m
+[32m+[m[32m  (Object.keys(payload) as Array<keyof DefaultAccountsSettings>).forEach((key) => {[m
+[32m+[m[32m    const value = values[key];[m
+[32m+[m[32m    if (value !== undefined && value !== null && String(value).trim() !== '') {[m
+[32m+[m[32m      payload[key] = String(value);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  return payload;[m
+[32m+[m[32m};[m
+[32m+[m
+ const createEmptyFacilityRegisterSettings = (): FacilityRegisterSettings => ({[m
+   proposedDepreciationStartDate: '',[m
+   createAssetFromSupplierInvoice: false,[m
+[36m@@ -631,6 +718,74 @@[m [mconst createEmptyQuickTextsData = (): QuickTextsData => ({[m
+   transactionInformation: [][m
+ });[m
+ [m
+[32m+[m[32mconst createEmptyAutomaticAccountingFormData = (): AutomaticAccountingFormData => ({[m
+[32m+[m[32m  number: '',[m
+[32m+[m[32m  name: '',[m
+[32m+[m[32m  account: '',[m
+[32m+[m[32m  anyAmount: '',[m
+[32m+[m[32m  basicAccounts: [{ account: '', name: '' }],[m
+[32m+[m[32m  formulas: [{ formula: '', account: '', name: '' }],[m
+[32m+[m[32m  transactions: [{ account: '', name: '', debit: '', credit: '' }][m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mconst SETTINGS_SCOPE_BASE_PATH: Record<'accounting' | 'supplier', string> = {[m
+[32m+[m[32m  accounting: '/api/settings',[m
+[32m+[m[32m  supplier: '/api/settings/supplier'[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mconst getScopedSettingsPath = (scope: 'accounting' | 'supplier', resource: string, query?: string) => {[m
+[32m+[m[32m  const base = `${SETTINGS_SCOPE_BASE_PATH[scope]}/${resource}`;[m
+[32m+[m[32m  return query ? `${base}?${query}` : base;[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mconst mapAutomaticAccountingEntriesFromApi = (entries: any[]): AutomaticAccountingEntry[] =>[m
+[32m+[m[32m  Array.isArray(entries)[m
+[32m+[m[32m    ? entries.map((entry: any) => ({[m
+[32m+[m[32m        id: entry.id,[m
+[32m+[m[32m        number: entry.number,[m
+[32m+[m[32m        name: entry.name,[m
+[32m+[m[32m        account: entry.account,[m
+[32m+[m[32m        any_amount: entry.any_amount,[m
+[32m+[m[32m        basic_accounts: entry.basic_accounts || [],[m
+[32m+[m[32m        formulas: entry.formulas || [],[m
+[32m+[m[32m        transactions: entry.transactions || [][m
+[32m+[m[32m      }))[m
+[32m+[m[32m    : [];[m
+[32m+[m
+[32m+[m[32mconst createTrustedSendersUpdater = ([m
+[32m+[m[32m  setState: React.Dispatch<React.SetStateAction<TrustedSendersData>>[m
+[32m+[m[32m) => {[m
+[32m+[m[32m  const sanitizeList = (list?: string[]) => {[m
+[32m+[m[32m    if (!Array.isArray(list)) return list;[m
+[32m+[m[32m    return Array.from([m
+[32m+[m[32m      new Set([m
+[32m+[m[32m        list[m
+[32m+[m[32m          .map(item => item?.trim?.() ?? '')[m
+[32m+[m[32m          .filter((item): item is string => item.length > 0)[m
+[32m+[m[32m      )[m
+[32m+[m[32m    );[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  return (updates: Partial<TrustedSendersData>) => {[m
+[32m+[m[32m    setState(prev => {[m
+[32m+[m[32m      const sanitizedUpdates: Partial<TrustedSendersData> = {[m
+[32m+[m[32m        ...updates,[m
+[32m+[m[32m        trustedDomains: sanitizeList(updates.trustedDomains),[m
+[32m+[m[32m        trustedEmailAddresses: sanitizeList(updates.trustedEmailAddresses),[m
+[32m+[m[32m        rejectedEmailAddresses: sanitizeList(updates.rejectedEmailAddresses)[m
+[32m+[m[32m      };[m
+[32m+[m
+[32m+[m[32m      return {[m
+[32m+[m[32m        ...prev,[m
+[32m+[m[32m        ...sanitizedUpdates,[m
+[32m+[m[32m        trustedDomains: sanitizedUpdates.trustedDomains ?? prev.trustedDomains,[m
+[32m+[m[32m        trustedEmailAddresses: sanitizedUpdates.trustedE
