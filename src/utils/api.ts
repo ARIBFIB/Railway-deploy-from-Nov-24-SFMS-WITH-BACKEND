@@ -3,6 +3,8 @@ export interface ApiOptions extends RequestInit {
   attachTenant?: boolean;
 }
 
+export const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
+
 export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Response> {
   const token = localStorage.getItem('auth_token') || '';
   const userDataRaw = localStorage.getItem('user_data') || '{}';
@@ -12,8 +14,8 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
   const roleId = userData?.roleId || userData?.role_id;
 
   // Add base URL for API calls
-  const baseUrl = 'http://localhost:3001';
-  const fullUrl = input.startsWith('http') ? input : `${baseUrl}${input}`;
+  // If input is already a full URL, use it. Otherwise, prepend API_BASE_URL
+  const fullUrl = input.startsWith('http') ? input : `${API_BASE_URL}${input}`;
 
   // Enhanced debug logging
   console.log('🔍 API Fetch Debug:', {
@@ -38,12 +40,12 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
 
   const finalBody = shouldAttachTenant && bodyJson && typeof bodyJson === 'object'
     ? {
-        foundationId,
-        foundation_id: foundationId,
-        userId,
-        roleId,
-        ...bodyJson
-      }
+      foundationId,
+      foundation_id: foundationId,
+      userId,
+      roleId,
+      ...bodyJson
+    }
     : bodyJson;
 
   const requestInit: RequestInit = {
@@ -61,7 +63,7 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
 
   try {
     const response = await fetch(fullUrl, requestInit);
-    
+
     console.log('📡 API Response:', {
       status: response.status,
       statusText: response.statusText,
@@ -117,7 +119,7 @@ export interface DocumentType {
 export const documentTypesApi = {
   // Get all document types for the current foundation
   async getDocumentTypes(): Promise<DocumentType[]> {
-    const response = await apiFetch('http://localhost:3001/api/document-types');
+    const response = await apiFetch('/api/document-types');
     if (!response.ok) {
       throw new Error('Failed to fetch document types');
     }
@@ -127,7 +129,7 @@ export const documentTypesApi = {
 
   // Create a new document type
   async createDocumentType(name: string, foundationId?: string): Promise<DocumentType> {
-    const response = await apiFetch('http://localhost:3001/api/document-types', {
+    const response = await apiFetch('/api/document-types', {
       method: 'POST',
       json: { name, foundation_id: foundationId }
     });
@@ -141,7 +143,7 @@ export const documentTypesApi = {
 
   // Update a document type
   async updateDocumentType(id: string, name: string): Promise<DocumentType> {
-    const response = await apiFetch(`http://localhost:3001/api/document-types/${id}`, {
+    const response = await apiFetch(`/api/document-types/${id}`, {
       method: 'PUT',
       json: { name }
     });
@@ -155,7 +157,7 @@ export const documentTypesApi = {
 
   // Delete a document type
   async deleteDocumentType(id: string): Promise<void> {
-    const response = await apiFetch(`http://localhost:3001/api/document-types/${id}`, {
+    const response = await apiFetch(`/api/document-types/${id}`, {
       method: 'DELETE'
     });
     if (!response.ok) {
@@ -166,7 +168,7 @@ export const documentTypesApi = {
 
   // Bulk create document types
   async bulkCreateDocumentTypes(types: string[]): Promise<DocumentType[]> {
-    const response = await apiFetch('http://localhost:3001/api/document-types/bulk', {
+    const response = await apiFetch('/api/document-types/bulk', {
       method: 'POST',
       json: { types }
     });

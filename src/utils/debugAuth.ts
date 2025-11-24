@@ -1,22 +1,24 @@
+import { API_BASE_URL } from './api';
+
 // Debug utility to check authentication status
 export const debugAuth = () => {
   console.log('🔍 === AUTHENTICATION DEBUG ===');
-  
+
   // Check localStorage
   const token = localStorage.getItem('auth_token');
   const userDataRaw = localStorage.getItem('user_data');
-  
+
   console.log('📋 Token:', {
     exists: !!token,
     length: token?.length || 0,
     preview: token ? `${token.substring(0, 20)}...` : 'No token'
   });
-  
+
   console.log('👤 User Data:', {
     exists: !!userDataRaw,
     raw: userDataRaw
   });
-  
+
   if (userDataRaw) {
     try {
       const userData = JSON.parse(userDataRaw);
@@ -32,11 +34,11 @@ export const debugAuth = () => {
       console.error('❌ Failed to parse user data:', e);
     }
   }
-  
+
   // Check if we can make a simple API call
   console.log('🌐 Testing API connectivity...');
-  
-  fetch('http://localhost:3001/health')
+
+  fetch(`${API_BASE_URL}/health`)
     .then(response => {
       console.log('✅ Health check response:', response.status, response.ok);
       return response.json();
@@ -47,7 +49,7 @@ export const debugAuth = () => {
     .catch(error => {
       console.error('❌ Health check failed:', error);
     });
-  
+
   console.log('🔍 === END AUTHENTICATION DEBUG ===');
 };
 

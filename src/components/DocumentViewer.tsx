@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, FileText, Image, File } from 'lucide-react';
 import { Button } from './Button';
+import { API_BASE_URL } from '../utils/api';
 
 interface DocumentViewerProps {
   document: {
@@ -59,7 +60,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         const userData = JSON.parse(userDataRaw);
         const foundationId = userData.foundationId || userData.foundation_id || userData.foundation?.id || '';
 
-        const response = await fetch(`http://localhost:3001/api/documents/${document.id}/download?purpose=view`, {
+        const response = await fetch(`${API_BASE_URL}/api/documents/${document.id}/download?purpose=view`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -110,26 +111,26 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   useEffect(() => {
     const bodyElement = window.document.querySelector('body');
     const htmlElement = window.document.querySelector('html');
-    
+
     if (bodyElement) {
       bodyElement.style.overflow = 'hidden';
       bodyElement.style.margin = '0';
       bodyElement.style.padding = '0';
     }
-    
+
     if (htmlElement) {
       htmlElement.style.overflow = 'hidden';
       htmlElement.style.margin = '0';
       htmlElement.style.padding = '0';
     }
-    
+
     return () => {
       if (bodyElement) {
         bodyElement.style.overflow = 'unset';
         bodyElement.style.margin = '';
         bodyElement.style.padding = '';
       }
-      
+
       if (htmlElement) {
         htmlElement.style.overflow = 'unset';
         htmlElement.style.margin = '';
@@ -177,7 +178,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
       style={{
         position: 'fixed',

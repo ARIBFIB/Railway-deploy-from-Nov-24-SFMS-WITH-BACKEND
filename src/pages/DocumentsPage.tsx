@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
 import { DocumentViewer } from '../components/DocumentViewer';
+import { API_BASE_URL } from '../utils/api';
 // Removed mock data imports - using real database only
 
 // Local types (unchanged)
@@ -84,17 +85,17 @@ export const DocumentsPage: React.FC = () => {
       // Get user data for tenant info
       const userDataRaw = localStorage.getItem('user_data') || '{}';
       const userData = JSON.parse(userDataRaw);
-      
+
       // Extract foundation_id from user data - try different possible field names
       const foundationId = userData.foundationId || userData.foundation_id || userData.foundation?.id || '';
-      
+
       if (!foundationId) {
         console.error('Foundation ID not found in user session');
         setLoading(false);
         return;
       }
 
-      const response = await fetch('http://localhost:3001/api/documents', {
+      const response = await fetch(`${API_BASE_URL}/api/documents`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -122,11 +123,11 @@ export const DocumentsPage: React.FC = () => {
       // Get user data for tenant info
       const userDataRaw = localStorage.getItem('user_data') || '{}';
       const userData = JSON.parse(userDataRaw);
-      
+
       // Extract foundation_id from user data - try different possible field names
       const foundationId = userData.foundationId || userData.foundation_id || userData.foundation?.id || '';
 
-      const response = await fetch(`http://localhost:3001/api/documents/${documentId}/versions`, {
+      const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/versions`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -177,11 +178,11 @@ export const DocumentsPage: React.FC = () => {
       // Get user data for tenant info
       const userDataRaw = localStorage.getItem('user_data') || '{}';
       const userData = JSON.parse(userDataRaw);
-      
+
       // Extract foundation_id from user data - try different possible field names
       const foundationId = userData.foundationId || userData.foundation_id || userData.foundation?.id || '';
 
-      const response = await fetch(`http://localhost:3001/api/documents/${documentId}/download?purpose=download${version ? `&version=${version}` : ''}`, {
+      const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/download?purpose=download${version ? `&version=${version}` : ''}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -218,27 +219,27 @@ export const DocumentsPage: React.FC = () => {
       // Create blob with proper MIME type
       const blob = await response.blob();
       const mimeType = response.headers.get('Content-Type') || 'application/octet-stream';
-      
+
       // Ensure we have a valid blob
       if (blob.size === 0) {
         throw new Error('Downloaded file is empty');
       }
-      
+
       // Create proper blob with correct MIME type
       const properBlob = new Blob([blob], { type: mimeType });
-      
+
       // Additional validation for PDF files
       if (mimeType === 'application/pdf') {
         // Check if the blob contains valid PDF data
         const arrayBuffer = await properBlob.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
         const header = String.fromCharCode(...uint8Array.slice(0, 4));
-        
+
         if (header !== '%PDF') {
           console.warn('Downloaded file may not be a valid PDF');
         }
       }
-      
+
       const url = window.URL.createObjectURL(properBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -246,16 +247,16 @@ export const DocumentsPage: React.FC = () => {
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      
+
       // Cleanup
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-      
+
     } catch (error) {
       console.error('Download failed:', error);
-      
+
       // Handle specific download errors
       let errorMessage = 'Unknown error occurred';
       if (error instanceof Error) {
@@ -271,7 +272,7 @@ export const DocumentsPage: React.FC = () => {
           errorMessage = error.message;
         }
       }
-      
+
       alert(`Failed to download document: ${errorMessage}`);
     }
   };
@@ -324,7 +325,7 @@ export const DocumentsPage: React.FC = () => {
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.document_type.toLowerCase().includes(searchTerm.toLowerCase());
+      doc.document_type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -366,7 +367,7 @@ export const DocumentsPage: React.FC = () => {
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 focus:outline-none"
             >
               <Filter className="w-4 h-4" />
-              
+
             </button>
             {isFilterMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
@@ -381,9 +382,8 @@ export const DocumentsPage: React.FC = () => {
                     <button
                       key={option.value}
                       onClick={() => handleStatusFilterChange(option.value)}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                        statusFilter === option.value ? 'bg-gray-100 font-medium' : ''
-                      }`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${statusFilter === option.value ? 'bg-gray-100 font-medium' : ''
+                        }`}
                     >
                       {option.label}
                     </button>
@@ -415,7 +415,7 @@ export const DocumentsPage: React.FC = () => {
                       {document.status.replace('_', ' ')}
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Tag className="w-4 h-4" />
@@ -529,12 +529,12 @@ export const DocumentsPage: React.FC = () => {
 
 // DocumentUploadForm and DocumentVersionHistory remain unchanged
 // ... (include the unchanged DocumentUploadForm and DocumentVersionHistory components here)
-  const DocumentUploadForm: React.FC<{ 
-    onClose: () => void; 
-    onUploadSuccess: () => void;
-    onViewDocument: (document: any) => void;
-    userData?: any;
-  }> = ({ onClose, onUploadSuccess, onViewDocument }) => {
+const DocumentUploadForm: React.FC<{
+  onClose: () => void;
+  onUploadSuccess: () => void;
+  onViewDocument: (document: any) => void;
+  userData?: any;
+}> = ({ onClose, onUploadSuccess, onViewDocument }) => {
   const [formData, setFormData] = useState({
     document_type: '',
     file: null as File | null,
@@ -607,19 +607,19 @@ export const DocumentsPage: React.FC = () => {
       // Get user data for tenant info
       const userDataRaw = localStorage.getItem('user_data') || '{}';
       const userData = JSON.parse(userDataRaw);
-      
+
       // Debug: Log user data to understand the structure
       console.log('User data from localStorage:', userData);
-      
+
       // Extract foundation_id from user data - try different possible field names
       const foundationId = userData.foundationId || userData.foundation_id || userData.foundation?.id || '';
-      
+
       if (!foundationId) {
         setError('Foundation ID not found in user session. Please refresh the page and try again.');
         setLoading(false);
         return;
       }
-      
+
       // Always append foundation_id - it's required by the backend
       uploadData.append('foundation_id', foundationId);
 
@@ -633,7 +633,7 @@ export const DocumentsPage: React.FC = () => {
       });
 
       // Call backend upload API
-      const response = await fetch('http://localhost:3001/api/documents', {
+      const response = await fetch(`${API_BASE_URL}/api/documents`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -642,42 +642,42 @@ export const DocumentsPage: React.FC = () => {
         body: uploadData
       });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Upload failed:', errorData);
-          
-          // Handle specific validation errors
-          if (response.status === 400 && errorData.errors) {
-            const validationErrors = errorData.errors.map((err: any) => err.message).join(', ');
-            throw new Error(`Validation failed: ${validationErrors}`);
-          }
-          
-          // Handle specific error messages
-          if (errorData.message) {
-            if (errorData.message.includes('Foundation ID is required')) {
-              throw new Error('Foundation ID is missing. Please refresh the page and try again.');
-            } else if (errorData.message.includes('No file uploaded')) {
-              throw new Error('No file was uploaded. Please select a file and try again.');
-            } else if (errorData.message.includes('Document type is required')) {
-              throw new Error('Please select a document type.');
-            } else if (errorData.message.includes('File Too Large')) {
-              throw new Error('File size exceeds 10MB limit. Please choose a smaller file.');
-            } else if (errorData.message.includes('Invalid file type')) {
-              throw new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, and PNG files are allowed.');
-            }
-          }
-          
-          throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Upload failed:', errorData);
+
+        // Handle specific validation errors
+        if (response.status === 400 && errorData.errors) {
+          const validationErrors = errorData.errors.map((err: any) => err.message).join(', ');
+          throw new Error(`Validation failed: ${validationErrors}`);
         }
+
+        // Handle specific error messages
+        if (errorData.message) {
+          if (errorData.message.includes('Foundation ID is required')) {
+            throw new Error('Foundation ID is missing. Please refresh the page and try again.');
+          } else if (errorData.message.includes('No file uploaded')) {
+            throw new Error('No file was uploaded. Please select a file and try again.');
+          } else if (errorData.message.includes('Document type is required')) {
+            throw new Error('Please select a document type.');
+          } else if (errorData.message.includes('File Too Large')) {
+            throw new Error('File size exceeds 10MB limit. Please choose a smaller file.');
+          } else if (errorData.message.includes('Invalid file type')) {
+            throw new Error('Invalid file type. Only PDF, DOC, DOCX, JPG, and PNG files are allowed.');
+          }
+        }
+
+        throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+      }
 
       const result = await response.json();
       console.log('Upload successful:', result);
-      
+
       // Show the uploaded document in viewer
       if (result.document) {
         onViewDocument(result.document);
       }
-      
+
       // Refresh the documents list to show the new document
       onUploadSuccess();
       onClose();
@@ -816,7 +816,7 @@ const DocumentVersionHistory: React.FC<{
   const getVersionStatus = (version: DocumentVersion, allVersions: DocumentVersion[]) => {
     const isLatest = version.version_number === Math.max(...allVersions.map(v => v.version_number));
     const isCurrent = version.version_number === Math.max(...allVersions.map(v => v.version_number));
-    
+
     if (isCurrent) return 'bg-green-100 text-green-800 border-green-200';
     if (isLatest) return 'bg-blue-100 text-blue-800 border-blue-200';
     return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -842,12 +842,12 @@ const DocumentVersionHistory: React.FC<{
                 {index < sortedVersions.length - 1 && (
                   <div className="absolute left-6 top-8 w-0.5 h-16 bg-gray-200"></div>
                 )}
-                
+
                 <div className="flex items-start gap-4 p-4 rounded-lg border hover:bg-gray-50 transition-colors">
                   <div className={`flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center font-semibold text-sm ${getVersionStatus(version, versions)}`}>
                     v{version.version_number}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -867,7 +867,7 @@ const DocumentVersionHistory: React.FC<{
                         )}
                       </div>
                     </div>
-                    
+
                     {version.change_notes && (
                       <div className="mb-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
                         <p className="text-sm text-blue-800">
@@ -875,7 +875,7 @@ const DocumentVersionHistory: React.FC<{
                         </p>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-gray-600">
                       <div>
                         <span className="font-medium">File Type:</span>
@@ -893,7 +893,7 @@ const DocumentVersionHistory: React.FC<{
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col gap-2">
                     <Button
                       variant="ghost"
@@ -918,14 +918,14 @@ const DocumentVersionHistory: React.FC<{
               </div>
             ))}
           </div>
-          
+
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">Version Summary</h4>
                 <p className="text-sm text-gray-600">
-                  {versions.length} version{versions.length !== 1 ? 's' : ''} • 
-                  Latest: v{Math.max(...versions.map(v => v.version_number))} • 
+                  {versions.length} version{versions.length !== 1 ? 's' : ''} •
+                  Latest: v{Math.max(...versions.map(v => v.version_number))} •
                   First: v{Math.min(...versions.map(v => v.version_number))}
                 </p>
               </div>
