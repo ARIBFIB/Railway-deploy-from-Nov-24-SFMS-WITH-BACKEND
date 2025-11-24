@@ -1,0 +1,8 @@
+
+> foundation-management-backend@1.0.0 build
+> tsc
+
+scripts/runSalaryMigration.ts(1,22): error TS7016: Could not find a declaration file for module 'pg'. 'D:/Rozmarrah-CUST/Saim Ashraf/Accounting Software Backend/Working/Quder_code/Code/SFMS_2/SFMS-WITH-BACKEND/node_modules/pg/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/pg` if it exists or add a new declaration (.d.ts) file containing `declare module 'pg';`
+services/EmailService.ts(1,24): error TS2307: Cannot find module 'nodemailer' or its corresponding type declarations.
+utils/jwt.ts(2,30): error TS2307: Cannot find module 'uuid' or its corresponding type declarations.

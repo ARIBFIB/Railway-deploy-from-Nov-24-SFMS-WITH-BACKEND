@@ -206,12 +206,21 @@ app.use('/api/settings/reconcile-account', reconcileAccountSettingsRoutes);
 app.use(errorLogging);
 app.use(errorHandler);
 
-// 404 handler
-app.use('*', (req, res) => {
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../../dist')));
+
+// API 404 handler
+app.use('/api/*', (req, res) => {
   res.status(404).json({ 
     error: 'Not Found',
     message: 'The requested resource was not found on this server.'
   });
+});
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../dist/index.html'));
 });
 
 app.listen(PORT, () => {
