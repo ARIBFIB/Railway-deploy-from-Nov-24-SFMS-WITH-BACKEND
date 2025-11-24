@@ -7,16 +7,17 @@ export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = env.nodeEnv === 'production'
       ? [
-          'https://swedish-foundation-m-36v0.bolt.host',
-          'https://faasinova.se',
-          'https://www.faasinova.se'
-        ]
+        'https://swedish-foundation-m-36v0.bolt.host',
+        'https://faasinova.se',
+        'https://www.faasinova.se',
+        'https://railway-deploy-from-nov-24-sfms-with-backend-production.up.railway.app'
+      ]
       : [
-          'http://localhost:5173',
-          'http://localhost:3000',
-          'http://127.0.0.1:5173',
-          'http://127.0.0.1:3000'
-        ];
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000'
+      ];
 
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) {

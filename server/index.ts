@@ -91,6 +91,11 @@ const PORT = env.port;
 // Test database connection
 testConnection();
 
+// Serve static files from the React app FIRST
+// This must be before CORS, security headers, and rate limiting
+// to ensure static assets are served correctly
+app.use(express.static(path.join(__dirname, '../../dist')));
+
 // Security and performance middleware
 app.use(securityHeaders);
 app.use(compressionHeaders);
@@ -134,8 +139,8 @@ if (env.nodeEnv === 'development') {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     environment: env.nodeEnv,
     version: '1.0.0'
@@ -144,17 +149,17 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/foundations',  foundationRoutes);
-app.use('/api/documents',  documentRoutes);
-app.use('/api/meetings',  meetingRoutes);
+app.use('/api/foundations', foundationRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/meetings', meetingRoutes);
 app.use('/api/expenses', expenseRoutes);
-app.use('/api/investments',  investmentRoutes);
-app.use('/api/projects',  projectRoutes);
-app.use('/api/grants',  grantRoutes);
-app.use('/api/profiles',  profileRoutes);
-app.use('/api/financial',  financialRoutes);
-app.use('/api/governance',  governanceRoutes);
-app.use('/api/reports',  reportRoutes);
+app.use('/api/investments', investmentRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/grants', grantRoutes);
+app.use('/api/profiles', profileRoutes);
+app.use('/api/financial', financialRoutes);
+app.use('/api/governance', governanceRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/verifications', verificationRoutes);
 app.use('/api/customers', customerRoutes);
@@ -206,12 +211,9 @@ app.use('/api/settings/reconcile-account', reconcileAccountSettingsRoutes);
 app.use(errorLogging);
 app.use(errorHandler);
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../../dist')));
-
 // API 404 handler
 app.use('/api/*', (req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Not Found',
     message: 'The requested resource was not found on this server.'
   });
