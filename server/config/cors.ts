@@ -7,6 +7,7 @@ export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = env.nodeEnv === 'production'
       ? [
+        'https://sfms-accounting-software-49ffab.netlify.app',
         'https://swedish-foundation-m-36v0.bolt.host',
         'https://faasinova.se',
         'https://www.faasinova.se',
