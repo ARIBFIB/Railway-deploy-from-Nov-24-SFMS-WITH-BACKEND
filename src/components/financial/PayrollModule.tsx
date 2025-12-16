@@ -154,7 +154,9 @@ export const PayrollModule: React.FC = () => {
           <p className="text-gray-600 mt-1">Manage employees and process payroll runs.</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" onClick={loadData} icon={RefreshCw} />
+          <Button variant="ghost" onClick={loadData} icon={RefreshCw}>
+            Refresh
+          </Button>
           <Button
             icon={Calculator}
             variant="secondary"

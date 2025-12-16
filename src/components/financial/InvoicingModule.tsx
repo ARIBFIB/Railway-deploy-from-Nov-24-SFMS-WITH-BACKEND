@@ -121,7 +121,9 @@ export const InvoicingModule: React.FC = () => {
           <p className="text-gray-600 mt-1">Create and manage sales and purchase invoices.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={fetchInvoices} icon={RefreshCw} title="Refresh List" />
+          <Button variant="ghost" onClick={fetchInvoices} icon={RefreshCw}>
+            Refresh List
+          </Button>
           <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
             Create Invoice
           </Button>
@@ -332,7 +334,7 @@ export const InvoicingModule: React.FC = () => {
                     {/*
                     // TODO: Implement Edit
                     <Button variant="ghost" size="sm" icon={Edit}>
-                        Edit
+                      Edit
                     </Button>
                   */}
                     <Button variant="ghost" size="sm" icon={Download}>

@@ -210,23 +210,23 @@ export const BookkeepingModule: React.FC = () => {
     setIsProcessing(true);
     try {
       const res = await VerificationService.getVerificationById(entry.id);
-      if (res.success) {
+      if (res.success && res.data) {
         // Map back to local format for form population
         const v = res.data;
         const mapped: JournalEntry = {
-          id: v.id!,
-          entry_number: v.verification_number,
-          entry_date: v.accounting_date,
-          description: v.description,
-          total_debit: v.total_debit,
-          total_credit: v.total_credit,
-          status: v.status as any,
-          line_items: v.entries.map((e: any) => ({
-            id: e.id!,
-            account_name: e.account_number,
-            description: e.transaction_info,
-            debit_amount: e.debit,
-            credit_amount: e.credit
+          id: v.id || '',
+          entry_number: v.verification_number || '',
+          entry_date: v.accounting_date || new Date().toISOString(),
+          description: v.description || '',
+          total_debit: v.total_debit || 0,
+          total_credit: v.total_credit || 0,
+          status: (v.status as 'draft' | 'posted' | 'reversed') || 'draft',
+          line_items: (v.entries || []).map((e: any) => ({
+            id: e.id || '',
+            account_name: e.account_number || '',
+            description: e.transaction_info || '',
+            debit_amount: e.debit || 0,
+            credit_amount: e.credit || 0
           }))
         };
         setEditingJournalEntry(mapped);

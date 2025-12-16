@@ -55,7 +55,7 @@ export const TransactionAccountsPage: React.FC = () => {
         // Map API data to UI format
         const mapped: TransactionAccount[] = apiAccounts.map(a => ({
           id: a.id,
-          name: a.account_name,
+          name: a.account_name || a.name || 'Unnamed Account',
           bankPaymentService: '', // Not in API yet
           bankTransfer: '', // Not in API yet
           plusgiro: '', // Not in API yet

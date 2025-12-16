@@ -68,7 +68,9 @@ async function runMigrationViaAPI() {
 
     for (let i = 0; i < statements.length; i++) {
         const statement = statements[i];
-        console.log(`${i + 1}/${statements.length} Executing: ${statement.substring(0, 60)}...`);
+        if (statement) {
+            console.log(`${i + 1}/${statements.length} Executing: ${statement.substring(0, 60)}...`);
+        }
 
         try {
             const response = await makeRequest(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
