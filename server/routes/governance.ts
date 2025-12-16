@@ -6,7 +6,20 @@ import { requireFoundationAccess } from '../middleware/auth';
 
 const router = express.Router();
 
+// Governance Stats
+router.get('/stats',
+  [query('foundation_id').optional().isUUID()],
+  validateRequest,
+  GovernanceController.getGovernanceStats
+);
+
 // Role management
+router.get('/roles/count',
+  [query('foundation_id').optional().isUUID()],
+  validateRequest,
+  GovernanceController.getRolesCount
+);
+
 router.get('/roles',
   [query('foundation_id').optional().isUUID()],
   validateRequest,
@@ -15,7 +28,7 @@ router.get('/roles',
 
 router.post('/roles',
   [
-    body('foundation_id').isUUID(),
+    body('foundation_id').optional().isUUID(),
     body('name').trim().isLength({ min: 2 }),
     body('description').optional().trim(),
     body('permissions').isArray()
@@ -23,6 +36,23 @@ router.post('/roles',
   validateRequest,
   // requireFoundationAccess,
   GovernanceController.createRole
+);
+
+router.put('/roles/:id',
+  [
+    param('id').notEmpty(),
+    body('name').optional().trim().isLength({ min: 2 }),
+    body('description').optional().trim(),
+    body('permissions').optional().isArray()
+  ],
+  validateRequest,
+  GovernanceController.updateRole
+);
+
+router.delete('/roles/:id',
+  [param('id').notEmpty()],
+  validateRequest,
+  GovernanceController.deleteRole
 );
 
 // Document workflows
@@ -84,6 +114,13 @@ router.get('/audit-logs',
   ],
   validateRequest,
   GovernanceController.getAuditLogs
+);
+
+// Users
+router.get('/users',
+  [query('foundation_id').optional().isUUID()],
+  validateRequest,
+  GovernanceController.getUsers
 );
 
 export default router;

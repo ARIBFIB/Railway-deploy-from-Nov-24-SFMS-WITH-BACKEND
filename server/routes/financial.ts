@@ -6,6 +6,14 @@ import { requireFoundationAccess } from '../middleware/auth';
 
 const router = express.Router();
 
+// Dashboard Stats
+// Dashboard Stats
+router.get('/dashboard-stats',
+  [query('foundation_id').exists()],
+  validateRequest,
+  FinancialController.getDashboardStats
+);
+
 // Bookkeeping routes
 router.get('/accounts',
   [query('foundation_id').optional().isUUID()],
@@ -66,7 +74,7 @@ router.post('/invoices',
     body('line_items').isArray({ min: 1 })
   ],
   validateRequest,
- // requireFoundationAccess,
+  // requireFoundationAccess,
   FinancialController.createInvoice
 );
 

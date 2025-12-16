@@ -13,7 +13,7 @@ const createError = (message: string, statusCode: number = 500) => {
 
 export class AuthController {
   static register = asyncHandler(async (req: Request, res: Response) => {
-    const { email, password, full_name, role, foundation_id, admin_id } = req.body;
+    const { email, password, full_name, role, foundation_id, admin_id, governance_role_id } = req.body;
 
     // Validate role if provided - check against database constraint
     const validRoles = ['member', 'admin', 'authenticator']; // superadmin not allowed in current DB constraint
@@ -70,27 +70,48 @@ export class AuthController {
         throw createError('Failed to update user profile', 500);
       }
     } else {
-      // Profile doesn't exist, create it
+      // Profile doesn't exist, create it using upsert to handle race conditions with triggers
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
+        .upsert({
           id: authData.user.id,
           full_name,
           email,
           role: role || 'member',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id',
+          ignoreDuplicates: false
         });
 
       if (profileError) {
+        console.error('❌ Profile creation error:', profileError);
+        console.error('❌ Profile error details:', JSON.stringify(profileError, null, 2));
         await supabase.auth.admin.deleteUser(authData.user.id);
-        throw createError('Failed to create user profile', 500);
+        throw createError(`Failed to create user profile: ${profileError.message || JSON.stringify(profileError)}`, 500);
+      }
+    }
+
+    // Assign user to governance role if provided
+    if (governance_role_id) {
+      const { error: roleAssignmentError } = await supabase
+        .from('user_governance_roles')
+        .insert({
+          user_id: authData.user.id,
+          role_id: governance_role_id,
+          assigned_at: new Date().toISOString()
+        });
+
+      if (roleAssignmentError) {
+        console.warn('Failed to assign governance role:', roleAssignmentError.message);
+        // Don't fail registration if role assignment fails
       }
     }
 
     // Generate foundation_id if not provided (for admin users)
     const userFoundationId = foundation_id || (role === 'admin' ? generateFoundationId() : null);
-    
+
     // If foundation_id is provided or generated, create foundation and add user to it
     if (userFoundationId) {
       // First, check if foundation exists, if not create it (for admin users)
@@ -134,7 +155,7 @@ export class AuthController {
     // Generate JWT token
     const userRole = role || 'member';
     const roleId = getRoleId(userRole);
-    
+
     const tokenPayload: Omit<JWTPayload, 'iat' | 'exp'> = {
       user_id: authData.user.id,
       foundation_id: userFoundationId || '',
@@ -142,7 +163,7 @@ export class AuthController {
       email: authData.user.email!,
       role: userRole
     };
-    
+
     const token = generateToken(tokenPayload);
 
     // Console logging for admin registration
@@ -201,6 +222,37 @@ export class AuthController {
       throw createError('User profile not found', 404);
     }
 
+    // Get user's governance role and permissions
+    const { data: governanceRoles, error: governanceError } = await supabase
+      .from('user_governance_roles')
+      .select(`
+        role_id,
+        roles!inner(
+          id,
+          name,
+          description,
+          permissions
+        )
+      `)
+      .eq('user_id', data.user.id);
+
+    let userPermissions: string[] = [];
+    let governanceRoleName: string | null = null;
+
+    if (!governanceError && governanceRoles && governanceRoles.length > 0) {
+      // User has governance role(s), use the first one's permissions
+      const firstRole = governanceRoles[0]?.roles;
+      if (firstRole) {
+        userPermissions = (firstRole as any).permissions || [];
+        governanceRoleName = (firstRole as any).name || null;
+        console.log('🔐 User governance role:', governanceRoleName);
+        console.log('🔐 User permissions:', userPermissions);
+      }
+    } else {
+      console.warn('⚠️ User has no governance role assigned');
+    }
+
+
     // Get user's foundation memberships with roles and permissions
     const { data: foundationMemberships, error: membershipError } = await supabase
       .from('foundation_members')
@@ -229,10 +281,10 @@ export class AuthController {
     // Get user's role from profile
     const primaryRole = profile.role || 'member';
     const roleId = getRoleId(primaryRole);
-    
+
     // Get primary foundation_id - check multiple sources
     let primaryFoundationId = '';
-    
+
     if (foundationMemberships && foundationMemberships.length > 0) {
       // First, try to get from foundation memberships
       primaryFoundationId = foundationMemberships[0]?.foundation_id || '';
@@ -244,7 +296,7 @@ export class AuthController {
         .select('foundation_id')
         .eq('user_id', data.user.id)
         .limit(1);
-      
+
       if (!foundationError && userFoundations && userFoundations.length > 0) {
         primaryFoundationId = userFoundations[0]?.foundation_id || '';
       }
@@ -319,7 +371,7 @@ export class AuthController {
       email: data.user.email!,
       role: primaryRole
     };
-    
+
     const token = generateToken(tokenPayload);
 
     // Console logging for login details
@@ -364,7 +416,9 @@ export class AuthController {
         role: primaryRole,
         role_id: roleId,
         foundation_id: primaryFoundationId,
-        roles: [primaryRole, ...(foundationMemberships?.map(m => m.role) || [])]
+        roles: [primaryRole, ...(foundationMemberships?.map(m => m.role) || [])],
+        governance_role: governanceRoleName,
+        permissions: userPermissions
       },
       authorization_context: authorizationContext,
       session: {
@@ -377,7 +431,7 @@ export class AuthController {
 
   static logout = asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       await supabase.auth.admin.signOut(token);
@@ -455,7 +509,7 @@ export class AuthController {
 
   static getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw createError('No valid authorization token provided', 401);
     }
@@ -539,7 +593,7 @@ export class AuthController {
   // Temporary endpoint to fix existing user foundation
   static fixUserFoundation = asyncHandler(async (req: Request, res: Response) => {
     const { user_id } = req.params;
-    
+
     try {
       // Check if user already has foundation
       const { data: existingMemberships, error: checkError } = await supabase

@@ -98,6 +98,8 @@ export interface VerificationFilters {
   accounting_date_to?: string;
   page?: number;
   limit?: number;
+  min_amount?: number;
+  max_amount?: number;
 }
 
 export interface VerificationResponse {
@@ -121,18 +123,18 @@ export interface VerificationsResponse {
 export class VerificationService {
   static async createVerification(verificationData: CreateVerificationData): Promise<VerificationResponse> {
     console.log('🔄 VerificationService.createVerification - Starting with data:', verificationData);
-    
+
     const response = await apiFetch('/api/verifications', {
       method: 'POST',
       body: JSON.stringify(verificationData),
     });
-    
+
     console.log('📡 VerificationService.createVerification - Response received:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok
     });
-    
+
     if (!response.ok) {
       let errorMessage = 'Failed to create verification';
       try {
@@ -147,7 +149,7 @@ export class VerificationService {
       }
       throw new Error(errorMessage);
     }
-    
+
     try {
       const result = await response.json();
       console.log('✅ VerificationService.createVerification - Success:', result);
@@ -162,9 +164,9 @@ export class VerificationService {
 
   static async getVerifications(filters: VerificationFilters = {}): Promise<VerificationsResponse> {
     console.log('🔄 VerificationService.getVerifications - Starting with filters:', filters);
-    
+
     const queryParams = new URLSearchParams();
-    
+
     if (filters.search) queryParams.append('search', filters.search);
     if (filters.verification_series) queryParams.append('verification_series', filters.verification_series);
     if (filters.status) queryParams.append('status', filters.status);
@@ -172,18 +174,20 @@ export class VerificationService {
     if (filters.accounting_date_to) queryParams.append('accounting_date_to', filters.accounting_date_to);
     if (filters.page) queryParams.append('page', filters.page.toString());
     if (filters.limit) queryParams.append('limit', filters.limit.toString());
-    
+    if (filters.min_amount !== undefined) queryParams.append('min_amount', filters.min_amount.toString());
+    if (filters.max_amount !== undefined) queryParams.append('max_amount', filters.max_amount.toString());
+
     // Add cache busting timestamp to prevent stale data
     queryParams.append('_t', Date.now().toString());
 
     const response = await apiFetch(`/api/verifications?${queryParams.toString()}`);
-    
+
     console.log('📡 VerificationService.getVerifications - Response received:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok
     });
-    
+
     if (!response.ok) {
       let errorMessage = 'Failed to fetch verifications';
       try {
@@ -198,7 +202,7 @@ export class VerificationService {
       }
       throw new Error(errorMessage);
     }
-    
+
     try {
       const result = await response.json();
       console.log('✅ VerificationService.getVerifications - Success:', {
@@ -216,12 +220,12 @@ export class VerificationService {
 
   static async getVerificationById(id: string): Promise<VerificationResponse> {
     const response = await apiFetch(`/api/verifications/${id}`);
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to fetch verification');
     }
-    
+
     return await response.json();
   }
 
@@ -230,12 +234,12 @@ export class VerificationService {
       method: 'PUT',
       body: JSON.stringify(verificationData),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to update verification');
     }
-    
+
     return await response.json();
   }
 
@@ -243,26 +247,26 @@ export class VerificationService {
     const response = await apiFetch(`/api/verifications/${id}`, {
       method: 'DELETE',
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to delete verification');
     }
-    
+
     return await response.json();
   }
 
   static async getNextVerificationNumber(series: string): Promise<{ success: boolean; data: { verification_number: string } }> {
     console.log('🔄 VerificationService.getNextVerificationNumber - Starting with series:', series);
-    
+
     const response = await apiFetch(`/api/verifications/next-number?series=${series}`);
-    
+
     console.log('📡 VerificationService.getNextVerificationNumber - Response received:', {
       status: response.status,
       statusText: response.statusText,
       ok: response.ok
     });
-    
+
     if (!response.ok) {
       let errorMessage = 'Failed to get next verification number';
       try {
@@ -277,7 +281,7 @@ export class VerificationService {
       }
       throw new Error(errorMessage);
     }
-    
+
     try {
       const result = await response.json();
       console.log('✅ VerificationService.getNextVerificationNumber - Success:', result);
@@ -298,12 +302,12 @@ export class VerificationService {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to upload image');
     }
-    
+
     return await response.json();
   }
 
@@ -315,12 +319,12 @@ export class VerificationService {
         status
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to update verification status');
     }
-    
+
     return await response.json();
   }
 
@@ -331,12 +335,12 @@ export class VerificationService {
         verification_ids: verificationIds
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to delete verifications');
     }
-    
+
     return await response.json();
   }
 }

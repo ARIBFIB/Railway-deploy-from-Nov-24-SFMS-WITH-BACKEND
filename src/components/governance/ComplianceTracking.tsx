@@ -89,7 +89,7 @@ export const ComplianceTracking: React.FC = () => {
 
   const filteredItems = complianceItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase());
+      item.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     const matchesRegulation = regulationFilter === 'all' || item.regulation_type === regulationFilter;
     return matchesSearch && matchesStatus && matchesRegulation;
@@ -257,14 +257,13 @@ export const ComplianceTracking: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-medium ${
-                    daysUntil < 0 ? 'text-red-600' : 
-                    daysUntil <= 7 ? 'text-orange-600' : 
-                    'text-gray-900'
-                  }`}>
+                  <p className={`text-sm font-medium ${daysUntil < 0 ? 'text-red-600' :
+                    daysUntil <= 7 ? 'text-orange-600' :
+                      'text-gray-900'
+                    }`}>
                     {daysUntil < 0 ? `${Math.abs(daysUntil)} days overdue` :
-                     daysUntil === 0 ? 'Due today' :
-                     `${daysUntil} days remaining`}
+                      daysUntil === 0 ? 'Due today' :
+                        `${daysUntil} days remaining`}
                   </p>
                   <p className="text-xs text-gray-500">{new Date(item.due_date).toLocaleDateString()}</p>
                 </div>
@@ -338,7 +337,7 @@ export const ComplianceTracking: React.FC = () => {
                       <span>•</span>
                       <span>Assigned to: {item.assigned_to}</span>
                     </div>
-                    
+
                     {item.documents_required.length > 0 && (
                       <div className="mt-3">
                         <p className="text-sm font-medium text-gray-700 mb-1">Required Documents:</p>
@@ -353,20 +352,19 @@ export const ComplianceTracking: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
                     {item.status.replace('_', ' ')}
                   </span>
-                  <p className={`text-sm font-medium mt-2 ${
-                    daysUntil < 0 ? 'text-red-600' : 
-                    daysUntil <= 7 ? 'text-orange-600' : 
-                    'text-gray-900'
-                  }`}>
+                  <p className={`text-sm font-medium mt-2 ${daysUntil < 0 ? 'text-red-600' :
+                    daysUntil <= 7 ? 'text-orange-600' :
+                      'text-gray-900'
+                    }`}>
                     {daysUntil < 0 ? `${Math.abs(daysUntil)} days overdue` :
-                     daysUntil === 0 ? 'Due today' :
-                     item.status === 'completed' ? 'Completed' :
-                     `${daysUntil} days remaining`}
+                      daysUntil === 0 ? 'Due today' :
+                        item.status === 'completed' ? 'Completed' :
+                          `${daysUntil} days remaining`}
                   </p>
                   <p className="text-xs text-gray-500">{new Date(item.due_date).toLocaleDateString()}</p>
                 </div>

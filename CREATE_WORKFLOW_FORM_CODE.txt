@@ -1,0 +1,189 @@
+// Add this at the end of DocumentWorkflow.tsx file
+
+interface CreateWorkflowFormProps {
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+}
+
+const CreateWorkflowForm: React.FC<CreateWorkflowFormProps> = ({ onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState({
+    document_name: '',
+    document_type: 'board_resolution',
+    workflow_type: 'approval' as 'approval' | 'review' | 'signature',
+    steps: [
+      { assignee_name: '', assignee_id: '', action_type: 'review' as 'review' | 'approve' | 'sign' }
+    ]
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate
+    if (!formData.document_name.trim()) {
+      alert('Please enter a document name');
+      return;
+    }
+
+    if (formData.steps.some(step => !step.assignee_name.trim())) {
+      alert('Please fill in all assignee names');
+      return;
+    }
+
+    onSubmit(formData);
+  };
+
+  const addStep = () => {
+    setFormData(prev => ({
+      ...prev,
+      steps: [...prev.steps, { assignee_name: '', assignee_id: '', action_type: 'review' }]
+    }));
+  };
+
+  const removeStep = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      steps: prev.steps.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateStep = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      steps: prev.steps.map((step, i) => 
+        i === index ? { ...step, [field]: value } : step
+      )
+    }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Document Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Document Name *
+        </label>
+        <input
+          type="text"
+          value={formData.document_name}
+          onChange={(e) => setFormData(prev => ({ ...prev, document_name: e.target.value }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          placeholder="e.g., Board Resolution - Q1 Budget Approval"
+          required
+        />
+      </div>
+
+      {/* Document Type */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Document Type *
+        </label>
+        <select
+          value={formData.document_type}
+          onChange={(e) => setFormData(prev => ({ ...prev, document_type: e.target.value }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="board_resolution">Board Resolution</option>
+          <option value="financial_statement">Financial Statement</option>
+          <option value="bylaws">Bylaws</option>
+          <option value="articles_of_association">Articles of Association</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      {/* Workflow Type */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Workflow Type *
+        </label>
+        <select
+          value={formData.workflow_type}
+          onChange={(e) => setFormData(prev => ({ ...prev, workflow_type: e.target.value as any }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="approval">Approval Workflow</option>
+          <option value="review">Review Workflow</option>
+          <option value="signature">Signature Workflow</option>
+        </select>
+      </div>
+
+      {/* Workflow Steps */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Workflow Steps *
+          </label>
+          <button
+            type="button"
+            onClick={addStep}
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            + Add Step
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {formData.steps.map((step, index) => (
+            <div key={index} className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700">Step {index + 1}</span>
+                {formData.steps.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeStep(index)}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Assignee Name</label>
+                  <input
+                    type="text"
+                    value={step.assignee_name}
+                    onChange={(e) => updateStep(index, 'assignee_name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g., John Secretary"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Action Type</label>
+                  <select
+                    value={step.action_type}
+                    onChange={(e) => updateStep(index, 'action_type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="review">Review</option>
+                    <option value="approve">Approve</option>
+                    <option value="sign">Sign</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          Create Workflow
+        </button>
+      </div>
+    </form>
+  );
+};

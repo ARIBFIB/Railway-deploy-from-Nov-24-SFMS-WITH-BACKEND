@@ -111,32 +111,32 @@ export const PERMISSIONS = {
   // Foundation management
   MANAGE_FOUNDATION: 'manage_foundation',
   VIEW_FOUNDATION: 'view_foundation',
-  
+
   // User management
   MANAGE_USERS: 'manage_users',
   INVITE_USERS: 'invite_users',
-  
+
   // Document management
   UPLOAD_DOCUMENTS: 'upload_documents',
   APPROVE_DOCUMENTS: 'approve_documents',
   VIEW_DOCUMENTS: 'view_documents',
-  
+
   // Meeting management
   SCHEDULE_MEETINGS: 'schedule_meetings',
   CREATE_MINUTES: 'create_minutes',
   APPROVE_MINUTES: 'approve_minutes',
-  
+
   // Financial management
   MANAGE_EXPENSES: 'manage_expenses',
   APPROVE_EXPENSES: 'approve_expenses',
   MANAGE_INVESTMENTS: 'manage_investments',
   VIEW_FINANCIAL_DATA: 'view_financial_data',
-  
+
   // Governance
   MANAGE_COMPLIANCE: 'manage_compliance',
   VIEW_AUDIT_LOGS: 'view_audit_logs',
   MANAGE_WORKFLOWS: 'manage_workflows',
-  
+
   // Reporting
   GENERATE_REPORTS: 'generate_reports',
   EXPORT_DATA: 'export_data'
@@ -210,7 +210,7 @@ export const VALIDATION_RULES = {
 
 export const API_RATE_LIMITS = {
   WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-  MAX_REQUESTS: 100,
+  MAX_REQUESTS: 1000, // Increased for development
   BANKID_WINDOW_MS: 5 * 60 * 1000, // 5 minutes
   BANKID_MAX_REQUESTS: 10
 } as const;

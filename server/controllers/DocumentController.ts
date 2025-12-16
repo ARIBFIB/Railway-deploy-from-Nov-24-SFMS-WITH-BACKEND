@@ -17,11 +17,11 @@ export class DocumentController {
     if (foundation_id || req.user?.foundation_id) {
       query = query.eq('foundation_id', foundation_id || req.user?.foundation_id);
     }
-    
+
     if (document_type) {
       query = query.eq('document_type', document_type);
     }
-    
+
     if (status) {
       query = query.eq('status', status);
     }
@@ -238,6 +238,32 @@ export class DocumentController {
     });
   });
 
+  static approveDocument = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const { id } = req.params;
+
+    // Update document status to approved
+    const { data: document, error } = await supabase
+      .from('documents')
+      .update({
+        status: 'approved',
+        approved_by: req.user?.user_id,
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw createError(error.message, 400);
+    }
+
+    res.json({
+      message: 'Document approved successfully',
+      document
+    });
+  });
+
   static deleteDocument = asyncHandler(async (req: JWTRequest, res: Response) => {
     const { id } = req.params;
 
@@ -344,7 +370,7 @@ export class DocumentController {
         // Set appropriate headers
         res.setHeader('Content-Type', mimeType || 'application/octet-stream');
         res.setHeader('Content-Length', buffer.length);
-        
+
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.setHeader('Cache-Control', 'private, max-age=3600');
 
@@ -497,7 +523,7 @@ export class DocumentController {
       { value: 'board_resolution', label: 'Board Resolution' },
       { value: 'other', label: 'Other' }
     ];
-    
+
     return res.json({
       document_types: defaultTypes,
       total: defaultTypes.length

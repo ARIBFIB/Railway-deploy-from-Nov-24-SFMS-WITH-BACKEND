@@ -1,89 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Search, Send, Eye, Edit, Download, CheckCircle, Clock, AlertCircle, Filter } from 'lucide-react';
+import { Plus, Search, Send, Eye, Edit, Download, CheckCircle, Clock, AlertCircle, Filter, Loader2, RefreshCw } from 'lucide-react';
 import { Card } from '../Card';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
 import { ListManager } from '../ListManager';
-
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  invoice_type: string; // Changed to string
-  customer_supplier_name: string;
-  invoice_date: string;
-  due_date: string;
-  subtotal: number;
-  tax_amount: number;
-  total_amount: number;
-  currency: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  payment_terms: string;
-  line_items: InvoiceLineItem[];
-}
-
-interface InvoiceLineItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  tax_rate: number;
-  line_total: number;
-}
-
-const mockInvoices: Invoice[] = [
-  {
-    id: '1',
-    invoice_number: 'INV-2024-001',
-    invoice_type: 'Sales', // Updated to string
-    customer_supplier_name: 'Green Tech Solutions AB',
-    invoice_date: '2024-03-15',
-    due_date: '2024-04-14',
-    subtotal: 50000,
-    tax_amount: 12500,
-    total_amount: 62500,
-    currency: 'SEK',
-    status: 'sent',
-    payment_terms: 'Net 30',
-    line_items: [
-      {
-        id: '1',
-        description: 'Environmental consulting services',
-        quantity: 1,
-        unit_price: 50000,
-        tax_rate: 25,
-        line_total: 50000
-      }
-    ]
-  },
-  {
-    id: '2',
-    invoice_number: 'INV-2024-002',
-    invoice_type: 'Sales', // Updated to string
-    customer_supplier_name: 'Sustainable Energy Corp',
-    invoice_date: '2024-03-20',
-    due_date: '2024-04-19',
-    subtotal: 75000,
-    tax_amount: 18750,
-    total_amount: 93750,
-    currency: 'SEK',
-    status: 'paid',
-    payment_terms: 'Net 30',
-    line_items: [
-      {
-        id: '2',
-        description: 'Solar panel installation grant',
-        quantity: 1,
-        unit_price: 75000,
-        tax_rate: 25,
-        line_total: 75000
-      }
-    ]
-  }
-];
+import { InvoiceService, type Invoice, type CreateInvoiceData } from '../../services/invoiceService';
 
 export const InvoicingModule: React.FC = () => {
-  const [invoices] = useState<Invoice[]>(mockInvoices);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -91,6 +19,22 @@ export const InvoicingModule: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+
+  const fetchInvoices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { invoices: data } = await InvoiceService.getInvoices({
+        status: statusFilter,
+        invoice_type: typeFilter
+      });
+      setInvoices(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch invoices');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -104,12 +48,14 @@ export const InvoicingModule: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    fetchInvoices();
+  }, [statusFilter, typeFilter]);
+
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.customer_supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
-    const matchesType = typeFilter === 'all' || invoice.invoice_type.toLowerCase() === typeFilter.toLowerCase();
-    return matchesSearch && matchesStatus && matchesType;
+      invoice.customer_supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   const getStatusIcon = (status: string) => {
@@ -162,6 +108,11 @@ export const InvoicingModule: React.FC = () => {
     setIsFilterMenuOpen(!isFilterMenuOpen);
   };
 
+  const handleCreateSuccess = () => {
+    fetchInvoices();
+    setShowCreateModal(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -169,9 +120,12 @@ export const InvoicingModule: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Invoicing</h2>
           <p className="text-gray-600 mt-1">Create and manage sales and purchase invoices.</p>
         </div>
-        <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
-          Create Invoice
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={fetchInvoices} icon={RefreshCw} title="Refresh List" />
+          <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
+            Create Invoice
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -274,9 +228,8 @@ export const InvoicingModule: React.FC = () => {
                     <button
                       key={option.value}
                       onClick={() => handleTypeFilterChange(option.value)}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                        typeFilter === option.value ? 'bg-gray-100 font-medium' : ''
-                      }`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${typeFilter === option.value ? 'bg-gray-100 font-medium' : ''
+                        }`}
                     >
                       {option.label}
                     </button>
@@ -295,9 +248,8 @@ export const InvoicingModule: React.FC = () => {
                     <button
                       key={option.value}
                       onClick={() => handleStatusFilterChange(option.value)}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
-                        statusFilter === option.value ? 'bg-gray-100 font-medium' : ''
-                      }`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${statusFilter === option.value ? 'bg-gray-100 font-medium' : ''
+                        }`}
                     >
                       {option.label}
                     </button>
@@ -309,79 +261,95 @@ export const InvoicingModule: React.FC = () => {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6">
-        {filteredInvoices.map((invoice) => (
-          <Card key={invoice.id}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-4">
-                {getStatusIcon(invoice.status)}
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      invoice.invoice_type.toLowerCase() === 'sales' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                    }`}>
-                      {invoice.invoice_type}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{invoice.customer_supplier_name}</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
-                    <div>
-                      <span className="font-medium">Invoice Date:</span>
-                      <br />
-                      {new Date(invoice.invoice_date).toLocaleDateString()}
-                    </div>
-                    <div>
-                      <span className="font-medium">Due Date:</span>
-                      <br />
-                      {new Date(invoice.due_date).toLocaleDateString()}
-                    </div>
-                    <div>
-                      <span className="font-medium">Payment Terms:</span>
-                      <br />
-                      {invoice.payment_terms}
-                    </div>
-                    <div>
-                      <span className="font-medium">Total Amount:</span>
-                      <br />
-                      <span className="text-lg font-semibold text-gray-900">
-                        {invoice.total_amount.toLocaleString('sv-SE')} {invoice.currency}
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-12 text-red-500">
+          {error}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {filteredInvoices.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
+              No invoices found matching your criteria.
+            </div>
+          ) : (filteredInvoices.map((invoice) => (
+            <Card key={invoice.id}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-start space-x-4">
+                  {getStatusIcon(invoice.status)}
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</h3>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${invoice.invoice_type.toLowerCase() === 'sales' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                        }`}>
+                        {invoice.invoice_type}
                       </span>
                     </div>
+                    <p className="text-sm text-gray-600 mb-2">{invoice.customer_supplier_name}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                      <div>
+                        <span className="font-medium">Invoice Date:</span>
+                        <br />
+                        {new Date(invoice.invoice_date).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <span className="font-medium">Due Date:</span>
+                        <br />
+                        {new Date(invoice.due_date).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <span className="font-medium">Payment Terms:</span>
+                        <br />
+                        {invoice.payment_terms}
+                      </div>
+                      <div>
+                        <span className="font-medium">Total Amount:</span>
+                        <br />
+                        <span className="text-lg font-semibold text-gray-900">
+                          {invoice.total_amount.toLocaleString('sv-SE')} {invoice.currency}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
+                    {invoice.status}
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={Eye}
+                      onClick={() => setSelectedInvoice(invoice)}
+                    >
+                      View
+                    </Button>
+                    {/*
+                    // TODO: Implement Edit
+                    <Button variant="ghost" size="sm" icon={Edit}>
+                        Edit
+                    </Button>
+                  */}
+                    <Button variant="ghost" size="sm" icon={Download}>
+                      PDF
+                    </Button>
+                    {invoice.status === 'draft' && (
+                      <Button variant="ghost" size="sm" icon={Send}>
+                        Send
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
-                  {invoice.status}
-                </span>
-                <div className="flex items-center space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    icon={Eye}
-                    onClick={() => setSelectedInvoice(invoice)}
-                  >
-                    View
-                  </Button>
-                  <Button variant="ghost" size="sm" icon={Edit}>
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" icon={Download}>
-                    PDF
-                  </Button>
-                  {invoice.status === 'draft' && (
-                    <Button variant="ghost" size="sm" icon={Send}>
-                      Send
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          )))}
+        </div>
+      )}
 
       <Modal
         isOpen={showCreateModal}
@@ -389,7 +357,7 @@ export const InvoicingModule: React.FC = () => {
         title="Create Invoice"
         size="lg"
       >
-        <InvoiceForm onClose={() => setShowCreateModal(false)} />
+        <InvoiceForm onSuccess={handleCreateSuccess} onClose={() => setShowCreateModal(false)} />
       </Modal>
 
       <Modal
@@ -404,10 +372,13 @@ export const InvoicingModule: React.FC = () => {
   );
 };
 
-const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const InvoiceForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({ onSuccess, onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    invoice_type: 'Sales', // Default to 'Sales' as a string
+    invoice_type: 'Sales',
     customer_supplier_name: '',
+    // TODO: Add customer_id selection logic (e.g., search/dropdown)
     invoice_date: new Date().toISOString().split('T')[0],
     due_date: '',
     payment_terms: 'Net 30',
@@ -416,10 +387,25 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     ]
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    onClose();
+    setLoading(true);
+    setError(null);
+    try {
+      await InvoiceService.createInvoice({
+        invoice_type: formData.invoice_type,
+        customer_supplier_name: formData.customer_supplier_name,
+        invoice_date: formData.invoice_date,
+        due_date: formData.due_date,
+        payment_terms: formData.payment_terms,
+        items: formData.line_items.map(l => ({ ...l, tax_rate: l.tax_rate }))
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addLineItem = () => {
@@ -431,17 +417,23 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+          {error}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Type *</label>
-          <input
-            type="text"
+          <select
             value={formData.invoice_type}
             onChange={(e) => setFormData(prev => ({ ...prev, invoice_type: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Enter invoice type"
             required
-          />
+          >
+            <option value="Sales">Sales</option>
+            <option value="Purchase">Purchase</option>
+          </select>
         </div>
         <Input
           label={formData.invoice_type.toLowerCase().includes('purchase') ? 'Supplier Name' : 'Customer Name'}
@@ -457,7 +449,12 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           label="Invoice Date"
           type="date"
           value={formData.invoice_date}
-          onChange={(e) => setFormData(prev => ({ ...prev, invoice_date: e.target.value }))}
+          onChange={(e) => {
+            const date = e.target.value;
+            // Calculate default due date (30 days)
+            const dueDate = new Date(new Date(date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            setFormData(prev => ({ ...prev, invoice_date: date, due_date: dueDate }));
+          }}
           required
         />
         <Input
@@ -484,13 +481,13 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             Add Line
           </Button>
         </div>
-        
+
         <div className="space-y-3">
           {formData.line_items.map((line, index) => (
-            <div key={index} className="grid grid-cols-4 gap-3 p-3 border rounded-lg">
+            <div key={index} className="grid grid-cols-12 gap-3 p-3 border rounded-lg">
               <input
                 placeholder="Description"
-                className="col-span-2 px-3 py-2 border rounded-lg text-sm"
+                className="col-span-12 md:col-span-5 px-3 py-2 border rounded-lg text-sm"
                 value={line.description}
                 onChange={(e) => {
                   const newLines = [...formData.line_items];
@@ -500,8 +497,8 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               />
               <input
                 type="number"
-                placeholder="Quantity"
-                className="px-3 py-2 border rounded-lg text-sm"
+                placeholder="Qty"
+                className="col-span-3 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
                 value={line.quantity}
                 onChange={(e) => {
                   const newLines = [...formData.line_items];
@@ -511,8 +508,8 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               />
               <input
                 type="number"
-                placeholder="Unit Price"
-                className="px-3 py-2 border rounded-lg text-sm"
+                placeholder="Price"
+                className="col-span-4 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
                 value={line.unit_price}
                 onChange={(e) => {
                   const newLines = [...formData.line_items];
@@ -520,17 +517,31 @@ const InvoiceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   setFormData(prev => ({ ...prev, line_items: newLines }));
                 }}
               />
+              <input
+                type="number"
+                placeholder="VAT %"
+                className="col-span-3 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
+                value={line.tax_rate}
+                onChange={(e) => {
+                  const newLines = [...formData.line_items];
+                  newLines[index].tax_rate = parseFloat(e.target.value) || 0;
+                  setFormData(prev => ({ ...prev, line_items: newLines }));
+                }}
+              />
+              <div className="col-span-2 md:col-span-1 flex items-center justify-center">
+                {/* Trash icon can go here */}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
-        <Button type="button" variant="secondary" onClick={onClose}>
+        <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
           Cancel
         </Button>
-        <Button type="submit">
-          Create Invoice
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Creating...' : 'Create Invoice'}
         </Button>
       </div>
     </form>
@@ -545,12 +556,11 @@ const InvoiceDetails: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
           <h3 className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</h3>
           <p className="text-sm text-gray-600">{invoice.customer_supplier_name}</p>
         </div>
-        <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-          invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+        <span className={`px-3 py-1 text-sm font-medium rounded-full ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
           invoice.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-          invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
-          'bg-yellow-100 text-yellow-800'
-        }`}>
+            invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+              'bg-yellow-100 text-yellow-800'
+          }`}>
           {invoice.status}
         </span>
       </div>
@@ -573,7 +583,7 @@ const InvoiceDetails: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
             </div>
           </dl>
         </div>
-        
+
         <div>
           <h4 className="font-medium text-gray-900 mb-2">Amount Summary</h4>
           <dl className="space-y-1 text-sm">
@@ -626,7 +636,7 @@ const InvoiceDetails: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
                     {line.unit_price.toLocaleString('sv-SE')}
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                    {line.line_total.toLocaleString('sv-SE')}
+                    {line.line_total?.toLocaleString('sv-SE')}
                   </td>
                 </tr>
               ))}

@@ -26,6 +26,10 @@ const upload = multer({
   }
 });
 
+// Bulk operations
+router.patch('/bulk/status', VerificationController.bulkUpdateStatus);
+router.delete('/bulk', VerificationController.bulkDelete);
+
 // Verification CRUD routes
 router.post('/', VerificationController.createVerification);
 router.get('/', VerificationController.getVerifications);
@@ -33,13 +37,6 @@ router.get('/next-number', VerificationController.getNextVerificationNumber);
 router.get('/:id', VerificationController.getVerificationById);
 router.put('/:id', VerificationController.updateVerification);
 router.delete('/:id', VerificationController.deleteVerification);
-
-// Image upload route
-router.post('/upload-image', upload.single('image'), VerificationController.uploadImage);
-
-// Bulk operations
-router.patch('/bulk/status', VerificationController.bulkUpdateStatus);
-router.delete('/bulk', VerificationController.bulkDelete);
 
 export default router;
 

@@ -96,6 +96,8 @@ export interface VerificationFilters {
   accounting_date_to?: string;
   page?: number;
   limit?: number;
+  min_amount?: number;
+  max_amount?: number;
 }
 
 export interface VerificationResponse {
@@ -121,7 +123,7 @@ export class VerificationModel {
     try {
       console.log('🚀 VerificationModel.create - Starting');
       console.log('📊 Input data:', { foundationId, userId, verificationData });
-      
+
       const insertData = {
         foundation_id: foundationId,
         verification_number: verificationData.verification_number,
@@ -159,7 +161,7 @@ export class VerificationModel {
       // Create verification entries if provided
       if (verificationData.entries && verificationData.entries.length > 0) {
         console.log('📋 Creating verification entries:', verificationData.entries.length);
-        
+
         const entriesData = verificationData.entries.map(entry => ({
           verification_id: verification.id,
           account_id: entry.account_id,
@@ -185,7 +187,7 @@ export class VerificationModel {
           await supabase.from('verifications').delete().eq('id', verification.id);
           throw new Error(`Failed to create verification entries: ${entriesError.message}`);
         }
-        
+
         console.log('✅ Verification entries created successfully');
       }
 
@@ -267,7 +269,7 @@ export class VerificationModel {
     try {
       console.log('🚀 VerificationModel.getByFoundation - Starting');
       console.log('📊 Input:', { foundationId, filters });
-      
+
       const page = filters.page || 1;
       const limit = filters.limit || 10;
       const offset = (page - 1) * limit;
@@ -300,6 +302,14 @@ export class VerificationModel {
         query = query.lte('accounting_date', filters.accounting_date_to);
       }
 
+      if (filters.min_amount !== undefined) {
+        query = query.gte('amount', filters.min_amount);
+      }
+
+      if (filters.max_amount !== undefined) {
+        query = query.lte('amount', filters.max_amount);
+      }
+
       // Apply pagination
       query = query
         .order('accounting_date', { ascending: false })
@@ -313,7 +323,7 @@ export class VerificationModel {
         .from('verifications')
         .select('*')
         .eq('foundation_id', foundationId);
-      
+
       console.log('🔍 Debug - All verifications for foundation:', {
         count: allVerifications?.length || 0,
         verificationNumbers: allVerifications?.map(v => v.verification_number) || []
@@ -358,7 +368,7 @@ export class VerificationModel {
     try {
       console.log('🚀 VerificationModel.getAllByFoundation - Starting');
       console.log('📊 Foundation ID:', foundationId);
-      
+
       const { data: verifications, error } = await supabase
         .from('verifications')
         .select('*')
@@ -390,7 +400,7 @@ export class VerificationModel {
   static async getAll(): Promise<{ success: boolean; data: Verification[] }> {
     try {
       console.log('🚀 VerificationModel.getAll - Starting (Admin access)');
-      
+
       const { data: verifications, error } = await supabase
         .from('verifications')
         .select('*')
@@ -419,8 +429,11 @@ export class VerificationModel {
 
   static async update(id: string, verificationData: UpdateVerificationData, userId: string): Promise<Verification> {
     try {
+      // Separate entries and images from the main verification data
+      const { entries, images, ...mainData } = verificationData;
+
       const updateData = {
-        ...verificationData,
+        ...mainData,
         updated_by: userId
       };
 
@@ -515,14 +528,43 @@ export class VerificationModel {
 
   static async delete(id: string): Promise<void> {
     try {
+      console.log('🗑️ VerificationModel.delete - Starting delete for:', id);
+
+      // 1. Delete associated images
+      const { error: imagesError } = await supabase
+        .from('verification_images')
+        .delete()
+        .eq('verification_id', id);
+
+      if (imagesError) {
+        console.error('⚠️ Error deleting verification images (continuing):', imagesError);
+      } else {
+        console.log('✅ Deleted associated images');
+      }
+
+      // 2. Delete associated entries
+      const { error: entriesError } = await supabase
+        .from('verification_entries')
+        .delete()
+        .eq('verification_id', id);
+
+      if (entriesError) {
+        console.error('❌ Error deleting verification entries:', entriesError);
+        throw new Error(`Failed to delete verification entries: ${entriesError.message}`);
+      }
+      console.log('✅ Deleted associated entries');
+
+      // 3. Delete the verification itself
       const { error } = await supabase
         .from('verifications')
         .delete()
         .eq('id', id);
 
       if (error) {
+        console.error('❌ Error deleting verification:', error);
         throw new Error(`Failed to delete verification: ${error.message}`);
       }
+      console.log('✅ Deleted verification record');
     } catch (error) {
       console.error('Error in VerificationModel.delete:', error);
       throw error;
@@ -551,10 +593,10 @@ export class VerificationModel {
       if (!lastNumber) {
         return `${series}1`;
       }
-      
+
       const numberPart = lastNumber.replace(series, '');
       const nextNumber = parseInt(numberPart) + 1;
-      
+
       return `${series}${nextNumber}`;
     } catch (error) {
       console.error('Error in VerificationModel.getNextVerificationNumber:', error);

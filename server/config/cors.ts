@@ -12,7 +12,8 @@ export const corsOptions: CorsOptions = {
         'https://swedish-foundation-m-36v0.bolt.host',
         'https://faasinova.se',
         'https://www.faasinova.se',
-        'https://railway-deploy-from-nov-24-sfms-with-backend-production.up.railway.app'
+        'https://railway-deploy-from-nov-24-sfms-with-backend-production.up.railway.app',
+        'https://railway-deploy-from-nov-24-sfms-with.onrender.com'
       ]
       : [
         'http://localhost:5173',
@@ -41,7 +42,9 @@ export const corsOptions: CorsOptions = {
     'Accept',
     'Authorization',
     'X-API-Key',
-    'X-Foundation-ID'
+    'X-Foundation-ID',
+    'Cache-Control',
+    'Pragma'
   ],
   exposedHeaders: [
     'X-Total-Count',

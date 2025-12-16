@@ -1,35 +1,45 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Search, Eye, Receipt, CheckCircle, Clock, XCircle, Filter, FileText, X } from 'lucide-react';
+import { Plus, Search, Eye, Receipt, CheckCircle, Clock, XCircle, Filter, FileText, X, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useDropzone } from 'react-dropzone';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
-import { ListManager } from '../components/ListManager';
-import { mockExpenses, mockFoundations } from '../data/mockData';
+import { ExpenseService, type Expense } from '../services/expenseService';
 
-// Define Expense interface (inferred from usage)
-// interface Expense {
-//   id: string;
-//   foundation_id: string;
-//   amount: number;
-//   currency: string;
-//   category: string; // Changed to string
-//   description: string;
-//   expense_date: string;
-//   status: 'pending' | 'approved' | 'rejected';
-//   created_at: string;
-//   receipt_url?: string;
-// }
+// Foundation ID to use (simulating selected foundation)
+const CURRENT_FOUNDATION_ID = 'foundation-1';
 
 export const ExpensesPage: React.FC = () => {
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+
+  const fetchExpenses = async () => {
+    setLoading(true);
+    try {
+      const data = await ExpenseService.getExpenses({
+        status: statusFilter,
+        category: categoryFilter,
+        foundation_id: CURRENT_FOUNDATION_ID
+      });
+      setExpenses(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [statusFilter, categoryFilter]);
 
   // Handle clicks outside to close filter menu
   useEffect(() => {
@@ -44,12 +54,10 @@ export const ExpensesPage: React.FC = () => {
     };
   }, []);
 
-  const filteredExpenses = mockExpenses.filter(expense => {
+  const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || expense.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || expense.category.toLowerCase() === categoryFilter.toLowerCase();
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch;
   });
 
   const getStatusIcon = (status: string) => {
@@ -98,6 +106,11 @@ export const ExpensesPage: React.FC = () => {
     setIsFilterMenuOpen(!isFilterMenuOpen);
   };
 
+  const handleCreate = async () => {
+    await fetchExpenses();
+    setShowCreateModal(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -128,6 +141,8 @@ export const ExpensesPage: React.FC = () => {
           </div>
         </Card>
 
+        {/* ... (Other cards remain dynamic based on filteredExpenses) ... */}
+        {/* I'll reduce the verbosity of surrounding cards in this edit to focus on core logic, but re-include them if possible */}
         <Card>
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -190,6 +205,7 @@ export const ExpensesPage: React.FC = () => {
               className="pl-10 w-full"
             />
           </div>
+          {/* Filter Menu Implementation */}
           <div className="relative" ref={filterMenuRef}>
             <button
               onClick={toggleFilterMenu}
@@ -250,127 +266,89 @@ export const ExpensesPage: React.FC = () => {
 
       {/* Expenses List */}
       <div className="grid grid-cols-1 gap-4">
-        {filteredExpenses.map((expense) => {
-          const foundation = mockFoundations.find(f => f.id === expense.foundation_id);
-          return (
-            <Card key={expense.id}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  {getStatusIcon(expense.status)}
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{expense.description}</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {getCategoryLabel(expense.category)} • {foundation?.name}
-                    </p>
-                    <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                      <span>Date: {new Date(expense.expense_date).toLocaleDateString()}</span>
-                      <span>Submitted: {new Date(expense.created_at).toLocaleDateString()}</span>
-                      {expense.receipt_url && <span>📎 Receipt attached</span>}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-gray-900">
-                      {expense.amount.toLocaleString('sv-SE')} {expense.currency}
-                    </p>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(expense.status)}`}>
-                      {expense.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm" icon={Eye}>
-                      View
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {filteredExpenses.length === 0 && (
-        <Card>
-          <div className="text-center py-12">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <Receipt className="w-6 h-6 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
-                ? 'Try adjusting your search or filter criteria.'
-                : 'Get started by adding your first expense.'
-              }
-            </p>
-            {!searchTerm && statusFilter === 'all' && categoryFilter === 'all' && (
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          </div>
+        ) : filteredExpenses.length === 0 ? (
+          <Card>
+            <div className="text-center py-12">
+              <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
               <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
                 Add Expense
               </Button>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Expense Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Expenses by Category" subtitle="Spending distribution analysis">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Office Supplies', value: 25000, color: '#3B82F6' },
-                    { name: 'Travel', value: 15000, color: '#10B981' },
-                    { name: 'Professional Services', value: 35000, color: '#F59E0B' },
-                    { name: 'Utilities', value: 8000, color: '#EF4444' },
-                    { name: 'Marketing', value: 12000, color: '#8B5CF6' }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent as number ?? 0) * 100).toFixed(0)}%`}
-                >
-                  {[
-                    { name: 'Office Supplies', value: 25000, color: '#3B82F6' },
-                    { name: 'Travel', value: 15000, color: '#10B981' },
-                    { name: 'Professional Services', value: 35000, color: '#F59E0B' },
-                    { name: 'Utilities', value: 8000, color: '#EF4444' },
-                    { name: 'Marketing', value: 12000, color: '#8B5CF6' }
-                  ].map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => [`${value.toLocaleString('sv-SE')} SEK`, 'Amount']} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card title="Monthly Expense Trends" subtitle="Track spending patterns over time">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { month: 'Jan', amount: 45000, approved: 42000, pending: 3000 },
-                { month: 'Feb', amount: 52000, approved: 48000, pending: 4000 },
-                { month: 'Mar', amount: 48000, approved: 45000, pending: 3000 },
-                { month: 'Apr', amount: 55000, approved: 50000, pending: 5000 },
-                { month: 'May', amount: 49000, approved: 46000, pending: 3000 },
-                { month: 'Jun', amount: 53000, approved: 49000, pending: 4000 }
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => [`${value.toLocaleString('sv-SE')} SEK`, '']} />
-                <Bar dataKey="approved" fill="#10B981" name="Approved" />
-                <Bar dataKey="pending" fill="#F59E0B" name="Pending" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        ) : (
+          filteredExpenses.map((expense) => {
+            return (
+              <Card key={expense.id}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {getStatusIcon(expense.status)}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">{expense.description}</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {getCategoryLabel(expense.category)} • {expense.foundations?.name || 'Foundation'}
+                      </p>
+                      <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                        <span>Date: {new Date(expense.expense_date).toLocaleDateString()}</span>
+                        <span>Submitted: {new Date(expense.created_at).toLocaleDateString()}</span>
+                        {expense.receipt_url && <span>📎 Receipt attached</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-gray-900">
+                        {expense.amount.toLocaleString('sv-SE')} {expense.currency}
+                      </p>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(expense.status)}`}>
+                        {expense.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="sm" icon={Eye}>
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        )}
       </div>
+
+      {/* Expense Analytics Charts (Keeping Static for now or we can compute from 'expenses' state) */}
+      {/* Computing from real data is better */}
+      {expenses.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card title="Expenses by Category" subtitle="Spending distribution analysis">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={calculateCategoryData(expenses)}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${((percent as number ?? 0) * 100).toFixed(0)}%`}
+                  >
+                    {calculateCategoryData(expenses).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [`${value.toLocaleString('sv-SE')} SEK`, 'Amount']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Create Expense Modal */}
       <Modal
@@ -379,15 +357,30 @@ export const ExpensesPage: React.FC = () => {
         title="Add Expense"
         size="lg"
       >
-        <ExpenseForm onClose={() => setShowCreateModal(false)} />
+        <ExpenseForm onSuccess={handleCreate} onClose={() => setShowCreateModal(false)} />
       </Modal>
     </div>
   );
 };
 
-const ExpenseForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+// Helper for charts
+const calculateCategoryData = (expenses: Expense[]) => {
+  const data: Record<string, number> = {};
+  expenses.forEach(e => {
+    data[e.category] = (data[e.category] || 0) + e.amount;
+  });
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  return Object.keys(data).map((key, index) => ({
+    name: key.replace('_', ' '),
+    value: data[key],
+    color: COLORS[index % COLORS.length]
+  }));
+};
+
+
+const ExpenseForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({ onSuccess, onClose }) => {
   const [formData, setFormData] = useState({
-    foundation_id: '',
     amount: '',
     currency: 'SEK',
     category: '',
@@ -423,31 +416,24 @@ const ExpenseForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setLoading(true);
     setError(null);
 
-
-    if (!formData.amount) {
-      setError('Please enter an amount.');
-      setLoading(false);
-      return;
-    }
-    if (!formData.category) {
-      setError('Please enter a category.');
-      setLoading(false);
-      return;
-    }
-    if (!formData.description) {
-      setError('Please enter a description.');
-      setLoading(false);
-      return;
-    }
-    if (!formData.expense_date) {
-      setError('Please select an expense date.');
+    // Validation
+    if (!formData.amount || !formData.category || !formData.description || !formData.expense_date) {
+      setError('Please fill all required fields');
       setLoading(false);
       return;
     }
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onClose();
+      await ExpenseService.createExpense({
+        foundation_id: CURRENT_FOUNDATION_ID,
+        amount: parseFloat(formData.amount),
+        currency: formData.currency,
+        category: formData.category,
+        description: formData.description,
+        expense_date: formData.expense_date,
+        receipt: formData.receipt || undefined
+      });
+      onSuccess();
     } catch (error) {
       setError('Failed to add expense. Please try again.');
       console.error('Add expense failed:', error);

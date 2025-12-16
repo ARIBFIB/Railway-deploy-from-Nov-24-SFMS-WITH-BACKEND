@@ -159,7 +159,7 @@ export class ReportController {
     const analytics = {
       total_invested: investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0,
       current_value: investments?.reduce((sum, inv) => sum + (inv.current_value || inv.amount), 0) || 0,
-      total_gain_loss: investments?.reduce((sum, inv) => 
+      total_gain_loss: investments?.reduce((sum, inv) =>
         sum + ((inv.current_value || inv.amount) - inv.amount), 0) || 0,
       by_type: investments?.reduce((acc, inv) => {
         acc[inv.type] = (acc[inv.type] || 0) + inv.amount;
@@ -168,13 +168,13 @@ export class ReportController {
       performance_summary: {
         best_performer: investments && investments.length > 0
           ? investments.reduce((best, inv) =>
-              (inv.performance || 0) > ((best?.performance ?? 0)) ? inv : best,
-              investments[0])
+            (inv.performance || 0) > ((best?.performance ?? 0)) ? inv : best,
+            investments[0])
           : null,
         worst_performer: investments && investments.length > 0
           ? investments.reduce((worst, inv) =>
-              (inv.performance || 0) < ((worst?.performance ?? 0)) ? inv : worst,
-              investments[0])
+            (inv.performance || 0) < ((worst?.performance ?? 0)) ? inv : worst,
+            investments[0])
           : null
       }
     };
@@ -264,7 +264,7 @@ type Expense = {
 
 function generateMonthlyTrends(expenses: Expense[]) {
   const monthlyData: Record<string, number> = {};
-  
+
   expenses.forEach(expense => {
     const month = new Date(expense.expense_date).toISOString().slice(0, 7); // YYYY-MM
     monthlyData[month] = (monthlyData[month] || 0) + expense.amount;

@@ -53,8 +53,14 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
 
   const requestInit: RequestInit = {
     ...init,
-    headers: { ...headers, ...(init.headers as any) },
-    body: finalBody !== undefined ? JSON.stringify(finalBody) : init.body
+    headers: {
+      ...headers,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      ...(init.headers as any)
+    },
+    body: finalBody !== undefined ? JSON.stringify(finalBody) : init.body,
+    cache: 'no-store'
   };
 
   console.log('🚀 Making API request:', {

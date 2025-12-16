@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Calculator, FileText, CreditCard, Users, Shield, Building, TrendingUp, DollarSign } from 'lucide-react';
+import { Calculator, FileText, CreditCard, Users, Shield, Building, TrendingUp, DollarSign, Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '../components/Card';
 import { BookkeepingModule } from '../components/financial/BookkeepingModule';
 import { InvoicingModule } from '../components/financial/InvoicingModule';
@@ -9,8 +9,11 @@ import { BankIDAuthentication } from '../components/financial/BankIDAuthenticati
 import { PayrollModule } from '../components/financial/PayrollModule';
 import { BankIntegration } from '../components/financial/BankIntegration';
 import { VerificationsList } from '../components/financial/VerificationsList';
+import { FinancialService, type DashboardStats } from '../services/financialService';
 
 type FinancialTab = 'bookkeeping' | 'invoicing' | 'supplier-invoices' | 'payroll' | 'bank-integration' | 'bankid' | 'accounting' | 'expense-management';
+
+const CURRENT_FOUNDATION_ID = 'foundation-1';
 
 export const FinancialPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -57,6 +60,47 @@ export const FinancialPage: React.FC = () => {
 };
 
 const FinancialOverview: React.FC = () => {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await FinancialService.getDashboardStats(CURRENT_FOUNDATION_ID);
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to fetch financial stats:', err);
+        setError('Failed to load dashboard statistics.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div className="flex items-center">
+          <AlertCircle className="w-5 h-5 mr-2" />
+          <strong className="font-bold">Error:</strong>
+          <span className="block sm:inline ml-1">{error}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -70,7 +114,9 @@ const FinancialOverview: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Assets</p>
-              <p className="text-2xl font-bold text-gray-900">1,750,000 SEK</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats?.total_assets.toLocaleString('sv-SE')} {stats?.currency}
+              </p>
             </div>
           </div>
         </Card>
@@ -84,7 +130,9 @@ const FinancialOverview: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Outstanding Invoices</p>
-              <p className="text-2xl font-bold text-gray-900">156,250 SEK</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats?.outstanding_invoices.amount.toLocaleString('sv-SE')} {stats?.currency}
+              </p>
             </div>
           </div>
         </Card>
@@ -98,7 +146,9 @@ const FinancialOverview: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
-              <p className="text-2xl font-bold text-gray-900">3</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats?.pending_approvals}
+              </p>
             </div>
           </div>
         </Card>
@@ -112,7 +162,9 @@ const FinancialOverview: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Monthly Payroll</p>
-              <p className="text-2xl font-bold text-gray-900">129,000 SEK</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats?.monthly_payroll.toLocaleString('sv-SE')} {stats?.currency}
+              </p>
             </div>
           </div>
         </Card>
@@ -130,7 +182,7 @@ const FinancialOverview: React.FC = () => {
                   <p className="text-sm text-gray-600">BAS-compliant account structure</p>
                 </div>
               </div>
-              <span className="text-sm text-gray-500">45 accounts</span>
+              <span className="text-sm text-gray-500">View Accounts</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
@@ -140,7 +192,7 @@ const FinancialOverview: React.FC = () => {
                   <p className="text-sm text-gray-600">Automated and manual entries</p>
                 </div>
               </div>
-              <span className="text-sm text-gray-500">127 entries</span>
+              <span className="text-sm text-gray-500">View Entries</span>
             </div>
           </div>
         </Card>
@@ -150,7 +202,9 @@ const FinancialOverview: React.FC = () => {
             <div className="flex items-center justify-between p-3 border-l-4 border-blue-400 bg-blue-50 rounded-r-lg">
               <div>
                 <p className="font-medium text-gray-900">Sales Invoices</p>
-                <p className="text-sm text-gray-600">2 sent, 156,250 SEK outstanding</p>
+                <p className="text-sm text-gray-600">
+                  {stats?.outstanding_invoices.count} sent, {stats?.outstanding_invoices.amount.toLocaleString('sv-SE')} {stats?.currency} outstanding
+                </p>
               </div>
               <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
                 Active
@@ -199,26 +253,30 @@ const FinancialOverview: React.FC = () => {
       {/* Bank Integration */}
       <Card title="Bank Integration" subtitle="Connect with Swedish banks for automated transaction import">
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-900">Swedbank - Foundation Operating Account</span>
+          {stats?.bank_accounts && stats.bank_accounts.length > 0 ? (
+            stats.bank_accounts.map((account: any, index: number) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 ${account.is_active ? 'bg-green-500' : 'bg-gray-400'} rounded-full`}></div>
+                  <span className="text-sm text-gray-900">{account.bank_name || account.bank} - {account.name || account.account_name}</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">
+                  {Number(account.current_balance).toLocaleString('sv-SE')} {account.currency}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <p>No bank accounts connected.</p>
             </div>
-            <span className="text-sm font-medium text-gray-900">1,250,000 SEK</span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-900">Handelsbanken - Foundation Savings</span>
-            </div>
-            <span className="text-sm font-medium text-gray-900">500,000 SEK</span>
-          </div>
+          )}
+
           <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-sm text-gray-900">3 unreconciled transactions</span>
+              <span className="text-sm text-gray-900">Reconciliation Status</span>
             </div>
-            <span className="text-xs text-gray-500">Requires attention</span>
+            <span className="text-xs text-gray-500">Check Bank Integration tab</span>
           </div>
         </div>
       </Card>

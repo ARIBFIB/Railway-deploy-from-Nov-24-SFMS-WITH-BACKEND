@@ -293,6 +293,30 @@ export const DocumentsPage: React.FC = () => {
     setSelectedDocument(null);
   };
 
+  const handleApproveDocument = async (documentId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve document');
+      }
+
+      alert('Document approved successfully!');
+      // Refresh documents list
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error approving document:', error);
+      alert('Failed to approve document. Please try again.');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
@@ -469,6 +493,16 @@ export const DocumentsPage: React.FC = () => {
                   >
                     Download
                   </Button>
+                  {/* Approve button - only show if user has approve_documents permission */}
+                  {userData?.permissions?.includes('approve_documents') && document.status !== 'approved' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleApproveDocument(document.id)}
+                    >
+                      Approve
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>

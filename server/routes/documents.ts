@@ -54,6 +54,13 @@ router.put('/:id',
   DocumentController.updateDocument
 );
 
+// Approve document
+router.post('/:id/approve',
+  [param('id').isUUID()],
+  validateRequest,
+  DocumentController.approveDocument
+);
+
 // Delete document
 router.delete('/:id',
   [param('id').isUUID()],

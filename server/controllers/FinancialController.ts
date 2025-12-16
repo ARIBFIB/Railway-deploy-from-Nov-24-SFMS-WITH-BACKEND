@@ -4,6 +4,88 @@ import { asyncHandler, createError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export class FinancialController {
+  // Dashboard Stats
+  static getDashboardStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { foundation_id } = req.query;
+
+    if (!foundation_id) {
+      throw createError('Foundation ID is required', 400);
+    }
+
+    // 1. Total Assets (from Transaction Accounts)
+    const { data: accounts } = await supabase
+      .from('transaction_accounts')
+      .select('current_balance')
+      .eq('foundation_id', foundation_id);
+
+    const totalAssets = accounts?.reduce((sum, acc) => sum + (Number(acc.current_balance) || 0), 0) || 0;
+
+    // 2. Outstanding Invoices (Customer Invoices)
+    const { data: outstandingInvoices } = await supabase
+      .from('invoices')
+      .select('total_amount')
+      .eq('foundation_id', foundation_id)
+      .in('status', ['sent', 'overdue']);
+
+    const totalOutstanding = outstandingInvoices?.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0) || 0;
+    const outstandingCount = outstandingInvoices?.length || 0;
+
+    // 3. Pending Approvals
+    // Supplier Invoices
+    const { count: pendingSupplierInvoices } = await supabase
+      .from('supplier_invoices')
+      .select('*', { count: 'exact', head: true })
+      .eq('foundation_id', foundation_id)
+      .eq('status', 'under_review');
+
+    // Payroll Runs (Draft/Calculated)
+    const { count: pendingPayroll } = await supabase
+      .from('payroll_runs')
+      .select('*', { count: 'exact', head: true })
+      .eq('foundation_id', foundation_id)
+      .in('status', ['draft', 'calculated']);
+
+    // Expenses
+    const { count: pendingExpenses } = await supabase
+      .from('expenses')
+      .select('*', { count: 'exact', head: true })
+      .eq('foundation_id', foundation_id)
+      .eq('status', 'pending');
+
+    const totalPending = (pendingSupplierInvoices || 0) + (pendingPayroll || 0) + (pendingExpenses || 0);
+
+    // 4. Monthly Payroll (Current Month created runs)
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const { data: monthlyPayrollRuns } = await supabase
+      .from('payroll_runs')
+      .select('total_gross_pay')
+      .eq('foundation_id', foundation_id)
+      .gte('created_at', startOfMonth);
+
+    const monthlyPayroll = monthlyPayrollRuns?.reduce((sum, run) => sum + (Number(run.total_gross_pay) || 0), 0) || 0;
+
+    // 5. Get Transaction Accounts Summary (for display)
+    const { data: bankAccounts } = await supabase
+      .from('transaction_accounts')
+      .select('*')
+      .eq('foundation_id', foundation_id)
+      .limit(3);
+
+    res.json({
+      total_assets: totalAssets,
+      outstanding_invoices: {
+        amount: totalOutstanding,
+        count: outstandingCount
+      },
+      pending_approvals: totalPending,
+      monthly_payroll: monthlyPayroll,
+      bank_accounts: bankAccounts || [],
+      currency: 'SEK'
+    });
+  });
+
   // Account management
   static getAccounts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { foundation_id } = req.query;
@@ -206,9 +288,9 @@ export class FinancialController {
     } = req.body;
 
     // Calculate totals
-    const subtotal = line_items.reduce((sum: number, item: any) => 
+    const subtotal = line_items.reduce((sum: number, item: any) =>
       sum + (item.quantity * item.unit_price), 0);
-    const taxAmount = line_items.reduce((sum: number, item: any) => 
+    const taxAmount = line_items.reduce((sum: number, item: any) =>
       sum + (item.quantity * item.unit_price * item.tax_rate / 100), 0);
     const totalAmount = subtotal + taxAmount;
 
@@ -269,7 +351,8 @@ export class FinancialController {
     });
   });
 
-  // Bank accounts
+  // Bank accounts - Keeping this legacy method just in case, or for simple listing
+  // But Dashboard will use transaction_accounts
   static getBankAccounts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { foundation_id } = req.query;
 
@@ -467,7 +550,7 @@ export class FinancialController {
 
     // Generate report data based on type
     let reportData = {};
-    
+
     switch (report_type) {
       case 'balance_sheet':
         reportData = await generateBalanceSheet(foundation_id, period_end);

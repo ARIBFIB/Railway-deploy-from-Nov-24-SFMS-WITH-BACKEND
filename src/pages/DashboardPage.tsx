@@ -1,18 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {  FileText, Calendar, Shield, FolderOpen } from 'lucide-react';
+import { FileText, Calendar, Shield, FolderOpen } from 'lucide-react';
 import { Card } from '../components/Card';
 //import { Button } from '../components/Button';
 import { ExpensesPieChart, InvestmentsPieChart, FinancialTrendsChart, ComplianceStatusChart } from '../components/charts/DashboardCharts';
 import { mockRecentActivities } from '../data/mockData';
+import { apiFetch } from '../utils/api';
 //kjkj
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
-  
+
   // Get user data from localStorage for demo
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
   const userRole = userData.role || 'member';
+
+  // State for dynamic counts
+  const [governanceRolesCount, setGovernanceRolesCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch governance roles count on component mount
+  useEffect(() => {
+    const fetchGovernanceRolesCount = async () => {
+      try {
+        const response = await apiFetch('/api/governance/roles/count');
+        if (response.ok) {
+          const data = await response.json();
+          setGovernanceRolesCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching governance roles count:', error);
+        setGovernanceRolesCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGovernanceRolesCount();
+  }, []);
 
   // //const getStatusIcon = (status: string) => {
   //   switch (status) {
@@ -42,16 +67,15 @@ export const DashboardPage: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('dashboard')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            {t('welcomeBack')} 
+            {t('welcomeBack')}
             {userData.full_name && (
               <span className="font-medium"> {userData.full_name}</span>
             )}
             {userRole && (
-              <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${
-                userRole === 'admin' ? 'bg-red-100 text-red-800' :
+              <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${userRole === 'admin' ? 'bg-red-100 text-red-800' :
                 userRole === 'foundation_owner' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+                  'bg-gray-100 text-gray-800'
+                }`}>
                 {userRole.replace('_', ' ')}
               </span>
             )}
@@ -111,7 +135,7 @@ export const DashboardPage: React.FC = () => {
             <div className="ml-4">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Governance Roles</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                8
+                {loading ? '...' : governanceRolesCount}
               </p>
             </div>
           </div>
@@ -167,9 +191,9 @@ export const DashboardPage: React.FC = () => {
         <ExpensesPieChart />
         <InvestmentsPieChart />
       </div>
-      
+
       <FinancialTrendsChart />
-      
+
       {/* Compliance Status and Recent Activities Side by Side */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         <ComplianceStatusChart />

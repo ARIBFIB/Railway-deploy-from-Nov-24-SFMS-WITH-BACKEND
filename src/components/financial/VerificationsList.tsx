@@ -5,13 +5,13 @@ import { AccountReconciliation } from './AccountReconciliation';
 import { VerificationForm } from './VerificationForm';
 import { CashReconciliation } from './CashReconciliation';
 import { VerificationService, type Verification } from '../../services/verificationService';
-import { 
-  Search, 
-  Plus, 
-  Printer, 
-  User, 
-  MessageSquare, 
-  Image, 
+import {
+  Search,
+  Plus,
+  Printer,
+  User,
+  MessageSquare,
+  Image,
   ExternalLink,
   Grid,
   ChevronLeft,
@@ -38,15 +38,16 @@ export const VerificationsList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [selectedVerifications, setSelectedVerifications] = useState<string[]>([]);
-  
+
   // Search amount state
   const [searchAmountFrom, setSearchAmountFrom] = useState('');
   const [searchAmountTo, setSearchAmountTo] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
+  const [editingVerification, setEditingVerification] = useState<Verification | null>(null);
   const [wasVerificationJustCreated, setWasVerificationJustCreated] = useState(false);
-  
+
   // VAT state
   const [vatPeriods] = useState([
     {
@@ -64,7 +65,7 @@ export const VerificationsList: React.FC = () => {
       status: 'Delayed'
     }
   ]);
-  
+
   // Daily cash register form state
   const [cashRegisterData, setCashRegisterData] = useState({
     template: 'Daily receipts example with VAT excl',
@@ -106,43 +107,27 @@ export const VerificationsList: React.FC = () => {
 
       console.log('📊 Loading ALL verifications without filters');
 
-      const response = await VerificationService.getVerifications();
-      
+      // Prepare filters
+      const filters: any = {};
+      if (cleanSearchTerm) filters.search = cleanSearchTerm;
+      if (verificationSeries !== 'all') filters.verification_series = verificationSeries;
+      if (searchAmountFrom) filters.min_amount = parseFloat(searchAmountFrom);
+      if (searchAmountTo) filters.max_amount = parseFloat(searchAmountTo);
+
+      console.log('🔍 Applying filters:', filters);
+
+      const response = await VerificationService.getVerifications(filters);
+
       console.log('📋 VerificationService.getVerifications response:', {
         success: response.success,
         dataCount: response.data?.length || 0
       });
-      
+
       if (response.success) {
-        // Apply frontend filtering
-        let filteredVerifications = response.data;
-        
-        // Filter by search term
-        if (cleanSearchTerm) {
-          filteredVerifications = filteredVerifications.filter(verification => 
-            verification.verification_number.toLowerCase().includes(cleanSearchTerm.toLowerCase()) ||
-            (verification.description && verification.description.toLowerCase().includes(cleanSearchTerm.toLowerCase()))
-          );
-        }
-        
-        // Filter by verification series
-        if (verificationSeries !== 'all') {
-          filteredVerifications = filteredVerifications.filter(verification => 
-            verification.verification_series === verificationSeries
-          );
-        }
-        
-        
-        console.log('📊 Filtered verifications:', filteredVerifications.length);
-        
-        setVerifications(filteredVerifications);
-        setTotalItems(filteredVerifications.length);
-        setTotalPages(1); // No pagination needed
-        console.log('✅ Verifications state updated:', {
-          verificationsCount: filteredVerifications.length,
-          totalItems: filteredVerifications.length,
-          totalPages: 1
-        });
+        setVerifications(response.data);
+        setTotalItems(response.pagination?.total || response.data.length);
+        setTotalPages(response.pagination?.pages || 1);
+        console.log('✅ Verifications state updated');
       } else {
         console.error('❌ Failed to load verifications - response not successful:', response);
         setError(response.message || 'Unable to load verifications. Please check your connection and try again.');
@@ -215,73 +200,12 @@ export const VerificationsList: React.FC = () => {
   // Real-time data synchronization function
   const syncVerificationsData = async () => {
     console.log('🔄 Syncing verifications data');
-    setLoading(true);
-    setError(null);
-    
-    try {
-      console.log('📊 Sync - Loading ALL verifications with cache busting');
-      // Add cache busting to ensure fresh data
-      const response = await VerificationService.getVerifications();
-      
-      if (response.success) {
-        console.log('✅ Sync - Successfully loaded:', response.data.length, 'verifications');
-        
-        // Apply frontend filtering
-        let filteredVerifications = response.data;
-        
-        const cleanSearchTerm = searchTerm.trim() || undefined;
-        
-        // Filter by search term
-        if (cleanSearchTerm) {
-          filteredVerifications = filteredVerifications.filter(verification => 
-            verification.verification_number.toLowerCase().includes(cleanSearchTerm.toLowerCase()) ||
-            (verification.description && verification.description.toLowerCase().includes(cleanSearchTerm.toLowerCase()))
-          );
-        }
-        
-        // Filter by verification series
-        if (verificationSeries !== 'all') {
-          filteredVerifications = filteredVerifications.filter(verification => 
-            verification.verification_series === verificationSeries
-          );
-        }
-        
-        
-        console.log('📊 Sync - Filtered verifications:', filteredVerifications.length);
-        
-        // Update state with new data - force re-render by creating new array
-        setVerifications([...filteredVerifications]);
-        setTotalItems(filteredVerifications.length);
-        setTotalPages(1);
-        setCurrentPage(1);
-        
-        // Clear any success messages after successful sync
-        if (successMessage) {
-          setSuccessMessage(null);
-        }
-        } else {
-          console.error('❌ Sync - Failed to load verifications:', response);
-          setError(response.message || 'Unable to sync verifications. Please check your connection and try again.');
-        }
-      } catch (err) {
-        console.error('❌ Sync - Error:', err);
-        if (err instanceof Error) {
-          if (err.message.includes('Network') || err.message.includes('fetch')) {
-            setError('Network error: Please check your internet connection and try again.');
-          } else if (err.message.includes('timeout')) {
-            setError('Request timeout: The server is taking too long to respond. Please try again.');
-          } else {
-            setError(`Error syncing verifications: ${err.message}`);
-          }
-        } else {
-          setError('An unexpected error occurred while syncing verifications. Please try again.');
-        }
-      } finally {
-      setLoading(false);
-    }
+    // Just call loadVerifications, which now handles filtering and params properly
+    await loadVerifications();
   };
 
   const handleCreateVerification = () => {
+    setEditingVerification(null);
     setShowVerificationForm(true);
   };
 
@@ -294,8 +218,8 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handleSelectVerification = (verificationId: string) => {
-    setSelectedVerifications(prev => 
-      prev.includes(verificationId) 
+    setSelectedVerifications(prev =>
+      prev.includes(verificationId)
         ? prev.filter(id => id !== verificationId)
         : [...prev, verificationId]
     );
@@ -314,7 +238,7 @@ export const VerificationsList: React.FC = () => {
       setError('Please select at least one verification to update.');
       return;
     }
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -351,7 +275,7 @@ export const VerificationsList: React.FC = () => {
       setError('Please select at least one verification to delete.');
       return;
     }
-    
+
     if (window.confirm(`Are you sure you want to delete ${selectedVerifications.length} verification(s)? This action cannot be undone.`)) {
       try {
         setLoading(true);
@@ -391,8 +315,8 @@ export const VerificationsList: React.FC = () => {
 
   const handleSearchAmount = () => {
     console.log('Searching amounts from:', searchAmountFrom, 'to:', searchAmountTo);
-    // TODO: Implement real amount search from API
-    setSearchResults([]);
+    loadVerifications();
+    setActiveTab('verifications'); // Switch back to list to see results
   };
 
   const handlePrintSearchResults = () => {
@@ -415,11 +339,18 @@ export const VerificationsList: React.FC = () => {
   };
 
 
-  const handleVerificationClick = (verification: Verification) => {
+  const handleVerificationClick = async (verification: Verification) => {
     console.log('Verification clicked:', verification);
-    // Open verification form in edit mode
-    setShowVerificationForm(true);
-    // TODO: Pass verification data to form for editing
+    try {
+      const fullDetails = await VerificationService.getVerificationById(verification.id!);
+      if (fullDetails.success) {
+        setEditingVerification(fullDetails.data);
+        setShowVerificationForm(true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch details for edit", err);
+      setError("Failed to load verification details");
+    }
   };
 
   const handleCashRegisterChange = (field: string, value: string) => {
@@ -477,7 +408,7 @@ export const VerificationsList: React.FC = () => {
     console.log('Book receipt clicked');
   };
 
-  // Remove local filtering as it's now handled by the API
+  // No local filtering anymore
   const currentVerifications = verifications;
 
   return (
@@ -486,76 +417,69 @@ export const VerificationsList: React.FC = () => {
       <div>
         <div className="flex items-center justify-between border-b border-gray-200">
           <div className="flex space-x-1">
-          <button
-            onClick={() => setActiveTab('verifications')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'verifications'
+            <button
+              onClick={() => setActiveTab('verifications')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'verifications'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Verifications
-          </button>
-          <button
-            onClick={() => setActiveTab('register-daily-cash')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'register-daily-cash'
+                }`}
+            >
+              Verifications
+            </button>
+            <button
+              onClick={() => setActiveTab('register-daily-cash')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'register-daily-cash'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Register daily cash register
-          </button>
-          <button
-            onClick={() => setActiveTab('register-receipt')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'register-receipt'
+                }`}
+            >
+              Register daily cash register
+            </button>
+            <button
+              onClick={() => setActiveTab('register-receipt')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'register-receipt'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Register receipt
-          </button>
-          <button
-            onClick={() => setActiveTab('reconcile-account')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'reconcile-account'
+                }`}
+            >
+              Register receipt
+            </button>
+            <button
+              onClick={() => setActiveTab('reconcile-account')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'reconcile-account'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Reconcile account
-          </button>
-          <button
-            onClick={() => setActiveTab('search-amount')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'search-amount'
+                }`}
+            >
+              Reconcile account
+            </button>
+            <button
+              onClick={() => setActiveTab('search-amount')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'search-amount'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Search amount
-          </button>
-          <button
-            onClick={() => setActiveTab('incoming-documents')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'incoming-documents'
+                }`}
+            >
+              Search amount
+            </button>
+            <button
+              onClick={() => setActiveTab('incoming-documents')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'incoming-documents'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Incoming documents
-          </button>
-          <button
-            onClick={() => setActiveTab('vat')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'vat'
+                }`}
+            >
+              Incoming documents
+            </button>
+            <button
+              onClick={() => setActiveTab('vat')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${activeTab === 'vat'
                 ? 'border-green-500 text-green-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            VAT
-          </button>
+                }`}
+            >
+              VAT
+            </button>
           </div>
         </div>
       </div>
@@ -584,7 +508,7 @@ export const VerificationsList: React.FC = () => {
                   className="pl-10 w-80"
                 />
               </div>
-              <button 
+              <button
                 onClick={handleAdvancedSearch}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
@@ -666,7 +590,7 @@ export const VerificationsList: React.FC = () => {
           <div className="mb-6">
             <div className="flex items-center gap-6 text-sm text-gray-600">
               <span>E-mail supporting documents: inbox.ver.1520105@erkivplats.se</span>
-              <button 
+              <button
                 onClick={handlePrintList}
                 className="flex items-center gap-2 hover:text-gray-800"
               >
@@ -713,11 +637,10 @@ export const VerificationsList: React.FC = () => {
               </button>
               <button
                 onClick={() => setCurrentPage(1)}
-                className={`px-3 py-1 rounded-md text-sm font-medium ${
-                  currentPage === 1 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${currentPage === 1
+                  ? 'bg-green-100 text-green-800'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
               >
                 1
               </button>
@@ -811,8 +734,8 @@ export const VerificationsList: React.FC = () => {
                     </tr>
                   ) : (
                     currentVerifications.map((verification) => (
-                      <tr 
-                        key={verification.id} 
+                      <tr
+                        key={verification.id}
                         className="hover:bg-gray-50"
                       >
                         <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -823,19 +746,19 @@ export const VerificationsList: React.FC = () => {
                             className="rounded border-gray-300"
                           />
                         </td>
-                        <td 
+                        <td
                           className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 cursor-pointer"
                           onClick={() => handleVerificationClick(verification)}
                         >
                           {verification.verification_number}
                         </td>
-                        <td 
+                        <td
                           className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
                           onClick={() => handleVerificationClick(verification)}
                         >
                           {verification.accounting_date}
                         </td>
-                        <td 
+                        <td
                           className="px-6 py-4 text-sm text-gray-900 cursor-pointer"
                           onClick={() => handleVerificationClick(verification)}
                         >
@@ -891,11 +814,10 @@ export const VerificationsList: React.FC = () => {
             </button>
             <button
               onClick={() => setCurrentPage(1)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                currentPage === 1 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${currentPage === 1
+                ? 'bg-green-100 text-green-800'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
             >
               1
             </button>
@@ -1299,7 +1221,7 @@ export const VerificationsList: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900 uppercase">SEARCH AMOUNT</h1>
             </div>
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={handlePrintSearchResults}
                 className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800"
               >
@@ -1330,7 +1252,7 @@ export const VerificationsList: React.FC = () => {
                 className="w-40"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
             >
@@ -1432,7 +1354,7 @@ export const VerificationsList: React.FC = () => {
                 <strong>Supporting documents</strong> and{' '}
                 <strong>Emails</strong> without supporting documents.
               </p>
-              <button 
+              <button
                 onClick={handleReadMoreAboutKivra}
                 className="text-green-600 hover:text-green-800 font-medium"
               >
@@ -1445,19 +1367,19 @@ export const VerificationsList: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8">
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-green-800">What happens now?</h2>
-              
+
               <div className="space-y-4">
                 <div className="text-6xl font-bold text-green-300 tracking-wider">
                   KIVRA
                 </div>
-                
+
                 <p className="text-gray-700">
                   You who previously received attachments to{' '}
                   <strong>Incoming documents</strong> will now read mail from Kivra under{' '}
                   <strong>Menu &gt; Incoming letters & documents &gt; Company mailbox</strong>.
                 </p>
               </div>
-              
+
               <div className="flex justify-end">
                 <Button
                   onClick={handleGoToCorporateMailbox}
@@ -1490,23 +1412,22 @@ export const VerificationsList: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     {/* Status Badge */}
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      period.status === 'Delayed' 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : period.status === 'Completed'
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${period.status === 'Delayed'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : period.status === 'Completed'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
-                    }`}>
+                      }`}>
                       {period.status}
                     </span>
-                    
+
                     {/* Period Info */}
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{period.name}</h3>
                       <p className="text-sm text-gray-600">Refers to the period {period.period}</p>
                     </div>
                   </div>
-                  
+
                   {/* Last Reporting Date and Arrow */}
                   <div className="flex items-center space-x-3">
                     <div className="text-right">

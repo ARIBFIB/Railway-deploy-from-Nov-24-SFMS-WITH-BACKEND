@@ -20,13 +20,15 @@ interface VerificationFormProps {
   onClose: () => void;
   onSave?: (data: any) => void;
   onVerificationCreated?: () => void;
+  initialData?: any; // Consider typing this properly if possible, but 'any' allows flexibility for now
 }
 
 export const VerificationForm: React.FC<VerificationFormProps> = ({
   isOpen,
   onClose,
   onSave,
-  onVerificationCreated
+  onVerificationCreated,
+  initialData
 }) => {
   const [formData, setFormData] = useState({
     description: '',
@@ -72,7 +74,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     const totalDebit = accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.debit) || 0), 0);
     const totalCredit = accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.credit) || 0), 0);
     const difference = totalDebit - totalCredit;
-    
+
     return {
       amount: Math.max(totalDebit, totalCredit).toFixed(2),
       difference: difference.toFixed(2)
@@ -104,6 +106,50 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     }
   }, [isOpen]);
 
+  // Populate form with initial data if provided (Editing mode)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      console.log('🔄 VerificationForm - Populating with initialData:', initialData);
+      setFormData({
+        description: initialData.description || '',
+        verificationSeries: initialData.verification_series || 'A - Accounting',
+        accountingDate: initialData.accounting_date || new Date().toISOString().split('T')[0],
+        accountingTemplate: initialData.accounting_template || '',
+        amount: initialData.amount ? initialData.amount.toString() : '',
+        comment: initialData.comment || ''
+      });
+
+      // Populate entries if available
+      if (initialData.entries && initialData.entries.length > 0) {
+        const mappedEntries = initialData.entries.map((entry: any) => ({
+          id: entry.id || Date.now().toString() + Math.random(),
+          account: entry.account_number || '',
+          name: entry.account_name || '',
+          transactionInfo: entry.transaction_info || '',
+          debit: entry.debit ? entry.debit.toString() : '0.00',
+          credit: entry.credit ? entry.credit.toString() : '0.00',
+          balance: entry.balance ? entry.balance.toString() : '0.00'
+        }));
+        setAccountEntries(mappedEntries);
+      }
+    } else if (isOpen && !initialData) {
+      // Reset form if opening in create mode
+      setFormData({
+        description: '',
+        verificationSeries: 'A - Accounting',
+        accountingDate: new Date().toISOString().split('T')[0],
+        accountingTemplate: '',
+        amount: '',
+        comment: ''
+      });
+      setAccountEntries([
+        { id: '1', account: '', name: '', transactionInfo: '', debit: '0.00', credit: '', balance: '0.00' },
+        { id: '2', account: '', name: '', transactionInfo: '', debit: '0.00', credit: '', balance: '0.00' }
+      ]);
+      setSelectedImages([]);
+    }
+  }, [isOpen, initialData]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -115,7 +161,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     setAccountEntries(prev => prev.map(entry => {
       if (entry.id === id) {
         const updatedEntry = { ...entry, [field]: value };
-        
+
         // If account number is changed, try to find matching account
         if (field === 'account' && value) {
           const matchingAccount = accounts.find(acc => acc.account_number === value);
@@ -123,7 +169,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
             updatedEntry.name = matchingAccount.account_name;
           }
         }
-        
+
         return updatedEntry;
       }
       return entry;
@@ -131,8 +177,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   };
 
   const handleAccountSelect = (entryId: string, account: Account) => {
-    setAccountEntries(prev => prev.map(entry => 
-      entry.id === entryId 
+    setAccountEntries(prev => prev.map(entry =>
+      entry.id === entryId
         ? { ...entry, account: account.account_number, name: account.account_name }
         : entry
     ));
@@ -220,7 +266,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       // Validate account entries
       const validEntries = accountEntries.filter(entry => entry.account.trim() && entry.name.trim());
       const invalidEntries = accountEntries.filter(entry => !entry.account.trim() || !entry.name.trim());
-      
+
       if (invalidEntries.length > 0) {
         setError('Please fill in both account number and account name for all entries.');
         setLoading(false);
@@ -228,7 +274,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       }
 
       // Convert account entries to the format expected by the API
-      const entries: Omit<VerificationEntry, 'id' | 'verification_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>[] = 
+      const entries: Omit<VerificationEntry, 'id' | 'verification_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>[] =
         validEntries.map(entry => ({
           account_number: entry.account,
           account_name: entry.name,
@@ -309,28 +355,33 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         images: uploadedImages
       };
 
-      // Create verification
-      const response = await VerificationService.createVerification(verificationData);
-      
+      let response;
+      if (initialData && initialData.id) {
+        console.log('🔄 VerificationForm - Updating existing verification:', initialData.id);
+        response = await VerificationService.updateVerification(initialData.id, verificationData);
+      } else {
+        console.log('🔄 VerificationForm - Creating new verification');
+        response = await VerificationService.createVerification(verificationData);
+      }
+
       if (response.success) {
-        console.log('✅ VerificationForm - Verification created successfully:', response.data);
-        
+        console.log('✅ VerificationForm - Operation successful:', response.data);
+
         // Close form first
         onClose();
-        
+
         // Call sync callback to ensure data is loaded
         if (onVerificationCreated) {
-          console.log('🔄 VerificationForm - Calling onVerificationCreated callback');
+          console.log('🔄 VerificationForm - Calling callback');
           onVerificationCreated();
         }
-        
+
         if (onSave) {
-          console.log('🔄 VerificationForm - Calling onSave callback');
           onSave(response.data);
         }
       } else {
-        console.error('❌ VerificationForm - Failed to create verification:', response);
-        setError(response.message || 'Failed to create verification. Please check your data and try again.');
+        console.error('❌ VerificationForm - Failed:', response);
+        setError(response.message || 'Operation failed. Please check your data and try again.');
       }
     } catch (err) {
       console.error('Error creating verification:', err);
@@ -370,7 +421,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
               className="bg-gray-500 text-white hover:bg-gray-600"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Create verification
+              {initialData ? 'Edit Verification' : 'Create verification'}
             </Button>
             <Button
               variant="secondary"
@@ -402,7 +453,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 className="w-full"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Verification series
@@ -464,7 +515,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 className="w-full"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Amount
@@ -514,10 +565,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                       <td className="px-4 py-3">
                         <div className="relative">
                           <div className="flex">
-                        <Input
-                          type="text"
-                          value={entry.account}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'account', e.target.value)}
+                            <Input
+                              type="text"
+                              value={entry.account}
+                              onChange={(e) => handleAccountEntryChange(entry.id, 'account', e.target.value)}
                               className="w-full border-0 focus:ring-1 focus:ring-blue-500 rounded-r-none"
                               placeholder="Enter account number"
                             />
@@ -529,11 +580,11 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                               <ChevronDown className="w-4 h-4 text-gray-500" />
                             </button>
                           </div>
-                          
+
                           {showAccountDropdown[entry.id] && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                               {accounts
-                                .filter(acc => 
+                                .filter(acc =>
                                   acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
                                   acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
                                 )
@@ -547,12 +598,12 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                                     <div className="text-xs text-gray-600">{account.account_name}</div>
                                   </div>
                                 ))}
-                              {accounts.filter(acc => 
+                              {accounts.filter(acc =>
                                 acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
                                 acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
                               ).length === 0 && (
-                                <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
-                              )}
+                                  <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
+                                )}
                             </div>
                           )}
                         </div>
@@ -611,7 +662,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                           />
                           <Paperclip className="w-4 h-4 text-gray-400" />
                           <Trash2 className="w-4 h-4 text-gray-400" />
-                          <Plus 
+                          <Plus
                             className="w-4 h-4 text-green-600 cursor-pointer hover:text-green-800"
                             onClick={addAccountEntry}
                           />
@@ -663,7 +714,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                   {selectedImages.length} image(s) selected
                 </span>
               </div>
-              
+
               {selectedImages.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {selectedImages.map((image, index) => (
@@ -745,7 +796,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
             disabled={loading}
             className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating...' : 'Book'}
+            {loading ? 'Processing...' : (initialData ? 'Update' : 'Book')}
           </Button>
         </div>
       </div>

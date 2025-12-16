@@ -4,6 +4,22 @@ import { asyncHandler, createError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 
 export class GovernanceController {
+  static getRolesCount = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { foundation_id } = req.query;
+
+    const { count, error } = await supabase
+      .from('roles')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) {
+      throw createError(error.message, 500);
+    }
+
+    res.json({
+      count: count || 0
+    });
+  });
+
   static getRoles = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { foundation_id } = req.query;
 
@@ -51,41 +67,117 @@ export class GovernanceController {
     });
   });
 
+  static updateRole = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+    const { name, description, permissions } = req.body;
+
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (name) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (permissions) updateData.permissions = permissions;
+
+    const { data: role, error } = await supabase
+      .from('roles')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw createError(error.message, 400);
+    }
+
+    if (!role) {
+      throw createError('Role not found', 404);
+    }
+
+    res.json({
+      message: 'Role updated successfully',
+      role
+    });
+  });
+
+  static deleteRole = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { id } = req.params;
+
+    console.log('🗑️ Attempting to delete role with ID:', id);
+
+    const { data, error, count } = await supabase
+      .from('roles')
+      .delete()
+      .eq('id', id)
+      .select();
+
+    console.log('🗑️ Delete response:', { data, error, count });
+
+    if (error) {
+      console.error('❌ Delete error:', error);
+      throw createError(error.message, 400);
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('⚠️ No rows deleted - possibly blocked by RLS or role does not exist');
+    }
+
+    res.json({
+      message: 'Role deleted successfully',
+      deleted: data
+    });
+  });
+
+  static getGovernanceStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { foundation_id } = req.query;
+
+    // 1. Active Roles Count
+    const { count: rolesCount } = await supabase
+      .from('roles')
+      .select('*', { count: 'exact', head: true });
+
+    // 2. Pending Approvals (Workflows with status 'pending')
+    const { count: pendingApprovals } = await supabase
+      .from('document_workflows')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    // 3. Compliance Issues (Items with status 'overdue' or 'pending' with high priority)
+    const { count: complianceIssues } = await supabase
+      .from('compliance_items')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['overdue']);
+
+    // 4. Meetings This Month (Mock for now as meetings table might be separate)
+    // You can replace this with actual meetings query later
+    const meetingsCount = 2;
+
+    res.json({
+      activeRoles: rolesCount || 0,
+      pendingApprovals: pendingApprovals || 0,
+      complianceIssues: complianceIssues || 0,
+      meetingsThisMonth: meetingsCount
+    });
+  });
+
   static getDocumentWorkflows = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { foundation_id } = req.query;
 
-    // This would query document workflows from a dedicated table
-    // For now, return mock data structure
-    const workflows = [
-      {
-        id: '1',
-        document_id: 'doc_1',
-        document_name: 'Board Resolution - Q1 Budget',
-        workflow_type: 'approval',
-        status: 'in_progress',
-        steps: [
-          {
-            id: '1',
-            step_order: 1,
-            assignee_name: 'John Secretary',
-            action_type: 'review',
-            status: 'completed'
-          },
-          {
-            id: '2',
-            step_order: 2,
-            assignee_name: 'Jane Chairman',
-            action_type: 'approve',
-            status: 'pending'
-          }
-        ],
-        created_at: new Date().toISOString()
-      }
-    ];
+    const { data: workflows, error } = await supabase
+      .from('document_workflows')
+      .select(`
+        *,
+        steps:workflow_steps(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw createError(error.message, 500);
+    }
 
     res.json({
-      workflows,
-      total: workflows.length
+      workflows: workflows || [],
+      total: workflows?.length || 0
     });
   });
 
@@ -96,18 +188,46 @@ export class GovernanceController {
       steps
     } = req.body;
 
-    // This would create a workflow in the database
-    // For now, return success response
-    res.status(201).json({
-      message: 'Document workflow created successfully',
-      workflow: {
-        id: Date.now().toString(),
-        document_id,
+    // 1. Create Workflow
+    const { data: workflow, error: workflowError } = await supabase
+      .from('document_workflows')
+      .insert({
+        document_id, // Assuming this is passed or handled
+        document_name: 'New Document', // Placeholder, should come from request or document lookup
         workflow_type,
         status: 'pending',
-        steps,
         created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (workflowError) {
+      throw createError(workflowError.message, 400);
+    }
+
+    // 2. Create Steps
+    if (steps && steps.length > 0) {
+      const stepsData = steps.map((step: any, index: number) => ({
+        workflow_id: workflow.id,
+        step_order: index + 1,
+        assignee_name: step.assignee_name || 'Unassigned',
+        action_type: step.action_type || 'review',
+        status: 'pending'
+      }));
+
+      const { error: stepsError } = await supabase
+        .from('workflow_steps')
+        .insert(stepsData);
+
+      if (stepsError) {
+        // Ideally rollback workflow creation here
+        throw createError(stepsError.message, 400);
       }
+    }
+
+    res.status(201).json({
+      message: 'Document workflow created successfully',
+      workflow
     });
   });
 
@@ -115,42 +235,43 @@ export class GovernanceController {
     const { id } = req.params;
     const { step_id, action, comments } = req.body;
 
-    // This would update the workflow step in the database
-    // For now, return success response
-    res.json({
-      message: `Workflow step ${action}d successfully`,
-      step: {
-        id: step_id,
+    const { data: step, error } = await supabase
+      .from('workflow_steps')
+      .update({
         status: action === 'approve' ? 'completed' : 'rejected',
         comments,
         completed_at: new Date().toISOString()
-      }
+      })
+      .eq('id', step_id)
+      .eq('workflow_id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw createError(error.message, 400);
+    }
+
+    res.json({
+      message: `Workflow step ${action}d successfully`,
+      step
     });
   });
 
   static getComplianceItems = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { foundation_id } = req.query;
 
-    // This would query compliance items from a dedicated table
-    // For now, return mock data
-    const complianceItems = [
-      {
-        id: '1',
-        foundation_id: foundation_id || '1',
-        regulation_type: 'lansstyrelsen',
-        title: 'Annual Activity Report',
-        description: 'Submit annual report to Länsstyrelsen',
-        due_date: '2024-04-30',
-        status: 'in_progress',
-        priority: 'high',
-        assigned_to: 'John Secretary',
-        created_at: new Date().toISOString()
-      }
-    ];
+    const { data: complianceItems, error } = await supabase
+      .from('compliance_items')
+      .select('*')
+      .order('due_date', { ascending: true });
+
+    if (error) {
+      throw createError(error.message, 500);
+    }
 
     res.json({
-      compliance_items: complianceItems,
-      total: complianceItems.length
+      compliance_items: complianceItems || [],
+      total: complianceItems?.length || 0
     });
   });
 
@@ -165,20 +286,26 @@ export class GovernanceController {
       assigned_to
     } = req.body;
 
-    // This would create a compliance item in the database
-    const complianceItem = {
-      id: Date.now().toString(),
-      foundation_id,
-      regulation_type,
-      title,
-      description,
-      due_date,
-      status: 'pending',
-      priority,
-      assigned_to,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    const { data: complianceItem, error } = await supabase
+      .from('compliance_items')
+      .insert({
+        foundation_id,
+        regulation_type,
+        title,
+        description,
+        due_date,
+        priority,
+        assigned_to,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw createError(error.message, 400);
+    }
 
     res.status(201).json({
       message: 'Compliance item created successfully',
@@ -217,6 +344,25 @@ export class GovernanceController {
     res.json({
       audit_logs: logs || [],
       total: logs?.length || 0
+    });
+  });
+
+  static getUsers = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { foundation_id } = req.query;
+
+    // Get users from profiles table with their role information
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, role, created_at')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw createError(error.message, 500);
+    }
+
+    res.json({
+      users: users || [],
+      total: users?.length || 0
     });
   });
 }

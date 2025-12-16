@@ -4,6 +4,8 @@ import { Card } from '../Card';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
+import { AccountService, type CreateAccountData } from '../../services/accountService';
+import { VerificationService, type CreateVerificationData } from '../../services/verificationService';
 
 interface Account {
   id: string;
@@ -34,55 +36,265 @@ interface JournalEntryLine {
   credit_amount: number;
 }
 
-const mockAccounts: Account[] = [
-  { id: '1', account_number: '1010', account_name: 'Cash', account_type: 'asset', balance: 150000, currency: 'SEK', is_active: true },
-  { id: '2', account_number: '1020', account_name: 'Bank Account', account_type: 'asset', balance: 500000, currency: 'SEK', is_active: true },
-  { id: '3', account_number: '2010', account_name: 'Accounts Payable', account_type: 'liability', balance: 25000, currency: 'SEK', is_active: true },
-  { id: '4', account_number: '3010', account_name: 'Foundation Capital', account_type: 'equity', balance: 1000000, currency: 'SEK', is_active: true },
-  { id: '5', account_number: '4010', account_name: 'Donation Revenue', account_type: 'revenue', balance: 200000, currency: 'SEK', is_active: true },
-  { id: '6', account_number: '5010', account_name: 'Office Expenses', account_type: 'expense', balance: 15000, currency: 'SEK', is_active: true }
-];
-
-const mockJournalEntries: JournalEntry[] = [
-  {
-    id: '1',
-    entry_number: 'JE-2024-001',
-    entry_date: '2024-03-15',
-    description: 'Monthly office rent payment',
-    total_debit: 12000,
-    total_credit: 12000,
-    status: 'posted',
-    line_items: [
-      { id: '1', account_name: 'Office Expenses', description: 'March rent', debit_amount: 12000, credit_amount: 0 },
-      { id: '2', account_name: 'Bank Account', description: 'Payment to landlord', debit_amount: 0, credit_amount: 12000 }
-    ]
-  },
-  {
-    id: '2',
-    entry_number: 'JE-2024-002',
-    entry_date: '2024-03-20',
-    description: 'Donation received',
-    total_debit: 50000,
-    total_credit: 50000,
-    status: 'posted',
-    line_items: [
-      { id: '3', account_name: 'Bank Account', description: 'Donation deposit', debit_amount: 50000, credit_amount: 0 },
-      { id: '4', account_name: 'Donation Revenue', description: 'Corporate donation', debit_amount: 0, credit_amount: 50000 }
-    ]
-  }
-];
+// Mocks removed
 
 export const BookkeepingModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'accounts' | 'journal'>('accounts');
-  const [accounts] = useState<Account[]>(mockAccounts);
-  const [journalEntries] = useState<JournalEntry[]>(mockJournalEntries);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showJournalModal, setShowJournalModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingJournalEntry, setEditingJournalEntry] = useState<JournalEntry | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (activeTab === 'accounts') {
+        const result = await AccountService.getAccounts();
+        // Map backend Account to local Account interface
+        const mappedAccounts: Account[] = result.data.map((a: any) => ({
+          id: a.id,
+          account_number: a.account_number,
+          account_name: a.account_name,
+          account_type: a.account_type || 'expense', // fallback
+          balance: a.opening_balance || 0,
+          currency: 'SEK',
+          is_active: a.is_active
+        }));
+        setAccounts(mappedAccounts);
+      } else {
+        const result = await VerificationService.getVerifications({ limit: 100 });
+        // Map backend Verification to local JournalEntry interface
+        const mappedEntries: JournalEntry[] = result.data.map((v: any) => ({
+          id: v.id,
+          entry_number: v.verification_number || 'Draft', // Fallback
+          entry_date: v.accounting_date,
+          description: v.description,
+          total_debit: v.total_debit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.debit || 0), 0),
+          total_credit: v.total_credit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.credit || 0), 0),
+          status: v.status,
+          line_items: (v.entries || []).map((e: any) => ({
+            id: e.id,
+            account_name: e.account_name ? `${e.account_number} - ${e.account_name}` : e.account_number,
+            description: e.transaction_info,
+            debit_amount: e.debit,
+            credit_amount: e.credit
+          }))
+        }));
+        setJournalEntries(mappedEntries);
+
+        // Also ensure accounts are loaded for the form
+        if (accounts.length === 0) {
+          const accResult = await AccountService.getAccounts();
+          const mappedAccounts: Account[] = accResult.data.map((a: any) => ({
+            id: a.id,
+            account_number: a.account_number,
+            account_name: a.account_name,
+            account_type: a.account_type || 'expense',
+            balance: a.opening_balance || 0,
+            currency: 'SEK',
+            is_active: a.is_active
+          }));
+          setAccounts(mappedAccounts);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadData();
+  }, [activeTab]);
+
+  const handleSaveAccount = async (data: any) => {
+    setIsProcessing(true);
+    try {
+      if (editingAccount && editingAccount.id) {
+        await AccountService.updateAccount(editingAccount.id, data);
+      } else {
+        await AccountService.createAccount(data);
+      }
+      await loadData();
+      setShowAccountModal(false);
+      setEditingAccount(null);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to save account');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!window.confirm('Are you sure?')) return;
+    setIsProcessing(true);
+    try {
+      await AccountService.deleteAccount(id);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      setError('Failed to delete account');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveJournalEntry = async (data: any) => {
+    setIsProcessing(true);
+    try {
+      // Calculate totals
+      const debit = data.line_items.reduce((s: number, i: any) => s + Number(i.debit_amount || 0), 0);
+      const credit = data.line_items.reduce((s: number, i: any) => s + Number(i.credit_amount || 0), 0);
+
+      let vNum = editingJournalEntry?.entry_number;
+      // If creating new, and we don't have a number, fetch next one
+      if (!editingJournalEntry) {
+        try {
+          const numRes = await VerificationService.getNextVerificationNumber('A');
+          if (numRes.success && numRes.data.verification_number && !numRes.data.verification_number.includes('NaN')) {
+            vNum = numRes.data.verification_number;
+          }
+        } catch (e) {
+          console.warn('Could not fetch next number', e);
+        }
+
+        // Fallback: Generate a unique number if API fails to prevent save failure
+        if (!vNum || vNum.includes('NaN')) {
+          const timestamp = Math.floor(Date.now() / 1000).toString().slice(-6);
+          vNum = `A-${timestamp}`;
+        }
+      }
+
+      // Map form data to Backend structure
+      const verificationData: any = { // CreateVerificationData type partial
+        accounting_date: data.entry_date,
+        description: data.description,
+        verification_series: 'A', // Default
+        verification_number: vNum, // Include the number
+        total_debit: debit,
+        total_credit: credit,
+        entries: data.line_items.map((l: any) => ({
+          account_number: l.account_name, // Mapping input 'Account' to account_number
+          transaction_info: l.description || data.description,
+          debit: Number(l.debit_amount),
+          credit: Number(l.credit_amount)
+        }))
+      };
+
+      if (editingJournalEntry && editingJournalEntry.id) {
+        await VerificationService.updateVerification(editingJournalEntry.id, verificationData);
+      } else {
+        await VerificationService.createVerification(verificationData);
+      }
+      await loadData();
+      setShowJournalModal(false);
+      setEditingJournalEntry(null);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to save journal entry');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleEditJournalEntry = async (entry: JournalEntry) => {
+    setIsProcessing(true);
+    try {
+      const res = await VerificationService.getVerificationById(entry.id);
+      if (res.success) {
+        // Map back to local format for form population
+        const v = res.data;
+        const mapped: JournalEntry = {
+          id: v.id!,
+          entry_number: v.verification_number,
+          entry_date: v.accounting_date,
+          description: v.description,
+          total_debit: v.total_debit,
+          total_credit: v.total_credit,
+          status: v.status as any,
+          line_items: v.entries.map((e: any) => ({
+            id: e.id!,
+            account_name: e.account_number,
+            description: e.transaction_info,
+            debit_amount: e.debit,
+            credit_amount: e.credit
+          }))
+        };
+        setEditingJournalEntry(mapped);
+        setShowJournalModal(true);
+      }
+    } catch (e) {
+      setError('Failed to load entry for editing');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteJournalEntry = async (id: string) => {
+    if (!window.confirm('Are you sure?')) return;
+    setIsProcessing(true);
+    try {
+      await VerificationService.deleteVerification(id);
+      await loadData();
+    } catch (e) {
+      setError('Failed to delete entry');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteAllAccounts = async () => {
+    if (accounts.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ALL ${accounts.length} accounts? This action cannot be undone.`)) return;
+
+    setIsProcessing(true);
+    try {
+      const ids = accounts.map(a => a.id);
+      await AccountService.bulkDelete(ids);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      setError('Failed to delete all accounts');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteAllJournalEntries = async () => {
+    if (journalEntries.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ALL ${journalEntries.length} journal entries? This action cannot be undone.`)) return;
+
+    setIsProcessing(true);
+    try {
+      const ids = journalEntries.map(e => e.id);
+      await VerificationService.bulkDelete(ids);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      setError('Failed to delete all journal entries');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const filteredAccounts = accounts.filter(account =>
     account.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     account.account_number.includes(searchTerm)
+  );
+
+  const filteredJournalEntries = journalEntries.filter(entry =>
+    entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.entry_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.line_items.some(line => line.account_name.toLowerCase().includes(searchTerm.toLowerCase()) || line.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getAccountTypeColor = (type: string) => {
@@ -113,19 +325,47 @@ export const BookkeepingModule: React.FC = () => {
           <p className="text-gray-600 mt-1">Manage chart of accounts and journal entries.</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button 
-            icon={Calculator} 
-            variant="secondary"
-            onClick={() => setShowJournalModal(true)}
-          >
-            New Journal Entry
-          </Button>
-          <Button 
-            icon={Plus}
-            onClick={() => setShowAccountModal(true)}
-          >
-            New Account
-          </Button>
+          {activeTab === 'journal' && (
+            <Button
+              icon={Calculator}
+              variant="secondary"
+              onClick={() => {
+                setEditingJournalEntry(null);
+                setShowJournalModal(true);
+              }}
+            >
+              New Journal Entry
+            </Button>
+          )}
+          {activeTab === 'journal' && journalEntries.length > 0 && (
+            <Button
+              icon={Trash2}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteAllJournalEntries}
+            >
+              Delete All
+            </Button>
+          )}
+          {activeTab === 'accounts' && (
+            <Button
+              icon={Plus}
+              onClick={() => {
+                setEditingAccount(null);
+                setShowAccountModal(true);
+              }}
+            >
+              New Account
+            </Button>
+          )}
+          {activeTab === 'accounts' && accounts.length > 0 && (
+            <Button
+              icon={Trash2}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteAllAccounts}
+            >
+              Delete All
+            </Button>
+          )}
         </div>
       </div>
 
@@ -134,21 +374,19 @@ export const BookkeepingModule: React.FC = () => {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('accounts')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'accounts'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'accounts'
+              ? 'border-primary-500 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             Chart of Accounts
           </button>
           <button
             onClick={() => setActiveTab('journal')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'journal'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'journal'
+              ? 'border-primary-500 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             Journal Entries
           </button>
@@ -208,18 +446,20 @@ export const BookkeepingModule: React.FC = () => {
                       {account.balance.toLocaleString('sv-SE')} {account.currency}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        account.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${account.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
                         {account.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm" icon={Edit}>
+                        <Button variant="ghost" size="sm" icon={Edit} onClick={() => {
+                          setEditingAccount(account);
+                          setShowAccountModal(true);
+                        }}>
                           Edit
                         </Button>
-                        <Button variant="ghost" size="sm" icon={Trash2}>
+                        <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDeleteAccount(account.id)}>
                           Delete
                         </Button>
                       </div>
@@ -235,22 +475,25 @@ export const BookkeepingModule: React.FC = () => {
       {/* Journal Entries */}
       {activeTab === 'journal' && (
         <div className="space-y-6">
-          {journalEntries.map((entry) => (
+          {filteredJournalEntries.map((entry) => (
             <Card key={entry.id}>
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{entry.entry_number}</h3>
-                  <p className="text-sm text-gray-600">{entry.description}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Date: {new Date(entry.entry_date).toLocaleDateString()}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-700">{entry.entry_number}</span>
+                    <span className="text-xs text-gray-500">Date: {new Date(entry.entry_date).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{entry.description}</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(entry.status)}`}>
                     {entry.status}
                   </span>
-                  <Button variant="ghost" size="sm" icon={Edit}>
+                  <Button variant="ghost" size="sm" icon={Edit} onClick={() => handleEditJournalEntry(entry)}>
                     Edit
+                  </Button>
+                  <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDeleteJournalEntry(entry.id)}>
+                    Delete
                   </Button>
                 </div>
               </div>
@@ -277,7 +520,10 @@ export const BookkeepingModule: React.FC = () => {
                     {entry.line_items.map((line) => (
                       <tr key={line.id}>
                         <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                          {line.account_name}
+                          {(() => {
+                            const acc = accounts.find(a => a.account_number === line.account_name);
+                            return acc ? `${acc.account_number} - ${acc.account_name}` : line.account_name;
+                          })()}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-600">
                           {line.description}
@@ -312,27 +558,61 @@ export const BookkeepingModule: React.FC = () => {
       {/* Account Modal */}
       <Modal
         isOpen={showAccountModal}
-        onClose={() => setShowAccountModal(false)}
-        title="Create New Account"
+        onClose={() => {
+          setShowAccountModal(false);
+          setEditingAccount(null);
+        }}
+        title={editingAccount ? "Edit Account" : "Create New Account"}
         size="md"
       >
-        <AccountForm onClose={() => setShowAccountModal(false)} />
+        <AccountForm
+          onClose={() => {
+            setShowAccountModal(false);
+            setEditingAccount(null);
+          }}
+          onSubmit={handleSaveAccount}
+          initialData={editingAccount}
+        />
       </Modal>
 
       {/* Journal Entry Modal */}
       <Modal
         isOpen={showJournalModal}
-        onClose={() => setShowJournalModal(false)}
-        title="Create Journal Entry"
+        onClose={() => {
+          setShowJournalModal(false);
+          setEditingJournalEntry(null);
+        }}
+        title={editingJournalEntry ? "Edit Journal Entry" : "Create Journal Entry"}
         size="lg"
       >
-        <JournalEntryForm onClose={() => setShowJournalModal(false)} />
+        <JournalEntryForm
+          onClose={() => {
+            setShowJournalModal(false);
+            setEditingJournalEntry(null);
+          }}
+          onSubmit={handleSaveJournalEntry}
+          initialData={editingJournalEntry}
+          accounts={accounts}
+        />
       </Modal>
-    </div>
+
+
+      {/* Loading Overlay */}
+      {
+        isProcessing && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center animate-pulse">
+              <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-gray-900 font-medium">Processing...</p>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
-const AccountForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const AccountForm: React.FC<{ onClose: () => void; onSubmit: (data: any) => void; initialData?: Account | null }> = ({ onClose, onSubmit, initialData }) => {
   const [formData, setFormData] = useState({
     account_number: '',
     account_name: '',
@@ -340,10 +620,20 @@ const AccountForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     currency: 'SEK'
   });
 
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData({
+        account_number: initialData.account_number,
+        account_name: initialData.account_name,
+        account_type: initialData.account_type || '',
+        currency: 'SEK'
+      });
+    }
+  }, [initialData]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    onClose();
+    onSubmit(formData);
   };
 
   return (
@@ -396,7 +686,7 @@ const AccountForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
-const JournalEntryForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const JournalEntryForm: React.FC<{ onClose: () => void; onSubmit: (data: any) => void; initialData?: any; accounts?: Account[] }> = ({ onClose, onSubmit, initialData, accounts = [] }) => {
   const [formData, setFormData] = useState({
     entry_date: new Date().toISOString().split('T')[0],
     description: '',
@@ -406,17 +696,51 @@ const JournalEntryForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     ]
   });
 
+  const totalDebit = formData.line_items.reduce((sum, item) => sum + (Number(item.debit_amount) || 0), 0);
+  const totalCredit = formData.line_items.reduce((sum, item) => sum + (Number(item.credit_amount) || 0), 0);
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData({
+        entry_date: initialData.entry_date ? initialData.entry_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        description: initialData.description || '',
+        line_items: (initialData.line_items && initialData.line_items.length > 0)
+          ? initialData.line_items.map((i: any) => ({
+            account_name: i.account_name || '',
+            description: i.description || '',
+            debit_amount: i.debit_amount || 0,
+            credit_amount: i.credit_amount || 0
+          }))
+          : [
+            { account_name: '', description: '', debit_amount: 0, credit_amount: 0 },
+            { account_name: '', description: '', debit_amount: 0, credit_amount: 0 }
+          ]
+      });
+    }
+  }, [initialData]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    onClose();
+    onSubmit(formData);
   };
 
+  // Function to add a line item
   const addLineItem = () => {
     setFormData(prev => ({
       ...prev,
       line_items: [...prev.line_items, { account_name: '', description: '', debit_amount: 0, credit_amount: 0 }]
     }));
+  };
+
+  // Function to remove a line item
+  const removeLineItem = (index: number) => {
+    if (formData.line_items.length > 2) {
+      setFormData(prev => ({
+        ...prev,
+        line_items: prev.line_items.filter((_, i) => i !== index)
+      }));
+    }
   };
 
   return (
@@ -447,54 +771,78 @@ const JournalEntryForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             Add Line
           </Button>
         </div>
-        
+
         <div className="space-y-2">
           {formData.line_items.map((line, index) => (
-            <div key={index} className="grid grid-cols-4 gap-2 p-2 border rounded">
-              <input
-                placeholder="Account"
-                className="px-2 py-1 border rounded text-sm"
-                value={line.account_name}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].account_name = e.target.value;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                placeholder="Description"
-                className="px-2 py-1 border rounded text-sm"
-                value={line.description}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].description = e.target.value;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                type="number"
-                placeholder="Debit"
-                className="px-2 py-1 border rounded text-sm"
-                value={line.debit_amount || ''}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].debit_amount = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                type="number"
-                placeholder="Credit"
-                className="px-2 py-1 border rounded text-sm"
-                value={line.credit_amount || ''}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].credit_amount = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
+            <div key={index} className="flex gap-2 p-2 border rounded items-center">
+              <div className="grid grid-cols-4 gap-2 flex-grow">
+                <select
+                  className="px-2 py-1 border rounded text-sm w-full"
+                  value={line.account_name}
+                  onChange={(e) => {
+                    const newLines = [...formData.line_items];
+                    newLines[index].account_name = e.target.value;
+                    setFormData(prev => ({ ...prev, line_items: newLines }));
+                  }}
+                >
+                  <option value="">Select Account</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.account_number}>
+                      {acc.account_number} - {acc.account_name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Description"
+                  className="px-2 py-1 border rounded text-sm"
+                  value={line.description}
+                  onChange={(e) => {
+                    const newLines = [...formData.line_items];
+                    newLines[index].description = e.target.value;
+                    setFormData(prev => ({ ...prev, line_items: newLines }));
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Debit"
+                  className="px-2 py-1 border rounded text-sm text-right"
+                  value={line.debit_amount || ''}
+                  onChange={(e) => {
+                    const newLines = [...formData.line_items];
+                    newLines[index].debit_amount = parseFloat(e.target.value) || 0;
+                    newLines[index].credit_amount = 0; // Clear credit if debit is set
+                    setFormData(prev => ({ ...prev, line_items: newLines }));
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Credit"
+                  className="px-2 py-1 border rounded text-sm text-right"
+                  value={line.credit_amount || ''}
+                  onChange={(e) => {
+                    const newLines = [...formData.line_items];
+                    newLines[index].credit_amount = parseFloat(e.target.value) || 0;
+                    newLines[index].debit_amount = 0; // Clear debit if credit is set
+                    setFormData(prev => ({ ...prev, line_items: newLines }));
+                  }}
+                />
+              </div>
+              {formData.line_items.length > 2 && (
+                <button type="button" onClick={() => removeLineItem(index)} className="text-red-500 hover:text-red-700">
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           ))}
+        </div>
+
+        <div className="flex justify-end space-x-4 mt-2 text-sm font-medium">
+          <div className={totalDebit !== totalCredit ? 'text-red-600' : 'text-green-600'}>
+            Total Debit: {totalDebit.toLocaleString('sv-SE')}
+          </div>
+          <div className={totalDebit !== totalCredit ? 'text-red-600' : 'text-green-600'}>
+            Total Credit: {totalCredit.toLocaleString('sv-SE')}
+          </div>
         </div>
       </div>
 
@@ -502,8 +850,8 @@ const JournalEntryForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit">
-          Create Entry
+        <Button type="submit" disabled={!isBalanced || totalDebit === 0}>
+          {initialData ? 'Update Entry' : 'Create Entry'}
         </Button>
       </div>
     </form>

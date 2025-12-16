@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Users, Plus, Edit, Trash2, UserPlus } from 'lucide-react';
 import { Card } from '../Card';
 import { Button } from '../Button';
@@ -6,6 +6,7 @@ import { Modal } from '../Modal';
 import { Input } from '../Input';
 import { Select } from '../Select';
 import { ListManager } from '../ListManager';
+import { apiFetch } from '../../utils/api';
 
 interface Role {
   id: string;
@@ -72,52 +73,160 @@ const availablePermissions = [
 ];
 
 export const RoleManagement: React.FC = () => {
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateLoginModal, setShowCreateLoginModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
-  const handleCreateRole = (roleData: Partial<Role>) => {
-    const newRole: Role = {
-      id: Date.now().toString(),
-      name: roleData.name || '',
-      permissions: roleData.permissions || [],
-      description: roleData.description || '',
-      user_count: 0
-    };
-    setRoles([...roles, newRole]);
-    setShowCreateModal(false);
-  };
+  // Fetch roles from API on component mount
+  useEffect(() => {
+    fetchRoles();
+    fetchUsers();
+  }, []);
 
-  const handleEditRole = (roleData: Partial<Role>) => {
-    if (editingRole) {
-      setRoles(roles.map(role => 
-        role.id === editingRole.id 
-          ? { ...role, ...roleData }
-          : role
-      ));
-      setEditingRole(null);
+  const fetchRoles = async () => {
+    try {
+      setLoading(true);
+      const response = await apiFetch('/api/governance/roles');
+      if (!response.ok) throw new Error('Failed to fetch roles');
+      const data = await response.json();
+      console.log('📋 Fetched roles data:', data);
+      console.log('📋 Roles array:', data.roles);
+      setRoles(data.roles || []);
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      // Don't fallback to mock data - show empty state or error
+      setRoles([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteRole = (roleId: string) => {
-    setRoles(roles.filter(role => role.id !== roleId));
+  const fetchUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const response = await apiFetch('/api/governance/users');
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      console.log('👥 Fetched users:', data);
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
   };
 
-  const handleCreateLogin = (loginData: Partial<Login>) => {
-    const newLogin: Login = {
-      id: Date.now().toString(),
-      email: loginData.email || '',
-      password: loginData.password || '',
-      roleId: loginData.roleId || ''
-    };
-    // Update user_count for the selected role
-    setRoles(roles.map(role => 
-      role.id === newLogin.roleId 
-        ? { ...role, user_count: role.user_count + 1 }
-        : role
-    ));
-    setShowCreateLoginModal(false);
+  const handleCreateRole = async (roleData: Partial<Role>) => {
+    try {
+      console.log('🆕 Creating role with data:', roleData);
+      console.log('🆕 Permissions being sent:', roleData.permissions);
+
+      const response = await apiFetch('/api/governance/roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          foundation_id: '00000000-0000-0000-0000-000000000000', // Replace with actual foundation_id
+          name: roleData.name,
+          description: roleData.description,
+          permissions: roleData.permissions
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to create role');
+
+      // Refresh roles list
+      await fetchRoles();
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating role:', error);
+      alert('Failed to create role. Please try again.');
+    }
+  };
+
+  const handleEditRole = async (roleData: Partial<Role>) => {
+    if (editingRole) {
+      try {
+        console.log('🔧 Editing role with data:', roleData);
+        console.log('🔧 Permissions being sent:', roleData.permissions);
+
+        const response = await apiFetch(`/api/governance/roles/${editingRole.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: roleData.name,
+            description: roleData.description,
+            permissions: roleData.permissions
+          })
+        });
+
+        if (!response.ok) throw new Error('Failed to update role');
+
+        // Refresh roles list
+        await fetchRoles();
+        setEditingRole(null);
+      } catch (error) {
+        console.error('Error updating role:', error);
+        alert('Failed to update role. Please try again.');
+      }
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm('Are you sure you want to delete this role?')) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/api/governance/roles/${roleId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete role');
+
+      // Refresh roles list
+      await fetchRoles();
+    } catch (error) {
+      console.error('Error deleting role:', error);
+      alert('Failed to delete role. Please try again.');
+    }
+  };
+
+  const handleCreateLogin = async (loginData: Partial<Login>) => {
+    try {
+      console.log('👤 Creating user with login data:', loginData);
+
+      // Call the auth register endpoint to create a new user
+      const response = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+          full_name: loginData.email?.split('@')[0] || 'User', // Use email prefix as name
+          role: 'member', // Default profile role
+          governance_role_id: loginData.roleId // Assign to governance role
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create user');
+      }
+
+      // Refresh both roles and users lists
+      await fetchRoles();
+      await fetchUsers();
+      setShowCreateLoginModal(false);
+      alert('User created successfully! They can now log in with their credentials.');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert(`Failed to create user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
@@ -137,59 +246,153 @@ export const RoleManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {roles.map((role) => (
-          <Card key={role.id}>
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-primary-600" />
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading roles...</p>
+          </div>
+        </div>
+      ) : roles && roles.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {roles.map((role) => (
+            <Card key={role.id}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-primary-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{role.name}</h3>
+                    <p className="text-sm text-gray-600 flex items-center">
+                      <Users className="w-4 h-4 mr-1" />
+                      {role.user_count || 0} users
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{role.name}</h3>
-                  <p className="text-sm text-gray-600 flex items-center">
-                    <Users className="w-4 h-4 mr-1" />
-                    {role.user_count} users
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  icon={Edit}
-                  onClick={() => setEditingRole(role)}
-                >
-                  <span className="sr-only">Edit</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  icon={Trash2}
-                  onClick={() => handleDeleteRole(role.id)}
-                >
-                  <span className="sr-only">Delete</span>
-                </Button>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-700 mb-4">{role.description}</p>
-
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-900">Permissions:</h4>
-              <div className="flex flex-wrap gap-1">
-                {role.permissions.map((permission) => (
-                  <span 
-                    key={permission}
-                    className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={Edit}
+                    onClick={() => setEditingRole(role)}
                   >
-                    {permission.replace(/_/g, ' ')}
-                  </span>
-                ))}
+                    <span className="sr-only">Edit</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={() => handleDeleteRole(role.id)}
+                  >
+                    <span className="sr-only">Delete</span>
+                  </Button>
+                </div>
               </div>
+
+              <p className="text-sm text-gray-700 mb-4">{role.description}</p>
+
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-900">Permissions:</h4>
+                <div className="flex flex-wrap gap-1">
+                  {role.permissions && role.permissions.map((permission) => (
+                    <span
+                      key={permission}
+                      className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                    >
+                      {permission.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No roles found</h3>
+          <p className="text-gray-600 mb-4">Get started by creating your first governance role.</p>
+          <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
+            Create First Role
+          </Button>
+        </div>
+      )}
+
+      {/* Users Section */}
+      <div className="mt-12">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">Users</h3>
+            <p className="text-gray-600 mt-1">Manage user accounts and their access.</p>
+          </div>
+        </div>
+
+        {loadingUsers ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading users...</p>
             </div>
-          </Card>
-        ))}
+          </div>
+        ) : users && users.length > 0 ? (
+          <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.full_name || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        {user.role || 'member'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+            <p className="text-gray-600 mb-4">Create user accounts to grant access to the system.</p>
+            <Button icon={UserPlus} onClick={() => setShowCreateLoginModal(true)}>
+              Create First User
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Create Role Modal */}
@@ -199,7 +402,7 @@ export const RoleManagement: React.FC = () => {
         title="Create New Role"
         size="lg"
       >
-        <RoleForm 
+        <RoleForm
           onSubmit={handleCreateRole}
           onCancel={() => setShowCreateModal(false)}
         />
@@ -213,7 +416,7 @@ export const RoleManagement: React.FC = () => {
         size="lg"
       >
         {editingRole && (
-          <RoleForm 
+          <RoleForm
             role={editingRole}
             onSubmit={handleEditRole}
             onCancel={() => setEditingRole(null)}
@@ -228,7 +431,7 @@ export const RoleManagement: React.FC = () => {
         title="Create New Login"
         size="md"
       >
-        <LoginForm 
+        <LoginForm
           roles={roles}
           onSubmit={handleCreateLogin}
           onCancel={() => setShowCreateLoginModal(false)}
@@ -251,7 +454,7 @@ const RoleForm: React.FC<RoleFormProps> = ({ role, onSubmit, onCancel }) => {
     permissions: role?.permissions || []
   });
   const [isManualEntry, setIsManualEntry] = useState(false);
-  
+
   const [predefinedRoleTypes, setPredefinedRoleTypes] = useState([
     'Board Chairman',
     'Board Member',
@@ -295,28 +498,26 @@ const RoleForm: React.FC<RoleFormProps> = ({ role, onSubmit, onCancel }) => {
             buttonText="Manage Roles"
           />
         </div>
-        
+
         {/* Toggle between dropdown and manual entry */}
         <div className="flex items-center gap-2 mb-2">
           <button
             type="button"
             onClick={() => setIsManualEntry(false)}
-            className={`px-3 py-1 text-sm rounded-md ${
-              !isManualEntry 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-3 py-1 text-sm rounded-md ${!isManualEntry
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Select from list
           </button>
           <button
             type="button"
             onClick={() => setIsManualEntry(true)}
-            className={`px-3 py-1 text-sm rounded-md ${
-              isManualEntry 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-3 py-1 text-sm rounded-md ${isManualEntry
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Enter manually
           </button>
