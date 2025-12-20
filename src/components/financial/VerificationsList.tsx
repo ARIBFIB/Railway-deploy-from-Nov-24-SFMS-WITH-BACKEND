@@ -1461,8 +1461,10 @@ export const VerificationsList: React.FC = () => {
       {/* Verification Form Modal */}
       <VerificationForm
         isOpen={showVerificationForm}
+        initialData={editingVerification}
         onClose={() => {
           setShowVerificationForm(false);
+          setEditingVerification(null);
           // Only sync data when form is closed if it wasn't just created
           // (create operations are handled by onVerificationCreated)
           if (!wasVerificationJustCreated) {

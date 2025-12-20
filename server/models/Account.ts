@@ -28,6 +28,7 @@ export interface Account {
   foundation_id: string;
   account_number: string;
   account_name: string;
+  account_type: string; // Add account_type field
   vat_code?: string;
   sru?: string;
   atm?: string;
@@ -49,6 +50,7 @@ export interface Account {
 export interface CreateAccountData {
   account_number: string;
   account_name: string;
+  account_type: string; // Add account_type field
   vat_code?: string;
   sru?: string;
   atm?: string;
@@ -75,6 +77,7 @@ export class AccountModel {
         foundation_id: foundationId,
         account_number: accountData.account_number,
         account_name: accountData.account_name,
+        account_type: accountData.account_type, // Add account_type to insert data
         vat_code: accountData.vat_code,
         sru: accountData.sru,
         atm: accountData.atm,
@@ -291,6 +294,7 @@ export class AccountModel {
       const updateFields = {
         account_number: accountData.account_number,
         account_name: accountData.account_name,
+        account_type: accountData.account_type, // Add account_type to update fields
         vat_code: accountData.vat_code,
         sru: accountData.sru,
         atm: accountData.atm,

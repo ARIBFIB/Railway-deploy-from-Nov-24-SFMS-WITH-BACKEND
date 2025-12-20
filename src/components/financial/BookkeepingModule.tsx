@@ -65,43 +65,54 @@ export const BookkeepingModule: React.FC = () => {
           account_type: a.account_type || 'expense', // fallback
           balance: a.opening_balance || 0,
           currency: 'SEK',
-          is_active: a.is_active
+          is_active: a.is_active !== undefined ? a.is_active : true
         }));
         setAccounts(mappedAccounts);
       } else {
         const result = await VerificationService.getVerifications({ limit: 100 });
         // Map backend Verification to local JournalEntry interface
-        const mappedEntries: JournalEntry[] = result.data.map((v: any) => ({
-          id: v.id,
-          entry_number: v.verification_number || 'Draft', // Fallback
-          entry_date: v.accounting_date,
-          description: v.description,
-          total_debit: v.total_debit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.debit || 0), 0),
-          total_credit: v.total_credit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.credit || 0), 0),
-          status: v.status,
-          line_items: (v.entries || []).map((e: any) => ({
-            id: e.id,
-            account_name: e.account_name ? `${e.account_number} - ${e.account_name}` : e.account_number,
-            description: e.transaction_info,
-            debit_amount: e.debit,
-            credit_amount: e.credit
-          }))
-        }));
+        const mappedEntries: JournalEntry[] = result.data.map((v: any) => {
+          const lineItems = (v.entries || []).map((e: any) => ({
+            id: e.id || '',
+            account_name: e.account_number && e.account_name ? `${e.account_number} - ${e.account_name}` : (e.account_name || e.account_number || ''), // Format account name properly
+            description: e.transaction_info || '', // Use individual line item description
+            debit_amount: e.debit || 0,
+            credit_amount: e.credit || 0
+          }));
+        
+        // console.log('Mapping entry:', v, 'to line items:', lineItems); // Debug log - removed
+        
+        return {
+            id: v.id,
+            entry_number: v.verification_number || 'Draft',
+            entry_date: v.accounting_date,
+            description: v.description,
+            total_debit: v.total_debit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.debit || 0), 0),
+            total_credit: v.total_credit || (v.entries || []).reduce((s: number, e: any) => s + Number(e.credit || 0), 0),
+            status: v.status,
+            line_items: lineItems
+          };
+        });
         setJournalEntries(mappedEntries);
 
-        // Also ensure accounts are loaded for the form
+        // Also ensure accounts are loaded for the form and display
         if (accounts.length === 0) {
-          const accResult = await AccountService.getAccounts();
-          const mappedAccounts: Account[] = accResult.data.map((a: any) => ({
-            id: a.id,
-            account_number: a.account_number,
-            account_name: a.account_name,
-            account_type: a.account_type || 'expense',
-            balance: a.opening_balance || 0,
-            currency: 'SEK',
-            is_active: a.is_active
-          }));
-          setAccounts(mappedAccounts);
+          try {
+            const accResult = await AccountService.getAccounts();
+            const mappedAccounts: Account[] = accResult.data.map((a: any) => ({
+              id: a.id,
+              account_number: a.account_number,
+              account_name: a.account_name,
+              account_type: a.account_type || 'expense',
+              balance: a.opening_balance || 0,
+              currency: 'SEK',
+              is_active: a.is_active !== undefined ? a.is_active : true
+            }));
+            setAccounts(mappedAccounts);
+          } catch (accErr) {
+            console.error('Failed to load accounts:', accErr);
+            setError('Failed to load accounts');
+          }
         }
       }
     } catch (err) {
@@ -114,6 +125,13 @@ export const BookkeepingModule: React.FC = () => {
   React.useEffect(() => {
     loadData();
   }, [activeTab]);
+
+  // Ensure accounts are always available for the journal entries display
+  React.useEffect(() => {
+    if (activeTab === 'journal' && accounts.length === 0) {
+      loadData();
+    }
+  }, [activeTab, accounts.length]);
 
   const handleSaveAccount = async (data: any) => {
     setIsProcessing(true);
@@ -182,14 +200,31 @@ export const BookkeepingModule: React.FC = () => {
         verification_number: vNum, // Include the number
         total_debit: debit,
         total_credit: credit,
-        entries: data.line_items.map((l: any) => ({
-          account_number: l.account_name, // Mapping input 'Account' to account_number
-          transaction_info: l.description || data.description,
-          debit: Number(l.debit_amount),
-          credit: Number(l.credit_amount)
-        }))
+        entries: data.line_items.map((l: any) => {
+          // Extract account number and name from the formatted string "1010 - Cash"
+          let accountNumber = l.account_name;
+          let accountName = '';
+          
+          if (l.account_name && l.account_name.includes(' - ')) {
+            const parts = l.account_name.split(' - ');
+            accountNumber = parts[0];
+            accountName = parts.slice(1).join(' - '); // Join remaining parts in case name has dashes
+          }
+          
+          // console.log('Mapping line item:', l); // Debug log - removed
+          
+          return {
+            account_number: accountNumber,
+            account_name: accountName || l.account_name, // Use original if no split occurred
+            transaction_info: l.description, // Keep individual line item description, don't fall back to general description
+            debit: Number(l.debit_amount),
+            credit: Number(l.credit_amount)
+          };
+        })
       };
-
+      
+      // console.log('Saving verification data:', verificationData); // Debug log - removed
+      
       if (editingJournalEntry && editingJournalEntry.id) {
         await VerificationService.updateVerification(editingJournalEntry.id, verificationData);
       } else {
@@ -521,12 +556,24 @@ export const BookkeepingModule: React.FC = () => {
                       <tr key={line.id}>
                         <td className="px-4 py-2 text-sm font-medium text-gray-900">
                           {(() => {
-                            const acc = accounts.find(a => a.account_number === line.account_name);
-                            return acc ? `${acc.account_number} - ${acc.account_name}` : line.account_name;
+                            // If the account_name already contains the formatted string "1010 - Cash"
+                            if (line.account_name && line.account_name.includes(' - ')) {
+                              return line.account_name;
+                            }
+                            // If we have just an account number, try to find the full account info
+                            else if (line.account_name) {
+                              // If accounts haven't loaded yet, just show what we have
+                              if (accounts.length === 0) {
+                                return line.account_name;
+                              }
+                              const acc = accounts.find(a => a.account_number === line.account_name);
+                              return acc ? `${acc.account_number} - ${acc.account_name}` : line.account_name;
+                            }
+                            return 'Unknown Account';
                           })()}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-600">
-                          {line.description}
+                          {line.description || '-'}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-900 text-right">
                           {line.debit_amount > 0 ? line.debit_amount.toLocaleString('sv-SE') : '-'}
@@ -707,7 +754,7 @@ const JournalEntryForm: React.FC<{ onClose: () => void; onSubmit: (data: any) =>
         description: initialData.description || '',
         line_items: (initialData.line_items && initialData.line_items.length > 0)
           ? initialData.line_items.map((i: any) => ({
-            account_name: i.account_name || '',
+            account_name: i.account_name && i.account_name.includes(' - ') ? i.account_name : (i.account_name || ''),
             description: i.description || '',
             debit_amount: i.debit_amount || 0,
             credit_amount: i.credit_amount || 0
@@ -787,7 +834,7 @@ const JournalEntryForm: React.FC<{ onClose: () => void; onSubmit: (data: any) =>
                 >
                   <option value="">Select Account</option>
                   {accounts.map(acc => (
-                    <option key={acc.id} value={acc.account_number}>
+                    <option key={acc.id} value={`${acc.account_number} - ${acc.account_name}`}>
                       {acc.account_number} - {acc.account_name}
                     </option>
                   ))}

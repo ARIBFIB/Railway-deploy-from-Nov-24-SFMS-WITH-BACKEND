@@ -86,6 +86,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<any[]>([]);
   const [showAccountDropdown, setShowAccountDropdown] = useState<{ [key: string]: boolean }>({});
 
   // Load accounts when component mounts
@@ -131,6 +132,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           balance: entry.balance ? entry.balance.toString() : '0.00'
         }));
         setAccountEntries(mappedEntries);
+      }
+
+      // Populate images if available
+      if (initialData.images && initialData.images.length > 0) {
+        setExistingImages(initialData.images);
+      } else {
+        setExistingImages([]);
       }
     } else if (isOpen && !initialData) {
       // Reset form if opening in create mode
@@ -198,6 +206,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
   const removeImage = (index: number) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (id: string) => {
+    setExistingImages(prev => prev.filter(img => img.id !== id));
   };
 
   const addAccountEntry = () => {
@@ -316,23 +328,27 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         }
       }
 
-      // Get next verification number
+      // Get verification number
       const series = formData.verificationSeries.split(' - ')[0];
-      let verificationNumber;
-      try {
-        const nextNumberResponse = await VerificationService.getNextVerificationNumber(series);
-        if (nextNumberResponse.success) {
-          verificationNumber = nextNumberResponse.data.verification_number;
-        } else {
-          setError('Failed to generate verification number. Please try again.');
+      let verificationNumber = '';
+      if (initialData && initialData.verification_number) {
+        verificationNumber = initialData.verification_number;
+      } else {
+        try {
+          const nextNumberResponse = await VerificationService.getNextVerificationNumber(series);
+          if (nextNumberResponse.success) {
+            verificationNumber = nextNumberResponse.data.verification_number;
+          } else {
+            setError('Failed to generate verification number. Please try again.');
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to get next verification number:', err);
+          setError('Failed to generate verification number. Please check your connection and try again.');
           setLoading(false);
           return;
         }
-      } catch (err) {
-        console.error('Failed to get next verification number:', err);
-        setError('Failed to generate verification number. Please check your connection and try again.');
-        setLoading(false);
-        return;
       }
 
       // Prepare verification data
@@ -350,9 +366,9 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         status: 'draft',
         has_person: false,
         has_comment: formData.comment && formData.comment.trim() ? true : false,
-        has_gallery: selectedImages.length > 0,
+        has_gallery: (selectedImages.length + existingImages.length) > 0,
         entries,
-        images: uploadedImages
+        images: [...existingImages, ...uploadedImages]
       };
 
       let response;
@@ -414,7 +430,9 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">VERIFICATION A11*</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            {initialData ? `VERIFICATION ${initialData.verification_number}` : 'NEW VERIFICATION'}
+          </h2>
           <div className="flex items-center gap-4">
             <Button
               variant="secondary"
@@ -426,6 +444,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
             <Button
               variant="secondary"
               className="bg-yellow-400 text-gray-800 hover:bg-yellow-500"
+              onClick={onClose}
             >
               📋 Show list
             </Button>
@@ -715,17 +734,43 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 </span>
               </div>
 
-              {selectedImages.length > 0 && (
+              {(selectedImages.length > 0 || existingImages.length > 0) && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {/* Existing Images */}
+                  {existingImages.map((image) => (
+                    <div key={image.id} className="relative">
+                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300">
+                        <img
+                          src={image.image_url}
+                          alt={image.image_name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(image.id)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <p className="text-xs text-gray-600 mt-1 truncate">{image.image_name}</p>
+                    </div>
+                  ))}
+
+                  {/* Newly Selected Images */}
                   {selectedImages.map((image, index) => (
-                    <div key={index} className="relative">
-                      <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                    <div key={`new-${index}`} className="relative">
+                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-blue-300">
+                        <img
+                          src={URL.createObjectURL(image)}
+                          alt={image.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
                       >
                         <X className="w-4 h-4" />
                       </button>

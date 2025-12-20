@@ -37,6 +37,7 @@ export interface Verification {
   description?: string;
   accounting_template?: string;
   amount: number;
+  comment?: string;
   total_debit: number;
   total_credit: number;
   difference: number;
@@ -57,6 +58,7 @@ export interface CreateVerificationData {
   verification_series: string;
   accounting_date: string;
   description?: string;
+  comment?: string;
   accounting_template?: string;
   amount?: number;
   total_debit?: number;
@@ -75,6 +77,7 @@ export interface UpdateVerificationData {
   verification_series?: string;
   accounting_date?: string;
   description?: string;
+  comment?: string;
   accounting_template?: string;
   amount?: number;
   total_debit?: number;
@@ -131,6 +134,7 @@ export class VerificationModel {
         accounting_date: verificationData.accounting_date,
         description: verificationData.description,
         accounting_template: verificationData.accounting_template,
+        comment: verificationData.comment,
         amount: verificationData.amount || 0,
         total_debit: verificationData.total_debit || 0,
         total_credit: verificationData.total_credit || 0,
@@ -276,7 +280,7 @@ export class VerificationModel {
 
       let query = supabase
         .from('verifications')
-        .select('*', { count: 'exact' })
+        .select('*, entries:verification_entries(*)', { count: 'exact' })
         .eq('foundation_id', foundationId);
 
       console.log('📋 Base query created for foundation_id:', foundationId);
@@ -371,7 +375,7 @@ export class VerificationModel {
 
       const { data: verifications, error } = await supabase
         .from('verifications')
-        .select('*')
+        .select('*, entries:verification_entries(*)')
         .eq('foundation_id', foundationId)
         .order('accounting_date', { ascending: false })
         .order('verification_number', { ascending: true });
@@ -403,7 +407,7 @@ export class VerificationModel {
 
       const { data: verifications, error } = await supabase
         .from('verifications')
-        .select('*')
+        .select('*, entries:verification_entries(*)')
         .order('accounting_date', { ascending: false })
         .order('verification_number', { ascending: true });
 
