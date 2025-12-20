@@ -17,6 +17,7 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
   const [formData, setFormData] = useState({
     account: '',
     name: '',
+    accountType: 'asset',
     openingBalance: '0,00',
     isActive: 'yes',
     sru: '',
@@ -235,6 +236,7 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
     setFormData({
       account: '',
       name: '',
+      accountType: 'asset',
       vatCode: '',
       sru: '',
       openingBalance: '0,00',
@@ -411,6 +413,23 @@ const CreateAccountModal: React.FC<CreateAccountModalProps> = ({
                       No
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+                  <select
+                    value={formData.accountType}
+                    onChange={(e) => handleInputChange('accountType', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="asset">Asset</option>
+                    <option value="liability">Liability</option>
+                    <option value="equity">Equity</option>
+                    <option value="revenue">Revenue</option>
+                    <option value="expense">Expense</option>
+                  </select>
                 </div>
               </div>
             </div>

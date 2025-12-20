@@ -20,6 +20,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
   const [formData, setFormData] = useState({
     account_number: '',
     account_name: '',
+    account_type: 'asset',
     opening_balance: '0,00',
     is_active: 'yes',
     sru: '',
@@ -63,6 +64,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
       setFormData({
         account_number: account.account_number || '',
         account_name: account.account_name || '',
+        account_type: account.account_type || 'asset',
         opening_balance: account.opening_balance?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) || '0,00',
         is_active: account.is_active ? 'yes' : 'no',
         sru: account.sru || '',
@@ -166,7 +168,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -179,8 +181,8 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
   const handleBudgetRowChange = (rowId: number, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      budget_rows: (prev.budget_rows || []).map(row => 
-        row.id === rowId 
+      budget_rows: (prev.budget_rows || []).map(row =>
+        row.id === rowId
           ? { ...row, [field]: value }
           : row
       )
@@ -190,12 +192,12 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
   const handleBudgetMonthChange = (rowId: number, month: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      budget_rows: (prev.budget_rows || []).map(row => 
-        row.id === rowId 
-          ? { 
-              ...row, 
-              months: { ...row.months, [month]: value }
-            }
+      budget_rows: (prev.budget_rows || []).map(row =>
+        row.id === rowId
+          ? {
+            ...row,
+            months: { ...row.months, [month]: value }
+          }
           : row
       )
     }));
@@ -264,6 +266,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
       id: account.id,
       account_number: formData.account_number,
       account_name: formData.account_name,
+      account_type: formData.account_type,
       vat_code: formData.vat_code,
       sru: formData.sru,
       // atm: '', // Add ATM field if needed
@@ -302,6 +305,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
     setFormData({
       account_number: '',
       account_name: '',
+      account_type: 'asset',
       vat_code: '',
       sru: '',
       opening_balance: '0,00',
@@ -325,7 +329,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
   if (!isOpen || !account) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{
         position: 'fixed',
@@ -360,7 +364,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
               <ChevronsRight className="w-4 h-4" />
             </button>
           </div>
-          
+
           <div className="flex items-center space-x-3">
             <button className="flex items-center space-x-2 px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">
               <Plus className="w-4 h-4" />
@@ -391,7 +395,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
             {/* Main Account Details */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-gray-900">ACCOUNT - EDIT</h2>
-              
+
               <div className="grid grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Account number</label>
@@ -399,9 +403,8 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                     type="text"
                     value={formData.account_number}
                     onChange={(e) => handleInputChange('account_number', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.account_number ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.account_number ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter account number"
                   />
                   {errors.account_number && (
@@ -415,9 +418,8 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                     type="text"
                     value={formData.account_name}
                     onChange={(e) => handleInputChange('account_name', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.account_name ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.account_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter account name"
                   />
                   {errors.account_name && (
@@ -441,25 +443,40 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                   <div className="flex rounded border border-gray-300">
                     <button
                       onClick={() => handleInputChange('is_active', 'yes')}
-                      className={`flex-1 px-3 py-2 text-sm ${
-                        formData.is_active === 'yes'
-                          ? 'bg-white text-gray-900'
-                          : 'bg-gray-200 text-gray-700'
-                      }`}
+                      className={`flex-1 px-3 py-2 text-sm ${formData.is_active === 'yes'
+                        ? 'bg-white text-gray-900'
+                        : 'bg-gray-200 text-gray-700'
+                        }`}
                     >
                       Yes
                     </button>
                     <button
                       onClick={() => handleInputChange('is_active', 'no')}
-                      className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${
-                        formData.is_active === 'no'
-                          ? 'bg-white text-gray-900'
-                          : 'bg-gray-200 text-gray-700'
-                      }`}
+                      className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${formData.is_active === 'no'
+                        ? 'bg-white text-gray-900'
+                        : 'bg-gray-200 text-gray-700'
+                        }`}
                     >
                       No
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+                  <select
+                    value={formData.account_type}
+                    onChange={(e) => handleInputChange('account_type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="asset">Asset</option>
+                    <option value="liability">Liability</option>
+                    <option value="equity">Equity</option>
+                    <option value="revenue">Revenue</option>
+                    <option value="expense">Expense</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -515,21 +532,19 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                     <div className="flex rounded border border-gray-300">
                       <button
                         onClick={() => handleInputChange('suggest_debit_credit', 'debit')}
-                        className={`flex-1 px-3 py-2 text-sm ${
-                          formData.suggest_debit_credit === 'debit'
-                            ? 'bg-gray-200 text-gray-900'
-                            : 'bg-white text-gray-700'
-                        }`}
+                        className={`flex-1 px-3 py-2 text-sm ${formData.suggest_debit_credit === 'debit'
+                          ? 'bg-gray-200 text-gray-900'
+                          : 'bg-white text-gray-700'
+                          }`}
                       >
                         Debit
                       </button>
                       <button
                         onClick={() => handleInputChange('suggest_debit_credit', 'credit')}
-                        className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${
-                          formData.suggest_debit_credit === 'credit'
-                            ? 'bg-gray-200 text-gray-900'
-                            : 'bg-white text-gray-700'
-                        }`}
+                        className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${formData.suggest_debit_credit === 'credit'
+                          ? 'bg-gray-200 text-gray-900'
+                          : 'bg-white text-gray-700'
+                          }`}
                       >
                         Credit
                       </button>
@@ -541,31 +556,28 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleInputChange('transaction_info', 'mandatory')}
-                        className={`px-3 py-2 text-sm rounded ${
-                          formData.transaction_info === 'mandatory'
-                            ? 'bg-white text-gray-900 border border-gray-300'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
+                        className={`px-3 py-2 text-sm rounded ${formData.transaction_info === 'mandatory'
+                          ? 'bg-white text-gray-900 border border-gray-300'
+                          : 'bg-gray-200 text-gray-700'
+                          }`}
                       >
                         Mandatory
                       </button>
                       <button
                         onClick={() => handleInputChange('transaction_info', 'allowed')}
-                        className={`px-3 py-2 text-sm rounded ${
-                          formData.transaction_info === 'allowed'
-                            ? 'bg-white text-gray-900 border border-gray-300'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
+                        className={`px-3 py-2 text-sm rounded ${formData.transaction_info === 'allowed'
+                          ? 'bg-white text-gray-900 border border-gray-300'
+                          : 'bg-gray-200 text-gray-700'
+                          }`}
                       >
                         Allowed
                       </button>
                       <button
                         onClick={() => handleInputChange('transaction_info', 'not_allowed')}
-                        className={`px-3 py-2 text-sm rounded ${
-                          formData.transaction_info === 'not_allowed'
-                            ? 'bg-white text-gray-900 border border-gray-300'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
+                        className={`px-3 py-2 text-sm rounded ${formData.transaction_info === 'not_allowed'
+                          ? 'bg-white text-gray-900 border border-gray-300'
+                          : 'bg-gray-200 text-gray-700'
+                          }`}
                       >
                         Not allowed
                       </button>
@@ -603,21 +615,19 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                     <div className="flex rounded border border-gray-300 w-32">
                       <button
                         onClick={() => handleInputChange('budget_distribution', 'sek')}
-                        className={`flex-1 px-3 py-2 text-sm ${
-                          formData.budget_distribution === 'sek'
-                            ? 'bg-gray-200 text-gray-900'
-                            : 'bg-white text-gray-700'
-                        }`}
+                        className={`flex-1 px-3 py-2 text-sm ${formData.budget_distribution === 'sek'
+                          ? 'bg-gray-200 text-gray-900'
+                          : 'bg-white text-gray-700'
+                          }`}
                       >
                         SEK
                       </button>
                       <button
                         onClick={() => handleInputChange('budget_distribution', 'percent')}
-                        className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${
-                          formData.budget_distribution === 'percent'
-                            ? 'bg-gray-200 text-gray-900'
-                            : 'bg-white text-gray-700'
-                        }`}
+                        className={`flex-1 px-3 py-2 text-sm border-l border-gray-300 ${formData.budget_distribution === 'percent'
+                          ? 'bg-gray-200 text-gray-900'
+                          : 'bg-white text-gray-700'
+                          }`}
                       >
                         %
                       </button>
@@ -630,10 +640,10 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-3 text-xs font-medium text-gray-700 border-b border-gray-300 text-center min-w-[120px]">
-                            COST<br/>CENTER
+                            COST<br />CENTER
                           </th>
                           <th className="px-3 py-3 text-xs font-medium text-gray-700 border-b border-gray-300 text-center min-w-[100px]">
-                            ANNUAL<br/>BUDGET
+                            ANNUAL<br />BUDGET
                           </th>
                           <th className="px-3 py-3 text-xs font-medium text-gray-700 border-b border-gray-300 text-center min-w-[60px]">
                             %
@@ -709,7 +719,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
                       </tbody>
                     </table>
                   </div>
-                  
+
                   <div className="mt-3 flex justify-between items-center">
                     <button
                       onClick={addBudgetRow}
@@ -736,7 +746,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
           >
             Delete
           </button>
-          
+
           <div className="flex items-center space-x-3">
             <button
               onClick={handleCancel}
@@ -753,7 +763,7 @@ const EditAccountModal: React.FC<EditAccountModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
