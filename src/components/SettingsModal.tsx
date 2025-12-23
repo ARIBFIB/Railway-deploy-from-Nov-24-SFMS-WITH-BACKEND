@@ -13599,6 +13599,7 @@ const RegistrationTemplatesInterface: React.FC<{
   };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('accounting');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
