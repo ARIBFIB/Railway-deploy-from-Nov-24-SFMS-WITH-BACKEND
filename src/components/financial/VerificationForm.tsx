@@ -4,6 +4,7 @@ import { Input } from '../Input';
 import { X, Plus, Calendar, Trash2, Copy, Paperclip, ChevronDown, Upload, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { AccountService, type Account } from '../../services/accountService';
 import { VerificationService, type CreateVerificationData, type VerificationEntry } from '../../services/verificationService';
+import { accountingViewSettingsService, type AccountingViewSettings } from '../../services/accountingViewSettingsService';
 
 interface AccountEntry {
   id: string;
@@ -88,28 +89,43 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [showAccountDropdown, setShowAccountDropdown] = useState<{ [key: string]: boolean }>({});
+  const [accountingViewSettings, setAccountingViewSettings] = useState<AccountingViewSettings>({
+    enable_transaction_info: true,
+    include_transaction_info_when_tab_entering: false,
+    show_account_balance_column_in_posting_view: true
+  });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  // Load accounts when component mounts
+  // Load accounts and settings when component mounts
   useEffect(() => {
-    const loadAccounts = async () => {
+    const loadData = async () => {
       try {
-        const response = await AccountService.getAccounts({ is_active: true });
-        if (response.success) {
-          setAccounts(response.data);
+        // Load accounts
+        const accountsResponse = await AccountService.getAccounts({ is_active: true });
+        if (accountsResponse.success) {
+          setAccounts(accountsResponse.data);
         }
+
+        // Load accounting view settings
+        const settings = await accountingViewSettingsService.getSettings();
+        setAccountingViewSettings(settings);
+        setSettingsLoaded(true);
       } catch (err) {
-        console.error('Failed to load accounts:', err);
+        console.error('Failed to load data:', err);
+        setSettingsLoaded(true); // Still set to true to prevent hanging
       }
     };
 
     if (isOpen) {
-      loadAccounts();
+      loadData();
+    } else {
+      setSettingsLoaded(false); // Reset when closed
     }
   }, [isOpen]);
 
   // Populate form with initial data if provided (Editing mode)
   useEffect(() => {
-    if (isOpen && initialData) {
+    if (settingsLoaded && isOpen && initialData) {
       console.log('🔄 VerificationForm - Populating with initialData:', initialData);
       setFormData({
         description: initialData.description || '',
@@ -126,10 +142,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           id: entry.id || Date.now().toString() + Math.random(),
           account: entry.account_number || '',
           name: entry.account_name || '',
-          transactionInfo: entry.transaction_info || '',
+          transactionInfo: accountingViewSettings.enable_transaction_info ? (entry.transaction_info || '') : '',
           debit: entry.debit ? entry.debit.toString() : '0.00',
           credit: entry.credit ? entry.credit.toString() : '0.00',
-          balance: entry.balance ? entry.balance.toString() : '0.00'
+          balance: accountingViewSettings.show_account_balance_column_in_posting_view ? (entry.balance ? entry.balance.toString() : '0.00') : '0.00'
         }));
         setAccountEntries(mappedEntries);
       }
@@ -140,7 +156,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       } else {
         setExistingImages([]);
       }
-    } else if (isOpen && !initialData) {
+    } else if (settingsLoaded && isOpen && !initialData) {
       // Reset form if opening in create mode
       setFormData({
         description: '',
@@ -151,12 +167,12 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         comment: ''
       });
       setAccountEntries([
-        { id: '1', account: '', name: '', transactionInfo: '', debit: '0.00', credit: '', balance: '0.00' },
-        { id: '2', account: '', name: '', transactionInfo: '', debit: '0.00', credit: '', balance: '0.00' }
+        { id: '1', account: '', name: '', transactionInfo: accountingViewSettings.enable_transaction_info ? '' : '', debit: '0.00', credit: '', balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00' },
+        { id: '2', account: '', name: '', transactionInfo: accountingViewSettings.enable_transaction_info ? '' : '', debit: '0.00', credit: '', balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00' }
       ]);
       setSelectedImages([]);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, settingsLoaded]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -217,10 +233,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       id: Date.now().toString(),
       account: '',
       name: '',
-      transactionInfo: '',
+      transactionInfo: accountingViewSettings.enable_transaction_info ? '' : '',
       debit: '0.00',
       credit: '',
-      balance: '0.00'
+      balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
     };
     setAccountEntries(prev => [...prev, newEntry]);
   };
@@ -236,7 +252,9 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     if (entryToDuplicate) {
       const newEntry: AccountEntry = {
         ...entryToDuplicate,
-        id: Date.now().toString()
+        id: Date.now().toString(),
+        transactionInfo: accountingViewSettings.enable_transaction_info ? entryToDuplicate.transactionInfo : '',
+        balance: accountingViewSettings.show_account_balance_column_in_posting_view ? entryToDuplicate.balance : '0.00'
       };
       setAccountEntries(prev => [...prev, newEntry]);
     }
@@ -314,10 +332,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         validEntries.map(entry => ({
           account_number: entry.account,
           account_name: entry.name,
-          transaction_info: entry.transactionInfo,
+          transaction_info: accountingViewSettings.enable_transaction_info ? entry.transactionInfo : '',
           debit: parseFloat(entry.debit) || 0,
           credit: parseFloat(entry.credit) || 0,
-          balance: parseFloat(entry.balance) || 0
+          balance: accountingViewSettings.show_account_balance_column_in_posting_view ? parseFloat(entry.balance) || 0 : 0
         }));
 
       if (entries.length === 0) {
@@ -585,18 +603,22 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       NAME
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      TRANSACTION INFO
-                    </th>
+                    {accountingViewSettings.enable_transaction_info && (
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        TRANSACTION INFO
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       DEBIT
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       CREDIT
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ACCOUNT BALANCE
-                    </th>
+                    {accountingViewSettings.show_account_balance_column_in_posting_view && (
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        ACCOUNT BALANCE
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                       Actions
                     </th>
@@ -699,14 +721,16 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                           {entry.name || <span className="text-gray-400 italic text-xs">Auto-filled</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="text"
-                          value={entry.transactionInfo}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'transactionInfo', e.target.value)}
-                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                        />
-                      </td>
+                      {accountingViewSettings.enable_transaction_info && (
+                        <td className="px-4 py-3">
+                          <Input
+                            type="text"
+                            value={entry.transactionInfo}
+                            onChange={(e) => handleAccountEntryChange(entry.id, 'transactionInfo', e.target.value)}
+                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <Input
                           type="number"
@@ -725,16 +749,18 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                           className="w-full border-0 focus:ring-1 focus:ring-blue-500"
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={entry.balance}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
-                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                          readOnly
-                        />
-                      </td>
+                      {accountingViewSettings.show_account_balance_column_in_posting_view && (
+                        <td className="px-4 py-3">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={entry.balance}
+                            onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
+                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                            readOnly
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
                           <div
