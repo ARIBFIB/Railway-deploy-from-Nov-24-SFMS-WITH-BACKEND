@@ -287,7 +287,7 @@ export const InvoicingModule: React.FC = () => {
                       <h3 className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</h3>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${invoice.invoice_type.toLowerCase() === 'sales' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
                         }`}>
-                        {invoice.invoice_type}
+                        {invoice.invoice_type.charAt(0).toUpperCase() + invoice.invoice_type.slice(1)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{invoice.customer_supplier_name}</p>
@@ -378,7 +378,7 @@ const InvoiceForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    invoice_type: 'Sales',
+    invoice_type: 'sales',
     customer_supplier_name: '',
     // TODO: Add customer_id selection logic (e.g., search/dropdown)
     invoice_date: new Date().toISOString().split('T')[0],
@@ -433,8 +433,8 @@ const InvoiceForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             required
           >
-            <option value="Sales">Sales</option>
-            <option value="Purchase">Purchase</option>
+            <option value="sales">Sales</option>
+            <option value="purchase">Purchase</option>
           </select>
         </div>
         <Input

@@ -46,13 +46,13 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Foundation Management</h1>
           <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Manage your foundations efficiently</p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           {/* Reports and Register Buttons */}
           <div className="flex items-center space-x-3">
             <div className="relative" ref={dropdownRef}>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 onClick={() => setReportsDropdownOpen(!reportsDropdownOpen)}
                 className="flex items-center gap-2"
@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 Reports
                 <ChevronDown className="w-4 h-4" />
               </Button>
-              
+
               {reportsDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                   <div className="p-4">
@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                         <X className="w-5 h-5" />
                       </button>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       {/* Left Column */}
                       <div className="space-y-2">
@@ -126,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                             Checklist <span>{'>'}</span>
                           </div>
                         </div>
-                        
+
                         <div className="font-semibold text-green-700 mb-2 mt-4">Intrastat</div>
                         <div className="space-y-1 pl-2">
                           <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Middle Column */}
                       <div className="space-y-2">
                         <div className="font-semibold text-green-700 mb-2">Supplier invoices</div>
@@ -155,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                             Currency report provider <span>{'>'}</span>
                           </div>
                         </div>
-                        
+
                         <div className="font-semibold text-green-700 mb-2 mt-4">Billing</div>
                         <div className="space-y-1 pl-2">
                           <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
@@ -171,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                             Customer currency report <span>{'>'}</span>
                           </div>
                         </div>
-                        
+
                         <div className="font-semibold text-green-700 mb-2 mt-4">Registers and lists</div>
                         <div className="space-y-1 pl-2">
                           <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
@@ -206,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Right Column */}
                       <div className="space-y-2">
                         <div className="font-semibold text-green-700 mb-2">Facility register</div>
@@ -239,7 +239,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                             Depreciation carried out <span>{'>'}</span>
                           </div>
                         </div>
-                        
+
                         <div className="font-semibold text-green-700 mb-2 mt-4">Salary</div>
                         <div className="space-y-1 pl-2">
                           <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
@@ -264,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                             Identity card <span>{'>'}</span>
                           </div>
                         </div>
-                        
+
                         <div className="font-semibold text-green-700 mb-2 mt-4">Stock</div>
                         <div className="space-y-1 pl-2">
                           <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
@@ -273,7 +273,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="mt-4 pt-4 border-t border-gray-200 text-center">
                       <button
                         onClick={() => setReportsDropdownOpen(false)}
@@ -286,10 +286,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 </div>
               )}
             </div>
-            
+
             <div className="relative" ref={dropdownRef}>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="sm"
                 onClick={() => setRegisterDropdownOpen(!registerDropdownOpen)}
                 className="flex items-center gap-2"
@@ -297,46 +297,46 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 Register
                 <ChevronDown className="w-4 h-4" />
               </Button>
-              
+
               {registerDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
-                            <button
-                              onClick={() => {
-                                navigate('/working-hours-schedule');
-                                setRegisterDropdownOpen(false);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                            >
-                              Working hours schedule
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigate('/articles');
-                                setRegisterDropdownOpen(false);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                            >
-                              Articles
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigate('/salary-agreements');
-                                setRegisterDropdownOpen(false);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                            >
-                              Agreement for salaries
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigate('/account-plan');
-                                setRegisterDropdownOpen(false);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                            >
-                              Account plan and type of purchase
-                            </button>
+                    <button
+                      onClick={() => {
+                        navigate('/working-hours-schedule');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Working hours schedule
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/articles');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Articles
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/salary-agreements');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Agreement for salaries
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/account-plan');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Chart of account
+                    </button>
                     <button
                       onClick={() => {
                         navigate('/customers');
@@ -355,42 +355,42 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                     >
                       Warehouses
                     </button>
-        <button
-          onClick={() => {
-            navigate('/suppliers');
-            setRegisterDropdownOpen(false);
-          }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-        >
-          Suppliers
-        </button>
-        <button
-          onClick={() => {
-            navigate('/wage-types');
-            setRegisterDropdownOpen(false);
-          }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-        >
-          Wage types and codes
-        </button>
-        <button
-          onClick={() => {
-            navigate('/personnel-register');
-            setRegisterDropdownOpen(false);
-          }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-        >
-          Staff
-        </button>
-        <button
-          onClick={() => {
-            navigate('/personnel-register?tab=categories');
-            setRegisterDropdownOpen(false);
-          }}
-          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-        >
-          Staff - Categories
-        </button>
+                    <button
+                      onClick={() => {
+                        navigate('/suppliers');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Suppliers
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/wage-types');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Wage types and codes
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/personnel-register');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Staff
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/personnel-register?tab=categories');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Staff - Categories
+                    </button>
                     <button
                       onClick={() => {
                         console.log('Project button clicked, navigating to /project-management');
@@ -435,10 +435,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           </div>
 
           <LanguageSwitch />
-          
+
           {/* Settings Button */}
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={() => setSettingsModalOpen(true)}
             className="flex items-center gap-2"
@@ -446,11 +446,11 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           >
             <Settings className="w-4 h-4" />
           </Button>
-          
+
           <Button variant="ghost" size="sm">
             <Bell className="w-4 h-4" />
           </Button>
-          
+
           <div className="flex items-center space-x-3">
             <div className="hidden sm:flex items-center space-x-2">
               <img
@@ -463,35 +463,34 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 <div className="flex items-center space-x-2">
                   <p className="text-xs text-gray-600">{currentUser.email}</p>
                   {currentUser.role && (
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      currentUser.role === 'admin' ? 'bg-red-100 text-red-800' :
-                      currentUser.role === 'foundation_owner' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${currentUser.role === 'admin' ? 'bg-red-100 text-red-800' :
+                        currentUser.role === 'foundation_owner' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
                       {currentUser.role}
                     </span>
                   )}
                 </div>
               </div>
             </div>
-            
+
             <img
               src={currentUser.avatar_url || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150'}
               alt={currentUser.full_name}
               className="w-8 h-8 rounded-full sm:hidden"
             />
-            
+
             <Button variant="ghost" size="sm" onClick={onLogout}>
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </div>
-      
+
       {/* Settings Modal */}
-      <SettingsModal 
-        isOpen={settingsModalOpen} 
-        onClose={() => setSettingsModalOpen(false)} 
+      <SettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
       />
     </header>
   );

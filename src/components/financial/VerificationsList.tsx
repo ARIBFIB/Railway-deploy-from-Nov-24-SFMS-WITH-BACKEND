@@ -21,6 +21,7 @@ import {
   Pin,
   X
 } from 'lucide-react';
+import { RegistrationTemplateService, type RegistrationTemplate } from '../../services/registrationTemplateService';
 
 // Remove the old interface as we're now using the one from the service
 
@@ -66,30 +67,26 @@ export const VerificationsList: React.FC = () => {
     }
   ]);
 
+  // Registration templates state
+  const [registrationTemplates, setRegistrationTemplates] = useState<RegistrationTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<RegistrationTemplate | null>(null);
+  const [selectedReceiptTemplate, setSelectedReceiptTemplate] = useState<RegistrationTemplate | null>(null);
+
   // Daily cash register form state
   const [cashRegisterData, setCashRegisterData] = useState({
-    template: 'Daily receipts example with VAT excl',
-    accountingDate: '2025-01-15',
-    verificationDescription: 'voucher desc',
-    sale1: '',
-    payment1: '',
-    socket1: '',
+    templateId: '',
+    accountingDate: new Date().toISOString().split('T')[0],
+    verificationDescription: '',
+    entryValues: {} as Record<string, string>,
     comment: ''
   });
 
   // Register receipt form state
   const [receiptData, setReceiptData] = useState({
-    template: 'Miscellaneous expenses',
-    accountingDate: '',
-    verificationDescription: 'Utlägg',
-    cash: '',
-    short: '',
-    officeSupplies: '',
-    coffeeBread: '',
-    shipping: '',
-    consumables1: '',
-    consumables2: '',
-    otherPremisesCosts: '',
+    templateId: '',
+    accountingDate: new Date().toISOString().split('T')[0],
+    verificationDescription: '',
+    entryValues: {} as Record<string, string>,
     comment: ''
   });
 
@@ -195,6 +192,66 @@ export const VerificationsList: React.FC = () => {
   const refreshVerifications = async () => {
     console.log('🔄 Refreshing verifications...');
     await loadVerifications();
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const templates = await RegistrationTemplateService.getTemplates();
+      const dailyCashTemplates = templates.filter(t => t.templateType === 'Daily cash register');
+      const receiptTemplates = templates.filter(t => t.templateType === 'Receipt');
+
+      setRegistrationTemplates(templates);
+
+      // If there are daily cash templates and none selected, select the first one
+      if (dailyCashTemplates.length > 0 && !cashRegisterData.templateId) {
+        handleTemplateSelection(dailyCashTemplates[0].id, templates);
+      }
+
+      // If there are receipt templates and none selected, select the first one
+      if (receiptTemplates.length > 0 && !receiptData.templateId) {
+        handleReceiptTemplateSelection(receiptTemplates[0].id, templates);
+      }
+    } catch (err) {
+      console.error('Failed to load registration templates:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const handleTemplateSelection = (templateId: string, templatesList = registrationTemplates) => {
+    const template = templatesList.find(t => t.id === templateId);
+    if (template) {
+      setSelectedTemplate(template);
+      setCashRegisterData(prev => ({
+        ...prev,
+        templateId,
+        verificationDescription: template.verificationDescription || prev.verificationDescription,
+        // Initialize entry values for all sale entries in the template
+        entryValues: template.saleEntries.reduce((acc, entry) => {
+          acc[entry.id] = '';
+          return acc;
+        }, {} as Record<string, string>)
+      }));
+    }
+  };
+
+  const handleReceiptTemplateSelection = (templateId: string, templatesList = registrationTemplates) => {
+    const template = templatesList.find(t => t.id === templateId);
+    if (template) {
+      setSelectedReceiptTemplate(template);
+      setReceiptData(prev => ({
+        ...prev,
+        templateId,
+        verificationDescription: template.verificationDescription || prev.verificationDescription,
+        // Initialize entry values for all sale entries in the template
+        entryValues: template.saleEntries.reduce((acc, entry) => {
+          acc[entry.id] = '';
+          return acc;
+        }, {} as Record<string, string>)
+      }));
+    }
   };
 
   // Real-time data synchronization function
@@ -310,7 +367,97 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handlePrintList = () => {
-    console.log('Print list clicked');
+    // Create a printable version of the verifications list
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Verifications List</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              color: #000;
+            }
+            h1 {
+              text-align: center;
+              margin-bottom: 20px;
+              font-size: 24px;
+            }
+            .info {
+              margin-bottom: 20px;
+              font-size: 12px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+              font-size: 11px;
+            }
+            th {
+              background-color: #f3f4f6;
+              font-weight: bold;
+              text-transform: uppercase;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            @media print {
+              body { padding: 10px; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>VERIFICATIONS LIST</h1>
+          <div class="info">
+            <p><strong>Print Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p><strong>Total Verifications:</strong> ${currentVerifications.length}</p>
+            ${verificationSeries !== 'all' ? `<p><strong>Series Filter:</strong> ${verificationSeries}</p>` : ''}
+            ${searchTerm ? `<p><strong>Search:</strong> ${searchTerm}</p>` : ''}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Verification Number</th>
+                <th>Accounting Date</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${currentVerifications.map(v => `
+                <tr>
+                  <td>${v.verification_number}</td>
+                  <td>${v.accounting_date}</td>
+                  <td>${v.description || 'No description'}</td>
+                  <td>${v.status}</td>
+                  <td>${v.amount?.toFixed(2) || '0.00'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   const handleSearchAmount = () => {
@@ -361,15 +508,26 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handleClearForm = () => {
-    setCashRegisterData({
-      template: 'Daily receipts example with VAT excl',
-      accountingDate: '2025-01-15',
-      verificationDescription: 'voucher desc',
-      sale1: '',
-      payment1: '',
-      socket1: '',
-      comment: ''
-    });
+    if (selectedTemplate) {
+      setCashRegisterData({
+        templateId: selectedTemplate.id,
+        accountingDate: new Date().toISOString().split('T')[0],
+        verificationDescription: selectedTemplate.verificationDescription || '',
+        entryValues: selectedTemplate.saleEntries.reduce((acc, entry) => {
+          acc[entry.id] = '';
+          return acc;
+        }, {} as Record<string, string>),
+        comment: ''
+      });
+    } else {
+      setCashRegisterData({
+        templateId: '',
+        accountingDate: new Date().toISOString().split('T')[0],
+        verificationDescription: '',
+        entryValues: {},
+        comment: ''
+      });
+    }
   };
 
   const handleBookAndPrint = () => {
@@ -388,20 +546,26 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handleClearReceiptForm = () => {
-    setReceiptData({
-      template: 'Miscellaneous expenses',
-      accountingDate: '',
-      verificationDescription: 'Utlägg',
-      cash: '',
-      short: '',
-      officeSupplies: '',
-      coffeeBread: '',
-      shipping: '',
-      consumables1: '',
-      consumables2: '',
-      otherPremisesCosts: '',
-      comment: ''
-    });
+    if (selectedReceiptTemplate) {
+      setReceiptData({
+        templateId: selectedReceiptTemplate.id,
+        accountingDate: new Date().toISOString().split('T')[0],
+        verificationDescription: selectedReceiptTemplate.verificationDescription || '',
+        entryValues: selectedReceiptTemplate.saleEntries.reduce((acc, entry) => {
+          acc[entry.id] = '';
+          return acc;
+        }, {} as Record<string, string>),
+        comment: ''
+      });
+    } else {
+      setReceiptData({
+        templateId: '',
+        accountingDate: new Date().toISOString().split('T')[0],
+        verificationDescription: '',
+        entryValues: {},
+        comment: ''
+      });
+    }
   };
 
   const handleBookReceipt = () => {
@@ -790,7 +954,15 @@ export const VerificationsList: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
-                          <ExternalLink className="w-4 h-4 text-gray-600" />
+                          <a
+                            href={`/financial/account-analysis?verificationId=${verification.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block hover:text-blue-600 transition-colors"
+                            title="Open Account Analysis Report"
+                          >
+                            <ExternalLink className="w-4 h-4 text-gray-600 hover:text-blue-600" />
+                          </a>
                         </td>
                       </tr>
                     ))
@@ -838,10 +1010,12 @@ export const VerificationsList: React.FC = () => {
           {/* Main Title/Status Bar */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">NEW DAILY RECEIPTS EXAMPLE WITH VAT EXCL</h1>
+              <h1 className="text-2xl font-bold text-gray-900 uppercase">
+                {selectedTemplate ? selectedTemplate.name : 'REGISTER DAILY CASH'}
+              </h1>
             </div>
             <div className="text-sm font-semibold text-gray-700">
-              VERSION NO.: F 8*
+              VERSION NO.: {selectedTemplate ? selectedTemplate.verificationSeries : 'F'} *
             </div>
           </div>
 
@@ -851,13 +1025,14 @@ export const VerificationsList: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Template</label>
               <select
-                value={cashRegisterData.template}
-                onChange={(e) => handleCashRegisterChange('template', e.target.value)}
+                value={cashRegisterData.templateId}
+                onChange={(e) => handleTemplateSelection(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Daily receipts example with VAT excl">Daily receipts example with VAT excl</option>
-                <option value="Daily receipts with VAT incl">Daily receipts with VAT incl</option>
-                <option value="Custom template">Custom template</option>
+                <option value="">Select a template</option>
+                {registrationTemplates.map(template => (
+                  <option key={template.id} value={template.id}>{template.name}</option>
+                ))}
               </select>
             </div>
 
@@ -886,44 +1061,53 @@ export const VerificationsList: React.FC = () => {
 
             {/* Sales Section */}
             <div className="bg-white rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Title Sales</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedTemplate ? selectedTemplate.headingSales : 'Title Sales'}
+              </h3>
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[80px]">sale 1</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={cashRegisterData.sale1}
-                      onChange={(e) => handleCashRegisterChange('sale1', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
+                {selectedTemplate ? (
+                  selectedTemplate.saleEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-4">
+                      <label className="text-sm font-medium text-gray-700 min-w-[120px]">{entry.text}</label>
+                      <div className="flex-1 relative">
+                        <Input
+                          value={cashRegisterData.entryValues[entry.id] || ''}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setCashRegisterData(prev => ({
+                              ...prev,
+                              entryValues: {
+                                ...prev.entryValues,
+                                [entry.id]: newValue
+                              }
+                            }));
+                          }}
+                          className="pr-10"
+                        />
+                        <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500">No template selected or no entries found.</div>
+                )}
                 <div className="text-right">
-                  <span className="text-lg font-semibold text-gray-900">0.00</span>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {Object.values(cashRegisterData.entryValues)
+                      .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+                      .toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Payment Section */}
             <div className="bg-white rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Title Payment</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[80px]">payment 1</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={cashRegisterData.payment1}
-                      onChange={(e) => handleCashRegisterChange('payment1', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-semibold text-gray-900">0.00</span>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedTemplate ? selectedTemplate.headingPaymentMethod : 'Title Payment'}
+              </h3>
+              {/* Since the template only seems to have saleEntries, we might just show a static placeholder or entries tagged for payment if that existed. 
+                  For now we'll stick to the heading being dynamic as per User Request. */}
             </div>
 
             {/* Difference */}
@@ -939,23 +1123,9 @@ export const VerificationsList: React.FC = () => {
 
             {/* Withdrawal Section */}
             <div className="bg-white rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Title Withdrawal</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[80px]">socket 1</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={cashRegisterData.socket1}
-                      onChange={(e) => handleCashRegisterChange('socket1', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-semibold text-gray-900">0.00</span>
-                </div>
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedTemplate ? selectedTemplate.headingWithdrawal : 'Title Withdrawal'}
+              </h3>
             </div>
 
             {/* Cash Reconciliation */}
@@ -1015,10 +1185,12 @@ export const VerificationsList: React.FC = () => {
           {/* Main Title and Version */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">NEW MISCELLANEOUS EXPENSES</h1>
+              <h1 className="text-2xl font-bold text-gray-900 uppercase">
+                {selectedReceiptTemplate ? selectedReceiptTemplate.name : 'REGISTER RECEIPT'}
+              </h1>
             </div>
             <div className="text-sm font-semibold text-gray-700">
-              VERSION NO.: K 2*
+              VERSION NO.: {selectedReceiptTemplate ? selectedReceiptTemplate.verificationSeries : 'K'} *
             </div>
           </div>
 
@@ -1028,14 +1200,14 @@ export const VerificationsList: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Template</label>
               <select
-                value={receiptData.template}
-                onChange={(e) => handleReceiptChange('template', e.target.value)}
+                value={receiptData.templateId}
+                onChange={(e) => handleReceiptTemplateSelection(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Miscellaneous expenses">Miscellaneous expenses</option>
-                <option value="Travel expenses">Travel expenses</option>
-                <option value="Office expenses">Office expenses</option>
-                <option value="Custom template">Custom template</option>
+                <option value="">Select a template</option>
+                {registrationTemplates.filter(t => t.templateType === 'Receipt').map(template => (
+                  <option key={template.id} value={template.id}>{template.name}</option>
+                ))}
               </select>
             </div>
 
@@ -1062,116 +1234,51 @@ export const VerificationsList: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Method Section */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment method</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[60px]">Cash</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.cash}
-                      onChange={(e) => handleReceiptChange('cash', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[60px]">Short</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.short}
-                      onChange={(e) => handleReceiptChange('short', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-semibold text-gray-900">0.00</span>
-                </div>
-              </div>
-            </div>
 
             {/* Costs incl. VAT Section */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Costs incl. VAT</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {selectedReceiptTemplate ? selectedReceiptTemplate.headingSales : 'Costs incl. VAT'}
+              </h3>
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Office supplies</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.officeSupplies}
-                      onChange={(e) => handleReceiptChange('officeSupplies', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Coffee bread</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.coffeeBread}
-                      onChange={(e) => handleReceiptChange('coffeeBread', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Shipping</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.shipping}
-                      onChange={(e) => handleReceiptChange('shipping', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Consumables</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.consumables1}
-                      onChange={(e) => handleReceiptChange('consumables1', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Consumables</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.consumables2}
-                      onChange={(e) => handleReceiptChange('consumables2', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-700 min-w-[120px]">Other premises costs</label>
-                  <div className="flex-1 relative">
-                    <Input
-                      value={receiptData.otherPremisesCosts}
-                      onChange={(e) => handleReceiptChange('otherPremisesCosts', e.target.value)}
-                      className="pr-10"
-                    />
-                    <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  </div>
-                </div>
+                {selectedReceiptTemplate ? (
+                  selectedReceiptTemplate.saleEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-4">
+                      <label className="text-sm font-medium text-gray-700 min-w-[120px]">{entry.text}</label>
+                      <div className="flex-1 relative">
+                        <Input
+                          value={receiptData.entryValues[entry.id] || ''}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setReceiptData(prev => ({
+                              ...prev,
+                              entryValues: {
+                                ...prev.entryValues,
+                                [entry.id]: newValue
+                              }
+                            }));
+                          }}
+                          className="pr-10"
+                        />
+                        <Pin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500">No template selected or no entries found.</div>
+                )}
                 <div className="text-right">
-                  <span className="text-lg font-semibold text-gray-900">0.00</span>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {Object.values(receiptData.entryValues)
+                      .reduce((sum, val) => sum + (parseFloat(val) || 0), 0)
+                      .toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Comment Section */}
-            <div>
+            <div className="bg-white rounded-lg p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
               <textarea
                 value={receiptData.comment}
@@ -1483,6 +1590,6 @@ export const VerificationsList: React.FC = () => {
         }}
         onVerificationCreated={handleVerificationCreated}
       />
-    </div>
+    </div >
   );
 };

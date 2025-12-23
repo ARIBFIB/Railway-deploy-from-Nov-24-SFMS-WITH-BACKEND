@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { X, Plus, Calendar, Trash2, Copy, Paperclip, ChevronDown, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Calendar, Trash2, Copy, Paperclip, ChevronDown, Upload, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { AccountService, type Account } from '../../services/accountService';
 import { VerificationService, type CreateVerificationData, type VerificationEntry } from '../../services/verificationService';
 
@@ -240,6 +240,30 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       };
       setAccountEntries(prev => [...prev, newEntry]);
     }
+  };
+
+  // Drag and drop handlers
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+
+  const onDragStart = (index: number) => {
+    setDraggedItemIndex(index);
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === index) return;
+
+    const newEntries = [...accountEntries];
+    const draggedItem = newEntries[draggedItemIndex];
+    newEntries.splice(draggedItemIndex, 1);
+    newEntries.splice(index, 0, draggedItem);
+
+    setDraggedItemIndex(index);
+    setAccountEntries(newEntries);
+  };
+
+  const onDragEnd = () => {
+    setDraggedItemIndex(null);
   };
 
   const handleSave = async () => {
@@ -579,8 +603,15 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {accountEntries.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-gray-50">
+                  {accountEntries.map((entry, index) => (
+                    <tr
+                      key={entry.id}
+                      draggable
+                      onDragStart={() => onDragStart(index)}
+                      onDragEnd={onDragEnd}
+                      onDragOver={(e) => onDragOver(e, index)}
+                      className={`hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50' : ''}`}
+                    >
                       <td className="px-4 py-3">
                         <div className="relative">
                           <div className="flex">
@@ -601,39 +632,72 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                           </div>
 
                           {showAccountDropdown[entry.id] && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                              {accounts
-                                .filter(acc =>
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                              {/* Create Account Button - Top Right */}
+                              <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center justify-between">
+                                <span className="text-xs font-semibold text-gray-500 uppercase">Select Account</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Close the dropdown
+                                    setShowAccountDropdown({});
+                                    // Close the verification form
+                                    onClose();
+                                    // Navigate to Financial page with bookkeeping tab
+                                    // Use setTimeout to ensure form closes first
+                                    setTimeout(() => {
+                                      const currentPath = window.location.pathname;
+                                      if (currentPath !== '/financial') {
+                                        window.location.href = '/financial?tab=bookkeeping';
+                                      } else {
+                                        // If already on financial page, just update the tab
+                                        const url = new URL(window.location.href);
+                                        url.searchParams.set('tab', 'bookkeeping');
+                                        window.history.pushState({}, '', url);
+                                        window.location.reload();
+                                      }
+                                    }, 100);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  New Account
+                                </button>
+                              </div>
+
+                              {/* Account List */}
+                              <div className="max-h-48 overflow-auto">
+                                {accounts
+                                  .filter(acc =>
+                                    acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
+                                    acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
+                                  )
+                                  .map((account) => (
+                                    <div
+                                      key={account.id}
+                                      onClick={() => handleAccountSelect(entry.id, account)}
+                                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                    >
+                                      <div className="font-medium text-sm">{account.account_number}</div>
+                                      <div className="text-xs text-gray-600">{account.account_name}</div>
+                                    </div>
+                                  ))}
+                                {accounts.filter(acc =>
                                   acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
                                   acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
-                                )
-                                .map((account) => (
-                                  <div
-                                    key={account.id}
-                                    onClick={() => handleAccountSelect(entry.id, account)}
-                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  >
-                                    <div className="font-medium text-sm">{account.account_number}</div>
-                                    <div className="text-xs text-gray-600">{account.account_name}</div>
-                                  </div>
-                                ))}
-                              {accounts.filter(acc =>
-                                acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
-                                acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
-                              ).length === 0 && (
-                                  <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
-                                )}
+                                ).length === 0 && (
+                                    <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
+                                  )}
+                              </div>
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Input
-                          type="text"
-                          value={entry.name}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'name', e.target.value)}
-                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                        />
+                        <div className="text-sm text-gray-700 px-3 py-2 bg-gray-50/50 rounded-md border border-transparent truncate" title={entry.name}>
+                          {entry.name || <span className="text-gray-400 italic text-xs">Auto-filled</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <Input
@@ -644,51 +708,41 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                         />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={entry.debit}
-                            onChange={(e) => handleAccountEntryChange(entry.id, 'debit', e.target.value)}
-                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                          />
-                          <Paperclip className="w-4 h-4 text-gray-400" />
-                          <Trash2 className="w-4 h-4 text-gray-400" />
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={entry.debit}
+                          onChange={(e) => handleAccountEntryChange(entry.id, 'debit', e.target.value)}
+                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                        />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={entry.credit}
-                            onChange={(e) => handleAccountEntryChange(entry.id, 'credit', e.target.value)}
-                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                          />
-                          <Paperclip className="w-4 h-4 text-gray-400" />
-                          <Trash2 className="w-4 h-4 text-gray-400" />
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={entry.credit}
+                          onChange={(e) => handleAccountEntryChange(entry.id, 'credit', e.target.value)}
+                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                        />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={entry.balance}
-                            onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
-                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                            readOnly
-                          />
-                          <Paperclip className="w-4 h-4 text-gray-400" />
-                          <Trash2 className="w-4 h-4 text-gray-400" />
-                          <Plus
-                            className="w-4 h-4 text-green-600 cursor-pointer hover:text-green-800"
-                            onClick={addAccountEntry}
-                          />
-                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={entry.balance}
+                          onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
+                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                          readOnly
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
+                          <div
+                            className="cursor-move text-gray-400 hover:text-gray-600"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </div>
                           <button
                             onClick={() => duplicateAccountEntry(entry.id)}
                             className="text-blue-600 hover:text-blue-800"

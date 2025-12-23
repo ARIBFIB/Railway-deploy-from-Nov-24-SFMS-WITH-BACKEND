@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Search } from 'lucide-react';
+// Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 
 interface Account {
@@ -32,6 +34,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const navigate = useNavigate();
 
   // Fetch active accounts when dropdown opens
   useEffect(() => {
@@ -93,7 +96,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-          containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchTerm('');
       }
@@ -150,20 +153,28 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     setSearchTerm(inputValue);
-    
+
     // Update value immediately for manual entry
     onChange(inputValue, '');
     setSelectedAccount(null);
-    
+
     // If dropdown is open, update search filter
     if (isOpen) {
       // Search term is already updated, filteredAccounts will update via useEffect
     }
   };
 
+  const handleCreateNewAccount = () => {
+    // Determine the route based on the current context or fixed route
+    // The user requested navigating to "create new" which usually means the bookkeeping module
+    navigate('/financial?tab=bookkeeping');
+    setIsOpen(false);
+  };
+
   return (
     <>
       <div ref={containerRef} className={`relative ${className}`}>
+        {/* ... (existing input code) ... */}
         <div className="relative">
           <input
             ref={inputRef}
@@ -195,9 +206,9 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
       </div>
 
       {isOpen && (
-        <div 
+        <div
           ref={dropdownRef}
-          className="fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden"
+          className="fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col"
           style={{
             top: `${dropdownPosition.top}px`,
             left: `${dropdownPosition.left}px`,
@@ -205,6 +216,16 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
             minWidth: '200px'
           }}
         >
+          {/* Create new button - Sticky top */}
+          <div className="p-2 border-b border-gray-200 bg-gray-50 flex justify-end">
+            <button
+              onClick={handleCreateNewAccount}
+              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition-colors flex items-center"
+            >
+              + Create new
+            </button>
+          </div>
+
           {/* Search input */}
           <div className="p-2 border-b border-gray-200">
             <div className="relative">
@@ -221,7 +242,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
           </div>
 
           {/* Accounts list */}
-          <div className="overflow-y-auto max-h-64">
+          <div className="overflow-y-auto max-h-64 flex-grow">
             {loading ? (
               <div className="p-4 text-center text-sm text-gray-500">Loading accounts...</div>
             ) : filteredAccounts.length === 0 ? (
@@ -241,9 +262,8 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                     <tr
                       key={account.id}
                       onClick={() => handleSelectAccount(account)}
-                      className={`cursor-pointer hover:bg-green-50 ${
-                        selectedAccount?.id === account.id ? 'bg-green-100' : ''
-                      }`}
+                      className={`cursor-pointer hover:bg-green-50 ${selectedAccount?.id === account.id ? 'bg-green-100' : ''
+                        }`}
                     >
                       <td className="px-4 py-2 text-sm border-b border-gray-100">{account.account_number}</td>
                       <td className="px-4 py-2 text-sm border-b border-gray-100">{account.account_name}</td>

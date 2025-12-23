@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Search, ChevronRight, ChevronDown, Trash2, Edit, CheckCircle, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 import {
   fetchSupplierInvoiceSection,
@@ -952,6 +953,7 @@ interface AccountingTemplatesData {
   currentView: 'list' | 'form';
   editingTemplate: AccountingTemplate | null;
   isCreating: boolean;
+  verificationSeries?: VerificationSeriesItem[];
 }
 
 interface AccountingViewSettings {
@@ -1085,6 +1087,7 @@ interface RegistrationTemplatesData {
   currentView: 'list' | 'form';
   editingTemplate: RegistrationTemplate | null;
   isCreating: boolean;
+  verificationSeries?: VerificationSeriesItem[];
 }
 
 interface FinancialYear {
@@ -1549,26 +1552,28 @@ const settingsCategories: SettingsCategory[] = [
     id: 'accounting',
     name: 'ACCOUNTING',
     items: [
-      { id: 'facility-register-general', name: 'Facility register - General settings', route: '/settings/facility-register-general' },
-      { id: 'asset-register-types', name: 'Asset register - Asset types', route: '/settings/asset-register-types' },
-      { id: 'automatic-accounting', name: 'Automatic accounting', route: '/settings/automatic-accounting' },
-      { id: 'trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/trusted-senders-storage' },
+      { id: 'account-chart', name: 'Account chart', route: '/settings/account-chart' },
       { id: 'accounting-certificate-general', name: 'Accounting Certificate - General Settings', route: '/settings/accounting-certificate-general' },
       { id: 'accounting-certificate-notices', name: 'Accounting certificate - Notices', route: '/settings/accounting-certificate-notices' },
-      { id: 'accounting-default-accounts', name: 'Default accounts', route: '/settings/default-accounts' },
       { id: 'accounting-templates', name: 'Accounting templates', route: '/settings/accounting-templates' },
       { id: 'accounting-view', name: 'Accounting view', route: '/settings/accounting-view' },
-      { id: 'account-chart', name: 'Account chart', route: '/settings/account-chart' },
-      { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
-      { id: 'quantity-accounting', name: 'Quantity accounting', route: '/settings/quantity-accounting' },
-      { id: 'locking-period', name: 'Locking period', route: '/settings/locking-period' },
-      { id: 'vat', name: 'VAT', route: '/settings/vat' },
       { id: 'accruals', name: 'Accruals', route: '/settings/accruals' },
-      { id: 'project', name: 'Project', route: '/settings/project' },
-      { id: 'reports', name: 'Reports', route: '/settings/reports' },
-      { id: 'registration-templates', name: 'Registration templates', route: '/settings/registration-templates' },
+      { id: 'asset-register-types', name: 'Asset register - Asset types', route: '/settings/asset-register-types' },
+      { id: 'automatic-accounting', name: 'Automatic accounting', route: '/settings/automatic-accounting' },
+      { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
+      { id: 'accounting-default-accounts', name: 'Default accounts', route: '/settings/default-accounts' },
+      { id: 'facility-register-general', name: 'Assets Register - General Settings', route: '/settings/facility-register-general' },
       { id: 'financial-year', name: 'Financial year', route: '/settings/financial-year' },
-      { id: 'quick-texts', name: 'Quick texts', route: '/settings/quick-texts' }
+      { id: 'locking-period', name: 'Locking period', route: '/settings/locking-period' },
+      { id: 'project', name: 'Project', route: '/settings/project' },
+      { id: 'quantity-accounting', name: 'Quantity accounting', route: '/settings/quantity-accounting' },
+      { id: 'quick-texts', name: 'Quick texts', route: '/settings/quick-texts' },
+      { id: 'reconcile-account', name: 'Reconcile account', route: '/settings/reconcile-account' },
+      { id: 'registration-templates', name: 'Registration templates', route: '/settings/registration-templates' },
+      { id: 'reports', name: 'Reports', route: '/settings/reports' },
+      { id: 'trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/trusted-senders-storage' },
+      { id: 'vat', name: 'VAT', route: '/settings/vat' },
+      { id: 'verification-series', name: 'Verification series', route: '/settings/verification-series' }
     ],
     collapsibleSections: [
       {
@@ -1717,29 +1722,29 @@ const settingsCategories: SettingsCategory[] = [
     id: 'supplier-invoices',
     name: 'SUPPLIER INVOICES',
     items: [
+      { id: 'supplier-account-chart', name: 'Account chart', route: '/settings/supplier-account-chart' },
+      { id: 'supplier-accounting-templates', name: 'Accounting templates', route: '/settings/supplier-accounting-templates' },
+      { id: 'supplier-accruals', name: 'Accruals', route: '/settings/supplier-accruals' },
       { id: 'supplier-automatic-accounting', name: 'Automatic accounting', route: '/settings/supplier-automatic-accounting' },
-      { id: 'deviations-writeoffs', name: 'Deviations/Write-offs', route: '/settings/deviations-writeoffs' },
-      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
-      { id: 'supplier-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/supplier-trusted-senders-storage' },
+      { id: 'supplier-cost-centers', name: 'Cost centers', route: '/settings/supplier-cost-centers' },
       { id: 'coverage', name: 'Coverage', route: '/settings/coverage' },
+      { id: 'supplier-currency', name: 'Currency', route: '/settings/supplier-currency' },
+      { id: 'supplier-default-accounts', name: 'Default accounts', route: '/settings/supplier-default-accounts' },
+      { id: 'deviations-writeoffs', name: 'Deviations/Write-offs', route: '/settings/deviations-writeoffs' },
       { id: 'digital-flow-einvoice', name: 'Digital flow - E-invoice', route: '/settings/digital-flow-einvoice' },
       { id: 'digital-flow-interpretation', name: 'Digital flow - Invoice interpretation', route: '/settings/digital-flow-interpretation' },
-      { id: 'supplier-default-accounts', name: 'Default accounts', route: '/settings/supplier-default-accounts' },
-      { id: 'supplier-accounting-templates', name: 'Accounting templates', route: '/settings/supplier-accounting-templates' },
-      { id: 'supplier-account-chart', name: 'Account chart', route: '/settings/supplier-account-chart' },
-      { id: 'supplier-cost-centers', name: 'Cost centers', route: '/settings/supplier-cost-centers' },
-      { id: 'supplier-invoice-certificate', name: 'Supplier Invoice Certificate - General Settings', route: '/settings/supplier-invoice-certificate' },
-      { id: 'supplier-invoice-test', name: 'Supplier invoice test - Notifications', route: '/settings/supplier-invoice-test' },
-      { id: 'supplier-vat', name: 'VAT', route: '/settings/supplier-vat' },
+      { id: 'supplier-financial-year', name: 'Financial year', route: '/settings/supplier-financial-year' },
       { id: 'number-sequences-ocr', name: 'Number sequences and OCR', route: '/settings/number-sequences-ocr' },
-      { id: 'supplier-accruals', name: 'Accruals', route: '/settings/supplier-accruals' },
+      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
       { id: 'supplier-price-lists-units', name: 'Price lists and units', route: '/settings/supplier-price-lists-units' },
       { id: 'supplier-project', name: 'Project', route: '/settings/supplier-project' },
-      { id: 'supplier-reports', name: 'Reports', route: '/settings/supplier-reports' },
-      { id: 'supplier-registration-view', name: 'Registration view', route: '/settings/supplier-registration-view' },
-      { id: 'supplier-financial-year', name: 'Financial year', route: '/settings/supplier-financial-year' },
       { id: 'supplier-quick-texts', name: 'Quick texts', route: '/settings/supplier-quick-texts' },
-      { id: 'supplier-currency', name: 'Currency', route: '/settings/supplier-currency' },
+      { id: 'supplier-registration-view', name: 'Registration view', route: '/settings/supplier-registration-view' },
+      { id: 'supplier-reports', name: 'Reports', route: '/settings/supplier-reports' },
+      { id: 'supplier-invoice-certificate', name: 'Supplier Invoice Certificate - General Settings', route: '/settings/supplier-invoice-certificate' },
+      { id: 'supplier-invoice-test', name: 'Supplier invoice test - Notifications', route: '/settings/supplier-invoice-test' },
+      { id: 'supplier-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/supplier-trusted-senders-storage' },
+      { id: 'supplier-vat', name: 'VAT', route: '/settings/supplier-vat' },
       { id: 'supplier-verification-series', name: 'Verification series', route: '/settings/supplier-verification-series' }
     ]
   },
@@ -1747,56 +1752,56 @@ const settingsCategories: SettingsCategory[] = [
     id: 'quote-order',
     name: 'QUOTE/ORDER',
     items: [
-      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
-      { id: 'coverage', name: 'Coverage', route: '/settings/coverage' },
-      { id: 'email-document', name: 'Email document', route: '/settings/email-document' },
-      { id: 'labels', name: 'Labels', route: '/settings/labels' },
-      { id: 'housework', name: 'Housework', route: '/settings/housework' },
       { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
+      { id: 'coverage', name: 'Coverage', route: '/settings/coverage' },
       { id: 'credit-warning', name: 'Credit warning', route: '/settings/credit-warning' },
+      { id: 'currency', name: 'Currency', route: '/settings/currency' },
       { id: 'delivery-method-terms', name: 'Delivery method and delivery terms', route: '/settings/delivery-method-terms' },
-      { id: 'vat', name: 'VAT', route: '/settings/vat' },
-      { id: 'number-sequences-ocr', name: 'Number sequences and OCR', route: '/settings/number-sequences-ocr' },
-      { id: 'quote-order-texts', name: 'Quote and order texts', route: '/settings/quote-order-texts' },
-      { id: 'price-lists-units', name: 'Price lists and units', route: '/settings/price-lists-units' },
-      { id: 'project', name: 'Project', route: '/settings/project' },
-      { id: 'reports', name: 'Reports', route: '/settings/reports' },
-      { id: 'registration-view', name: 'Registration view', route: '/settings/registration-view' },
+      { id: 'email-document', name: 'Email document', route: '/settings/email-document' },
       { id: 'financial-year', name: 'Financial year', route: '/settings/financial-year' },
+      { id: 'housework', name: 'Housework', route: '/settings/housework' },
+      { id: 'labels', name: 'Labels', route: '/settings/labels' },
+      { id: 'number-sequences-ocr', name: 'Number sequences and OCR', route: '/settings/number-sequences-ocr' },
+      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
+      { id: 'price-lists-units', name: 'Price lists and units', route: '/settings/price-lists-units' },
       { id: 'printouts', name: 'Printouts', route: '/settings/printouts' },
-      { id: 'currency', name: 'Currency', route: '/settings/currency' }
+      { id: 'project', name: 'Project', route: '/settings/project' },
+      { id: 'quote-order-texts', name: 'Quote and order texts', route: '/settings/quote-order-texts' },
+      { id: 'registration-view', name: 'Registration view', route: '/settings/registration-view' },
+      { id: 'reports', name: 'Reports', route: '/settings/reports' },
+      { id: 'vat', name: 'VAT', route: '/settings/vat' }
     ]
   },
   {
     id: 'billing',
     name: 'BILLING',
     items: [
-      { id: 'deviations-writeoffs', name: 'Deviations/Write-offs', route: '/settings/deviations-writeoffs' },
-      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
-      { id: 'billing-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/billing-trusted-senders-storage' },
+      { id: 'account-chart', name: 'Account chart', route: '/settings/account-chart' },
+      { id: 'billing-accruals', name: 'Accruals', route: '/settings/billing-accruals' },
+      { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
       { id: 'billing-coverage', name: 'Coverage', route: '/settings/billing-coverage' },
+      { id: 'credit-warning', name: 'Credit warning', route: '/settings/credit-warning' },
+      { id: 'currency', name: 'Currency', route: '/settings/currency' },
+      { id: 'delivery-method-terms', name: 'Delivery method and delivery terms', route: '/settings/delivery-method-terms' },
+      { id: 'deviations-writeoffs', name: 'Deviations/Write-offs', route: '/settings/deviations-writeoffs' },
       { id: 'billing-digital-flow-einvoice', name: 'Digital flow - E-invoice', route: '/settings/billing-digital-flow-einvoice' },
       { id: 'billing-email-document', name: 'Email document', route: '/settings/billing-email-document' },
-      { id: 'billing-labels', name: 'Labels', route: '/settings/billing-labels' },
-      { id: 'invoice-texts', name: 'Invoice texts', route: '/settings/invoice-texts' },
-      { id: 'housework', name: 'Housework', route: '/settings/housework' },
-      { id: 'account-chart', name: 'Account chart', route: '/settings/account-chart' },
-      { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
-      { id: 'credit-warning', name: 'Credit warning', route: '/settings/credit-warning' },
-      { id: 'delivery-method-terms', name: 'Delivery method and delivery terms', route: '/settings/delivery-method-terms' },
-      { id: 'billing-vat', name: 'VAT', route: '/settings/billing-vat' },
-      { id: 'number-sequences-ocr', name: 'Number sequences and OCR', route: '/settings/number-sequences-ocr' },
-      { id: 'billing-accruals', name: 'Accruals', route: '/settings/billing-accruals' },
-      { id: 'price-lists-units', name: 'Price lists and units', route: '/settings/price-lists-units' },
-      { id: 'project', name: 'Project', route: '/settings/project' },
-      { id: 'reminders', name: 'Reminders', route: '/settings/reminders' },
-      { id: 'reports', name: 'Reports', route: '/settings/reports' },
-      { id: 'registration-view', name: 'Registration view', route: '/settings/registration-view' },
       { id: 'billing-financial-year', name: 'Financial year', route: '/settings/billing-financial-year' },
+      { id: 'housework', name: 'Housework', route: '/settings/housework' },
       { id: 'interest-invoicing', name: 'Interest invoicing', route: '/settings/interest-invoicing' },
+      { id: 'invoice-texts', name: 'Invoice texts', route: '/settings/invoice-texts' },
+      { id: 'billing-labels', name: 'Labels', route: '/settings/billing-labels' },
+      { id: 'number-sequences-ocr', name: 'Number sequences and OCR', route: '/settings/number-sequences-ocr' },
+      { id: 'payment-methods-terms', name: 'Payment methods and payment terms', route: '/settings/payment-methods-terms' },
+      { id: 'price-lists-units', name: 'Price lists and units', route: '/settings/price-lists-units' },
       { id: 'printouts', name: 'Printouts', route: '/settings/printouts' },
       { id: 'printing-service', name: 'Printing service', route: '/settings/printing-service' },
-      { id: 'currency', name: 'Currency', route: '/settings/currency' },
+      { id: 'project', name: 'Project', route: '/settings/project' },
+      { id: 'registration-view', name: 'Registration view', route: '/settings/registration-view' },
+      { id: 'reminders', name: 'Reminders', route: '/settings/reminders' },
+      { id: 'reports', name: 'Reports', route: '/settings/reports' },
+      { id: 'billing-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/billing-trusted-senders-storage' },
+      { id: 'billing-vat', name: 'VAT', route: '/settings/billing-vat' },
       { id: 'billing-verification-series', name: 'Verification series', route: '/settings/billing-verification-series' }
     ],
     collapsibleSections: [
@@ -1936,37 +1941,40 @@ const settingsCategories: SettingsCategory[] = [
     id: 'salary',
     name: 'SALARY',
     items: [
-      { id: 'employee', name: 'Employee', route: '/settings/employee' },
-      { id: 'employer-certificate', name: 'Employer certificate', route: '/settings/employer-certificate' },
-      { id: 'short-time-working-hours', name: 'Short-time working hours/Working hours account', route: '/settings/short-time-working-hours' },
-      { id: 'certificate', name: 'Certificate', route: '/settings/certificate' },
       { id: 'accounting-settings', name: 'Accounting settings', route: '/settings/accounting-settings' },
       { id: 'building-permit', name: 'Building permit', route: '/settings/building-permit' },
+      { id: 'calendar', name: 'Calendar', route: '/settings/calendar' },
+      { id: 'certificate', name: 'Certificate', route: '/settings/certificate' },
       { id: 'collection', name: 'Collection', route: '/settings/collection' },
       { id: 'compensations', name: 'Compensations', route: '/settings/compensations' },
-      { id: 'forums', name: 'Forums', route: '/settings/forums' },
-      { id: 'distribution-templates', name: 'Distribution templates', route: '/settings/distribution-templates' },
-      { id: 'default-accounts', name: 'Default accounts', route: '/settings/default-accounts' },
-      { id: 'calendar', name: 'Calendar', route: '/settings/calendar' },
       { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
-      { id: 'pay-slip', name: 'Pay slip', route: '/settings/pay-slip' },
-      { id: 'pay-periods', name: 'Pay periods', route: '/settings/pay-periods' },
-      { id: 'salary-year', name: 'Salary year', route: '/settings/salary-year' },
-      { id: 'project', name: 'Project', route: '/settings/project' },
+      { id: 'salary-coverage', name: 'Coverage', route: '/settings/salary-coverage' },
+      { id: 'default-accounts', name: 'Default accounts', route: '/settings/default-accounts' },
+      { id: 'salary-digital-flow-einvoice', name: 'Digital flow - E-invoice', route: '/settings/salary-digital-flow-einvoice' },
+      { id: 'distribution-templates', name: 'Distribution templates', route: '/settings/distribution-templates' },
+      { id: 'employee', name: 'Employee', route: '/settings/employee' },
+      { id: 'employer-certificate', name: 'Employer certificate', route: '/settings/employer-certificate' },
       { id: 'financial-year', name: 'Financial year', route: '/settings/financial-year' },
-      { id: 'tax-employer-contributions', name: 'Tax and employer contributions', route: '/settings/tax-employer-contributions' },
+      { id: 'forums', name: 'Forums', route: '/settings/forums' },
+      { id: 'outlay', name: 'Outlay', route: '/settings/outlay' },
+      { id: 'pay-periods', name: 'Pay periods', route: '/settings/pay-periods' },
+      { id: 'pay-slip', name: 'Pay slip', route: '/settings/pay-slip' },
+      { id: 'project', name: 'Project', route: '/settings/project' },
+      { id: 'salary-year', name: 'Salary year', route: '/settings/salary-year' },
+      { id: 'short-time-working-hours', name: 'Short-time working hours/Working hours account', route: '/settings/short-time-working-hours' },
       { id: 'sorting', name: 'Sorting', route: '/settings/sorting' },
       { id: 'statistics', name: 'Statistics', route: '/settings/statistics' },
-      { id: 'outlay', name: 'Outlay', route: '/settings/outlay' },
-      { id: 'salary-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/salary-trusted-senders-storage' },
-      { id: 'salary-coverage', name: 'Coverage', route: '/settings/salary-coverage' },
-      { id: 'salary-digital-flow-einvoice', name: 'Digital flow - E-invoice', route: '/settings/salary-digital-flow-einvoice' }
+      { id: 'tax-employer-contributions', name: 'Tax and employer contributions', route: '/settings/tax-employer-contributions' },
+      { id: 'salary-trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/salary-trusted-senders-storage' }
     ]
   }
 ];
 
 // Accounting Templates Interface Component
-const AccountingTemplatesInterface: React.FC<{ scope?: 'accounting' | 'supplier' }> = ({ scope = 'accounting' }) => {
+const AccountingTemplatesInterface: React.FC<{
+  scope?: 'accounting' | 'supplier';
+  verificationSeries?: VerificationSeriesItem[];
+}> = ({ scope = 'accounting', verificationSeries = [] }) => {
   const [templatesData, setTemplatesData] = useState<AccountingTemplatesData>({
     templates: [],
     currentView: 'list',
@@ -1990,11 +1998,17 @@ const AccountingTemplatesInterface: React.FC<{ scope?: 'accounting' | 'supplier'
       isCreating: true,
       editingTemplate: null
     }));
+    const defaultSeries = (verificationSeries && verificationSeries.length > 0)
+      ? (verificationSeries.some(s => s.code === 'A')
+        ? 'A - Accounting'
+        : `${verificationSeries[0].code} - ${verificationSeries[0].name}`)
+      : 'A - Accounting';
+
     setFormData({
       code: '',
       name: '',
       type: 'Verification',
-      verificationSeries: 'A - Accounting',
+      verificationSeries: defaultSeries,
       description: '',
       transactions: []
     });
@@ -2358,11 +2372,11 @@ const AccountingTemplatesInterface: React.FC<{ scope?: 'accounting' | 'supplier'
             onChange={(e) => setFormData(prev => ({ ...prev, verificationSeries: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
-            <option value="A - Accounting">A - Accounting</option>
-            <option value="B - Customer invoices">B - Customer invoices</option>
-            <option value="C - Payments from customers">C - Payments from customers</option>
-            <option value="D - Supplier invoices">D - Supplier invoices</option>
-            <option value="E - Payments to suppliers">E - Payments to suppliers</option>
+            {verificationSeries.map((series) => (
+              <option key={series.id} value={series.code + ' - ' + series.name}>
+                {series.code} - {series.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -3115,7 +3129,7 @@ const AccountingFinancialYearInterface: React.FC<{
 
           {/* Account Chart */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Account chart</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Chart of Accounts</label>
             <select
               value={formData.accountChart || 'Same as previous'}
               onChange={(e) => setFormData(prev => ({ ...prev, accountChart: e.target.value }))}
@@ -7422,7 +7436,7 @@ const QuoteOrderFinancialYearInterface: React.FC = () => {
 
         {/* Account Chart */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Account chart</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Chart of Accounts</label>
           <select
             value={formData.accountChart || 'Same as previous'}
             onChange={(e) => setFormData(prev => ({ ...prev, accountChart: e.target.value }))}
@@ -13106,10 +13120,14 @@ const RegistrationTemplatesInterface: React.FC<{
       if (data.editingTemplate) {
         setFormData(data.editingTemplate);
       } else {
+        const defaultSeries = (data.verificationSeries && data.verificationSeries.length > 0)
+          ? (data.verificationSeries.some(s => s.code === 'F') ? 'F' : data.verificationSeries[0].code)
+          : 'F';
+
         setFormData({
           name: '',
           description: '',
-          verificationSeries: 'F',
+          verificationSeries: defaultSeries,
           type: 'Daily cash register',
           templateType: 'Daily cash register',
           verificationDescription: '',
@@ -13283,32 +13301,11 @@ const RegistrationTemplatesInterface: React.FC<{
                   onChange={(e) => setFormData(prev => ({ ...prev, verificationSeries: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  <option value="F">F</option>
-                  <option value="K">K</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="E">E</option>
-                  <option value="G">G</option>
-                  <option value="H">H</option>
-                  <option value="I">I</option>
-                  <option value="J">J</option>
-                  <option value="L">L</option>
-                  <option value="M">M</option>
-                  <option value="N">N</option>
-                  <option value="O">O</option>
-                  <option value="P">P</option>
-                  <option value="Q">Q</option>
-                  <option value="R">R</option>
-                  <option value="S">S</option>
-                  <option value="T">T</option>
-                  <option value="U">U</option>
-                  <option value="V">V</option>
-                  <option value="W">W</option>
-                  <option value="X">X</option>
-                  <option value="Y">Y</option>
-                  <option value="Z">Z</option>
+                  {(data.verificationSeries || []).map((series) => (
+                    <option key={series.id} value={series.code}>
+                      {series.code}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -15996,9 +15993,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   useEffect(() => {
     if (expandedSections['registration-templates']) {
       fetchRegistrationTemplates();
+      fetchVerificationSeriesSettings('accounting');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedSections['registration-templates']]);
+
+  useEffect(() => {
+    if (expandedSections['accounting-templates']) {
+      fetchVerificationSeriesSettings('accounting');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedSections['accounting-templates']]);
+
+  useEffect(() => {
+    if (expandedSections['supplier-accounting-templates']) {
+      fetchVerificationSeriesSettings('supplier');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedSections['supplier-accounting-templates']]);
 
   // Save handlers for all accounting settings
   const saveTrustedSendersStorage = async () => {
@@ -16848,6 +16860,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     // Special handling for quick-texts - expand the collapsible section
     if (itemId === 'quick-texts') {
       toggleSection('quick-texts');
+      return;
+    }
+
+    // Special handling for reconcile-account - expand the collapsible section
+    if (itemId === 'reconcile-account') {
+      toggleSection('reconcile-account');
       return;
     }
 
@@ -20113,7 +20131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {item.id === 'facility-register-general' && expandedSections['facility-register-general'] && (
                       <div className="border-b border-gray-100">
                         <div className="p-4">
-                          {/* Facility register interface */}
+                          {/* Assets Register interface */}
                           <div className="space-y-6">
                             {/* Proposed depreciation start date */}
                             <div>
@@ -21626,7 +21644,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {item.id === 'accounting-templates' && expandedSections['accounting-templates'] && (
                       <div className="border-b border-gray-100">
                         <div className="p-4">
-                          <AccountingTemplatesInterface scope="accounting" />
+                          <AccountingTemplatesInterface
+                            scope="accounting"
+                            verificationSeries={verificationSeriesData.filter(v => v.manualAccounting)}
+                          />
                         </div>
                       </div>
                     )}
@@ -21754,7 +21775,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                               <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center mr-3">
                                 <span className="text-white text-sm">✓</span>
                               </div>
-                              <h3 className="text-lg font-medium text-gray-900">Account chart</h3>
+                              <h3 className="text-lg font-medium text-gray-900">Chart of Accounts</h3>
                             </div>
 
                             {/* Content */}
@@ -21763,7 +21784,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 The chart of accounts can now be found under Register - Chart of accounts. You also enter opening balances and budgets for your various accounts in the chart of accounts.
                               </p>
                               <p className="text-sm text-gray-700">
-                                Go to: <a href="#" className="text-blue-600 underline hover:text-blue-800">Register - Chart of Accounts</a>
+                                Go to: <a 
+                                  onClick={() => navigate('/account-plan')} 
+                                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
+                                >
+                                  Register - Chart of Accounts
+                                </a>
                               </p>
                             </div>
                           </div>
@@ -22171,16 +22197,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                           onChange={() => handleAccrualsChange('accountingDate', 'specific')}
                                           className="mr-2"
                                         />
-                                        <label htmlFor="specific" className="text-sm text-gray-700">Every month the</label>
+                                        <label htmlFor="specific" className="text-sm text-gray-700">Every month on</label>
                                         {accrualsData.accountingDate === 'specific' && (
                                           <div className="ml-2 flex items-center">
-                                            <input
-                                              type="text"
+                                            <select
                                               value={accrualsData.specificDay}
                                               onChange={(e) => handleAccrualsChange('specificDay', e.target.value)}
                                               className="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                                            />
-                                            <span className="ml-1 text-gray-400">▼</span>
+                                            >
+                                              {[...Array(31)].map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>
+                                                  {i + 1}
+                                                </option>
+                                              ))}
+                                            </select>
                                           </div>
                                         )}
                                       </div>
@@ -22368,7 +22398,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       <div className="border-b border-gray-100">
                         <div className="p-4">
                           <RegistrationTemplatesInterface
-                            data={registrationTemplatesData}
+                            data={{ ...registrationTemplatesData, verificationSeries: verificationSeriesData.filter(v => v.manualAccounting) }}
                             onCreateNew={handleRegistrationTemplatesCreateNew}
                             onEditTemplate={handleRegistrationTemplatesEditTemplate}
                             onShowList={handleRegistrationTemplatesShowList}
@@ -22469,7 +22499,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         ) : (
                           <ChevronRight className="w-4 h-4 text-green-600 mr-3 flex-shrink-0" />
                         )}
-                        <span className="text-gray-700 text-sm">{section.title}</span>
+                        <span className="text-gray-900 font-medium">{section.title}</span>
                       </div>
                     </button>
 
@@ -23709,7 +23739,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {item.id === 'supplier-accounting-templates' && expandedSections['supplier-accounting-templates'] && (
                       <div className="border-b border-gray-100">
                         <div className="p-4">
-                          <AccountingTemplatesInterface scope="supplier" />
+                          <AccountingTemplatesInterface
+                            scope="supplier"
+                            verificationSeries={supplierVerificationSeriesData.filter(v => v.manualAccounting)}
+                          />
                         </div>
                       </div>
                     )}
@@ -23834,7 +23867,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                           onChange={(e) => handleSupplierAccrualsChange('accountingDate', e.target.value)}
                                           className="mr-2"
                                         />
-                                        <label htmlFor="every-month-the" className="text-sm text-gray-700">Every month the</label>
+                                        <label htmlFor="every-month-the" className="text-sm text-gray-700">Every month on</label>
                                         <input
                                           type="text"
                                           value={supplierAccrualsData.everyMonthThe}
@@ -25017,7 +25050,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                       onChange={(e) => handleBillingAccrualsChange('accountingDate', e.target.value)}
                                       className="mr-2"
                                     />
-                                    <label htmlFor="billing-every-month-the" className="text-sm text-gray-700">Every month the</label>
+                                    <label htmlFor="billing-every-month-the" className="text-sm text-gray-700">Every month on</label>
                                     <input
                                       type="text"
                                       value={billingAccrualsData.everyMonthThe}
@@ -25671,7 +25704,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                                     {/* Account Chart */}
                                     <div>
-                                      <label className="block text-sm font-medium text-gray-700 mb-2">Account chart</label>
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">Chart of Accounts</label>
                                       <select
                                         value={financialYearFormData.accountChart}
                                         onChange={(e) => setFinancialYearFormData(prev => ({ ...prev, accountChart: e.target.value }))}
@@ -26774,7 +26807,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 </div>
                                 <div>
                                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    Facility register
+                                    Assets Register
                                   </label>
                                   <select
                                     value={verificationSeriesSelections.billing['facility-register'] || 'G - Depreciation'}
@@ -27570,4 +27603,3 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     </div>
   );
 };
-

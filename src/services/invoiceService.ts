@@ -48,7 +48,12 @@ export interface InvoiceFilters {
 
 export class InvoiceService {
     static async getInvoices(filters: InvoiceFilters = {}): Promise<{ invoices: Invoice[], total: number }> {
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const foundationId = userData.foundationId || userData.foundation_id;
+
         const queryParams = new URLSearchParams();
+        queryParams.append('foundation_id', foundationId);
+
         if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
         if (filters.invoice_type && filters.invoice_type !== 'all') queryParams.append('invoice_type', filters.invoice_type);
         if (filters.customer_id) queryParams.append('customer_id', filters.customer_id);
@@ -85,7 +90,10 @@ export class InvoiceService {
     }
 
     static async getInvoiceById(id: string): Promise<Invoice> {
-        const response = await apiFetch(`/api/invoices/${id}`);
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const foundationId = userData.foundationId || userData.foundation_id;
+
+        const response = await apiFetch(`/api/invoices/${id}?foundation_id=${foundationId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch invoice');
         }
@@ -109,17 +117,22 @@ export class InvoiceService {
 
     static async createInvoice(data: CreateInvoiceData): Promise<Invoice> {
         // Map frontend data to backend expectations
-        // Backend expects: customer_id, items: [{..., vat_rate ...}]
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const foundationId = userData.foundationId || userData.foundation_id;
+
+        // Map types to lowercase
+        const invoiceType = data.invoice_type.toLowerCase();
+
         const payload = {
             ...data,
-            // If frontend sends 'tax_rate', map to 'vat_rate' for items
+            invoice_type: invoiceType,
             items: data.items.map(item => ({
                 ...item,
                 vat_rate: item.tax_rate
             }))
         };
 
-        const response = await apiFetch('/api/invoices', {
+        const response = await apiFetch(`/api/invoices?foundation_id=${foundationId}`, {
             method: 'POST',
             body: JSON.stringify(payload)
         });
@@ -134,7 +147,10 @@ export class InvoiceService {
     }
 
     static async deleteInvoice(id: string): Promise<void> {
-        const response = await apiFetch(`/api/invoices/${id}`, {
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const foundationId = userData.foundationId || userData.foundation_id;
+
+        const response = await apiFetch(`/api/invoices/${id}?foundation_id=${foundationId}`, {
             method: 'DELETE'
         });
         if (!response.ok) {
