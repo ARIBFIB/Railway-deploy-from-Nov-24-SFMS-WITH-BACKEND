@@ -1,6 +1,6 @@
 import { apiFetch } from '../utils/api';
 
-interface AccountingTemplate {
+export interface AccountingTemplate {
   id: string;
   code: string;
   name: string;
@@ -10,7 +10,7 @@ interface AccountingTemplate {
   transactions: AccountingTransaction[];
 }
 
-interface AccountingTransaction {
+export interface AccountingTransaction {
   id: string;
   account: string;
   transactionInfo: string;

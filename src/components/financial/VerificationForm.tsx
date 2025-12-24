@@ -6,7 +6,7 @@ import { AccountService, type Account } from '../../services/accountService';
 import { VerificationService, type CreateVerificationData, type VerificationEntry } from '../../services/verificationService';
 import { accountingViewSettingsService, type AccountingViewSettings } from '../../services/accountingViewSettingsService';
 import { verificationSeriesService, type VerificationSeriesItem } from '../../services/verificationSeriesService';
-import type { AccountingTemplate } from '../../services/verificationService';
+import type { AccountingTemplate, AccountingTransaction } from '../../services/verificationService';
 
 interface AccountEntry {
   id: string;
@@ -349,7 +349,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const updateAccountEntriesFromTemplate = (template: AccountingTemplate, amount: number) => {
     const newEntries: AccountEntry[] = [];
     
-    template.transactions.forEach((transaction, index) => {
+    template.transactions.forEach((transaction: AccountingTransaction, index: number) => {
       // Calculate the value based on the formula
       let calculatedValue = 0;
       if (transaction.formula) {

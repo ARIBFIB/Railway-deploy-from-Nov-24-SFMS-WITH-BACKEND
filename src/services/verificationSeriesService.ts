@@ -102,7 +102,7 @@ export const verificationSeriesService = {
       const allSeries = data.data[category].series;
       
       // Filter to only include series where manualAccounting is true (i.e., checked/selected)
-      return allSeries.filter(series => series.manualAccounting === true);
+      return allSeries.filter((series: VerificationSeriesItem) => series.manualAccounting === true);
     } catch (error) {
       console.error('Error fetching selected verification series:', error);
       // Return empty array if there's an error
