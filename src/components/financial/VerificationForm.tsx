@@ -424,7 +424,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         id: `template-${template.id}-entry-${index}`,
         account: accountNumber, // Use the extracted account number
         name: (accountDetails && typeof accountDetails.account_name === 'string') ? accountDetails.account_name : (accountNumber || ''), // Ensure name is always a string
-        transactionInfo: transaction.transactionInfo || '', // Ensure transaction info is set properly
+        transactionInfo: (transaction as any).transactionInfo || (transaction as any).transaction_info || (transaction as any).description || (transaction as any).transactionDescription || '', // Ensure transaction info is set properly - checking multiple possible field names
         debit: isDebit ? Math.abs(calculatedValue).toFixed(2) : '0.00', // Use absolute value to ensure positive in debit
         credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
         balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
