@@ -398,19 +398,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         } else {
           accountNumber = transaction.account;
         }
-      } else if (typeof transaction.account === 'object' && transaction.account !== null) {
-        // If transaction.account is an object, it might have an account_number property
-        if (transaction.account.account_number) {
-          accountNumber = transaction.account.account_number;
-        } else if (transaction.account.id) {
-          // Or it might have an id property
-          accountNumber = transaction.account.id;
-        } else {
-          // Try to get any string representation
-          accountNumber = String(transaction.account) || '';
-        }
       } else {
-        // If transaction.account is neither string nor object, convert to string
+        // If transaction.account is not a string, convert to string
         accountNumber = String(transaction.account || '');
       }
       
@@ -421,7 +410,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         id: `template-${template.id}-entry-${index}`,
         account: accountNumber, // Use the extracted account number
         name: (accountDetails && typeof accountDetails.account_name === 'string') ? accountDetails.account_name : (accountNumber || ''), // Ensure name is always a string
-        transactionInfo: transaction.transactionInfo || transaction.transaction_info || transaction.description || '', // Ensure transaction info is set properly - checking multiple possible field names
+        transactionInfo: transaction.transactionInfo || '', // Ensure transaction info is set properly
         debit: isDebit ? Math.abs(calculatedValue).toFixed(2) : '0.00', // Use absolute value to ensure positive in debit
         credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
         balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
