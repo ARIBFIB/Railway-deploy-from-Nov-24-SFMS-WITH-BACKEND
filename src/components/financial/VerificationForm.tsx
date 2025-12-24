@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { X, Plus, Calendar, Trash2, Copy, Paperclip, ChevronDown, Upload, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { AccountService, type Account } from '../../services/accountService';
 import { VerificationService, type CreateVerificationData, type VerificationEntry } from '../../services/verificationService';
 import { accountingViewSettingsService, type AccountingViewSettings } from '../../services/accountingViewSettingsService';
+import { verificationSeriesService, type VerificationSeriesItem } from '../../services/verificationSeriesService';
+import type { AccountingTemplate } from '../../services/verificationService';
 
 interface AccountEntry {
   id: string;
@@ -96,6 +98,20 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
+  // State for description dropdown
+  const [descriptions, setDescriptions] = useState<string[]>([]);
+  const [showDescriptionDropdown, setShowDescriptionDropdown] = useState(false);
+  const [filteredDescriptions, setFilteredDescriptions] = useState<string[]>([]);
+
+  // Ref for description dropdown
+  const descriptionDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // State for verification series
+  const [verificationSeries, setVerificationSeries] = useState<VerificationSeriesItem[]>([]);
+
+  // State for accounting templates
+  const [accountingTemplates, setAccountingTemplates] = useState<AccountingTemplate[]>([]);
+
   // Load accounts and settings when component mounts
   useEffect(() => {
     const loadData = async () => {
@@ -110,6 +126,45 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         const settings = await accountingViewSettingsService.getSettings();
         setAccountingViewSettings(settings);
         setSettingsLoaded(true);
+
+        // Load descriptions for dropdown
+        try {
+          const descriptionResponse = await VerificationService.getUniqueDescriptions();
+          if (descriptionResponse.success) {
+            setDescriptions(descriptionResponse.data);
+            // Set filtered descriptions to all descriptions when loaded
+            setFilteredDescriptions(descriptionResponse.data);
+          }
+        } catch (descErr) {
+          console.error('Failed to load descriptions:', descErr);
+        }
+
+        // Load verification series from settings (only selected ones)
+        try {
+          const selectedSeries = await verificationSeriesService.getSelectedSeries('accounting');
+          setVerificationSeries(selectedSeries);
+        } catch (seriesErr) {
+          console.error('Failed to load verification series:', seriesErr);
+          // Fallback to default series if API fails
+          setVerificationSeries([
+            { id: '1', code: 'A - Accounting', name: 'Accounting', manualAccounting: true, position: 0 },
+            { id: '2', code: 'C - Cash', name: 'Cash', manualAccounting: true, position: 1 },
+            { id: '3', code: 'F - Finance', name: 'Finance', manualAccounting: true, position: 2 },
+            { id: '4', code: 'G - General', name: 'General', manualAccounting: true, position: 3 },
+            { id: '5', code: 'K - Kreditor', name: 'Kreditor', manualAccounting: true, position: 4 }
+          ]);
+        }
+
+        // Load accounting templates
+        try {
+          const templatesResponse = await VerificationService.getAccountingTemplates();
+          if (templatesResponse.success) {
+            setAccountingTemplates(templatesResponse.data);
+          }
+        } catch (templateErr) {
+          console.error('Failed to load accounting templates:', templateErr);
+          setAccountingTemplates([]);
+        }
       } catch (err) {
         console.error('Failed to load data:', err);
         setSettingsLoaded(true); // Still set to true to prevent hanging
@@ -125,11 +180,11 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
   // Populate form with initial data if provided (Editing mode)
   useEffect(() => {
-    if (settingsLoaded && isOpen && initialData) {
+    if (settingsLoaded && verificationSeries.length > 0 && isOpen && initialData) {
       console.log('🔄 VerificationForm - Populating with initialData:', initialData);
       setFormData({
         description: initialData.description || '',
-        verificationSeries: initialData.verification_series || 'A - Accounting',
+        verificationSeries: initialData.verification_series || (verificationSeries.length > 0 ? verificationSeries[0].code : 'A - Accounting'),
         accountingDate: initialData.accounting_date || new Date().toISOString().split('T')[0],
         accountingTemplate: initialData.accounting_template || '',
         amount: initialData.amount ? initialData.amount.toString() : '',
@@ -156,11 +211,11 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       } else {
         setExistingImages([]);
       }
-    } else if (settingsLoaded && isOpen && !initialData) {
+    } else if (settingsLoaded && verificationSeries.length > 0 && isOpen && !initialData) {
       // Reset form if opening in create mode
       setFormData({
         description: '',
-        verificationSeries: 'A - Accounting',
+        verificationSeries: verificationSeries.length > 0 ? verificationSeries[0].code : 'A - Accounting',
         accountingDate: new Date().toISOString().split('T')[0],
         accountingTemplate: '',
         amount: '',
@@ -172,14 +227,60 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       ]);
       setSelectedImages([]);
     }
-  }, [isOpen, initialData, settingsLoaded]);
+  }, [isOpen, initialData, settingsLoaded, descriptions, verificationSeries]);
+
+  // Watch for changes in amount and template to update account entries
+  useEffect(() => {
+    if (formData.accountingTemplate && formData.amount) {
+      const template = accountingTemplates.find(t => t.id === formData.accountingTemplate);
+      if (template) {
+        updateAccountEntriesFromTemplate(template, parseFloat(formData.amount));
+      }
+    }
+  }, [formData.accountingTemplate, formData.amount, accountingTemplates]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Filter descriptions when typing in description field
+    if (field === 'description') {
+      const filtered = descriptions.filter(desc =>
+        desc.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredDescriptions(filtered);
+      // Show dropdown if there are filtered results
+      if (value.length > 0) {
+        setShowDescriptionDropdown(filtered.length > 0);
+      }
+    }
   };
+
+  const handleDescriptionSelect = (description: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description
+    }));
+    setShowDescriptionDropdown(false);
+  };
+
+
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (descriptionDropdownRef.current && !descriptionDropdownRef.current.contains(event.target as Node)) {
+        setShowDescriptionDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleAccountEntryChange = (id: string, field: string, value: string) => {
     setAccountEntries(prev => prev.map(entry => {
@@ -190,7 +291,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         if (field === 'account' && value) {
           const matchingAccount = accounts.find(acc => acc.account_number === value);
           if (matchingAccount) {
-            updatedEntry.name = matchingAccount.account_name;
+            updatedEntry.name = (matchingAccount && typeof matchingAccount.account_name === 'string') ? matchingAccount.account_name : value;
           }
         }
 
@@ -203,7 +304,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const handleAccountSelect = (entryId: string, account: Account) => {
     setAccountEntries(prev => prev.map(entry =>
       entry.id === entryId
-        ? { ...entry, account: account.account_number, name: account.account_name }
+        ? { ...entry, account: account.account_number, name: (account && typeof account.account_name === 'string') ? account.account_name : account.account_number }
         : entry
     ));
     setShowAccountDropdown(prev => ({ ...prev, [entryId]: false }));
@@ -226,6 +327,105 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
   const removeExistingImage = (id: string) => {
     setExistingImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = accountingTemplates.find(t => t.id === templateId);
+    if (template) {
+      setFormData(prev => ({
+        ...prev,
+        accountingTemplate: templateId, // Store the template ID
+        description: template.description,
+        verificationSeries: template.verificationSeries
+      }));
+      
+      // If there's an amount entered, update the account entries based on the template
+      if (formData.amount) {
+        updateAccountEntriesFromTemplate(template, parseFloat(formData.amount));
+      }
+    }
+  };
+
+  const updateAccountEntriesFromTemplate = (template: AccountingTemplate, amount: number) => {
+    const newEntries: AccountEntry[] = [];
+    
+    template.transactions.forEach((transaction, index) => {
+      // Calculate the value based on the formula
+      let calculatedValue = 0;
+      if (transaction.formula) {
+        // Simple formula evaluation - in a real implementation, you might want to use a proper formula parser
+        // For now, we'll support both fixed formulas and formulas that use the amount variable
+        try {
+          // Check if the formula contains the word "amount" to decide how to process it
+          let formula = transaction.formula;
+          if (formula.includes('amount')) {
+            // If the formula contains "amount", replace it with the actual amount value
+            formula = formula.replace(/\bamount\b/g, amount.toString());
+          }
+          // For fixed formulas like "2+2", we don't replace anything and just evaluate as-is
+          
+          // For more complex formulas, a proper parser would be needed
+          formula = formula.replace(/\s/g, ''); // Remove spaces
+          
+          // Simple evaluation for basic operations
+          if (formula.includes('+') || formula.includes('-') || formula.includes('*') || formula.includes('/')) {
+            // Use Function constructor as a safer alternative to eval for simple expressions
+            calculatedValue = Function('"use strict"; return (' + formula + ')')();
+          } else {
+            calculatedValue = parseFloat(formula) || 0;
+          }
+        } catch (e) {
+          console.error('Error evaluating formula:', transaction.formula, e);
+          calculatedValue = 0;
+        }
+      }
+      
+      // Determine if it's a debit or credit based on the calculated value
+      const isDebit = calculatedValue > 0;
+      
+      // Extract account number from the transaction.account field
+      // The transaction.account might be a string like "1 - car" or just "1", or an object
+      let accountNumber = '';
+      if (typeof transaction.account === 'string') {
+        // If it's in format like "1 - car", extract just the number part
+        if (transaction.account.includes(' - ')) {
+          accountNumber = transaction.account.split(' - ')[0];
+        } else {
+          accountNumber = transaction.account;
+        }
+      } else if (typeof transaction.account === 'object' && transaction.account !== null) {
+        // If transaction.account is an object, it might have an account_number property
+        if (transaction.account.account_number) {
+          accountNumber = transaction.account.account_number;
+        } else if (transaction.account.id) {
+          // Or it might have an id property
+          accountNumber = transaction.account.id;
+        } else {
+          // Try to get any string representation
+          accountNumber = String(transaction.account) || '';
+        }
+      } else {
+        // If transaction.account is neither string nor object, convert to string
+        accountNumber = String(transaction.account || '');
+      }
+      
+      // Find account details if available
+      const accountDetails = accounts.find(acc => acc.account_number === accountNumber);
+      
+      const newEntry: AccountEntry = {
+        id: `template-${template.id}-entry-${index}`,
+        account: accountNumber, // Use the extracted account number
+        name: (accountDetails && typeof accountDetails.account_name === 'string') ? accountDetails.account_name : (accountNumber || ''), // Ensure name is always a string
+        transactionInfo: transaction.transactionInfo || '', // Ensure transaction info is set properly
+        debit: isDebit ? Math.abs(calculatedValue).toFixed(2) : '0.00', // Use absolute value to ensure positive in debit
+        credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
+        balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
+      };
+      
+      newEntries.push(newEntry);
+    });
+    
+    setAccountEntries(newEntries);
   };
 
   const addAccountEntry = () => {
@@ -318,8 +518,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       const difference = totalDebit - totalCredit;
 
       // Validate account entries
-      const validEntries = accountEntries.filter(entry => entry.account.trim() && entry.name.trim());
-      const invalidEntries = accountEntries.filter(entry => !entry.account.trim() || !entry.name.trim());
+      const validEntries = accountEntries.filter(entry => (entry.account || '').toString().trim() && (entry.name || '').toString().trim());
+      const invalidEntries = accountEntries.filter(entry => !(entry.account || '').toString().trim() || !(entry.name || '').toString().trim());
 
       if (invalidEntries.length > 0) {
         setError('Please fill in both account number and account name for all entries.');
@@ -503,16 +703,64 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Top Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div>
+            <div className="relative" ref={descriptionDropdownRef}>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
-              <Input
-                type="text"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full"
-              />
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  onClick={() => {
+                    if (formData.description.trim() === '') {
+                      setFilteredDescriptions(descriptions);
+                      setShowDescriptionDropdown(true);
+                    } else {
+                      const filtered = descriptions.filter(desc =>
+                        desc.toLowerCase().includes(formData.description.toLowerCase())
+                      );
+                      setFilteredDescriptions(filtered);
+                      setShowDescriptionDropdown(filtered.length > 0);
+                    }
+                  }}
+                  className="w-full pr-10"
+                  placeholder="Enter description or select from previous..."
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formData.description.trim() === '') {
+                      setFilteredDescriptions(descriptions);
+                      setShowDescriptionDropdown(!showDescriptionDropdown);
+                    } else {
+                      const filtered = descriptions.filter(desc =>
+                        desc.toLowerCase().includes(formData.description.toLowerCase())
+                      );
+                      setFilteredDescriptions(filtered);
+                      setShowDescriptionDropdown(!showDescriptionDropdown && filtered.length > 0);
+                    }
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Description Dropdown */}
+              {showDescriptionDropdown && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {filteredDescriptions.map((desc, index) => (
+                    <div
+                      key={index}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                      onClick={() => handleDescriptionSelect(desc)}
+                    >
+                      {desc}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
@@ -524,11 +772,11 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 onChange={(e) => handleInputChange('verificationSeries', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="A - Accounting">A - Accounting</option>
-                <option value="C - Cash">C - Cash</option>
-                <option value="F - Finance">F - Finance</option>
-                <option value="G - General">G - General</option>
-                <option value="K - Kreditor">K - Kreditor</option>
+                {verificationSeries.map((series) => (
+                  <option key={series.id} value={series.code}>
+                    {series.code} - {series.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -566,15 +814,20 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Accounting template
+                Coding template
               </label>
-              <Input
-                type="text"
-                placeholder="Code, Name"
+              <select
                 value={formData.accountingTemplate}
-                onChange={(e) => handleInputChange('accountingTemplate', e.target.value)}
-                className="w-full"
-              />
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a coding template</option>
+                {accountingTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.code} - {template.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -585,7 +838,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 type="number"
                 step="0.01"
                 value={formData.amount}
-                onChange={(e) => handleInputChange('amount', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleInputChange('amount', value);
+                }}
                 className="w-full"
               />
             </div>
@@ -692,8 +948,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                               <div className="max-h-48 overflow-auto">
                                 {accounts
                                   .filter(acc =>
-                                    acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
-                                    acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
+                                    acc.account_number.toLowerCase().includes((entry.account || '').toLowerCase()) ||
+                                    acc.account_name.toLowerCase().includes((entry.account || '').toLowerCase())
                                   )
                                   .map((account) => (
                                     <div
@@ -706,8 +962,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                                     </div>
                                   ))}
                                 {accounts.filter(acc =>
-                                  acc.account_number.toLowerCase().includes(entry.account.toLowerCase()) ||
-                                  acc.account_name.toLowerCase().includes(entry.account.toLowerCase())
+                                  acc.account_number.toLowerCase().includes((entry.account || '').toLowerCase()) ||
+                                  acc.account_name.toLowerCase().includes((entry.account || '').toLowerCase())
                                 ).length === 0 && (
                                     <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
                                   )}
@@ -717,8 +973,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-gray-700 px-3 py-2 bg-gray-50/50 rounded-md border border-transparent truncate" title={entry.name}>
-                          {entry.name || <span className="text-gray-400 italic text-xs">Auto-filled</span>}
+                        <div className="text-sm text-gray-700 px-3 py-2 bg-gray-50/50 rounded-md border border-transparent truncate" title={typeof entry.name === 'string' ? entry.name : ''}>
+                          {typeof entry.name === 'string' && entry.name ? entry.name : <span className="text-gray-400 italic text-xs">Auto-filled</span>}
                         </div>
                       </td>
                       {accountingViewSettings.enable_transaction_info && (

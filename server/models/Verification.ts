@@ -607,4 +607,57 @@ export class VerificationModel {
       throw error;
     }
   }
+
+  static async getUniqueDescriptionsByFoundation(foundationId: string): Promise<string[]> {
+    try {
+      console.log('🔍 VerificationModel.getUniqueDescriptionsByFoundation - Starting for foundation:', foundationId);
+      
+      const { data, error } = await supabase
+        .from('verifications')
+        .select('description')
+        .eq('foundation_id', foundationId)
+        .not('description', 'is', null)
+        .order('description', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error fetching unique descriptions:', error);
+        throw new Error(`Failed to fetch unique descriptions: ${error.message}`);
+      }
+
+      // Extract descriptions and remove duplicates
+      const descriptions = Array.from(new Set(data.map(item => item.description).filter(desc => desc && desc.trim() !== '')));
+      
+      console.log('✅ Fetched unique descriptions:', descriptions.length);
+      return descriptions;
+    } catch (error) {
+      console.error('Error in VerificationModel.getUniqueDescriptionsByFoundation:', error);
+      throw error;
+    }
+  }
+
+  static async getAllUniqueDescriptions(): Promise<string[]> {
+    try {
+      console.log('🔍 VerificationModel.getAllUniqueDescriptions - Starting');
+      
+      const { data, error } = await supabase
+        .from('verifications')
+        .select('description')
+        .not('description', 'is', null)
+        .order('description', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error fetching all unique descriptions:', error);
+        throw new Error(`Failed to fetch all unique descriptions: ${error.message}`);
+      }
+
+      // Extract descriptions and remove duplicates
+      const descriptions = Array.from(new Set(data.map(item => item.description).filter(desc => desc && desc.trim() !== '')));
+      
+      console.log('✅ Fetched all unique descriptions:', descriptions.length);
+      return descriptions;
+    } catch (error) {
+      console.error('Error in VerificationModel.getAllUniqueDescriptions:', error);
+      throw error;
+    }
+  }
 }

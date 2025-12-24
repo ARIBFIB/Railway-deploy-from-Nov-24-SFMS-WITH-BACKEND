@@ -480,4 +480,49 @@ export class VerificationController {
       message: `${deletedCount} verifications deleted successfully`
     });
   });
+
+  static getUniqueDescriptions = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const foundationId = req.user?.foundation_id;
+    const userRole = req.user?.role;
+    const isAdmin = userRole === 'admin';
+    console.log('🚀 VerificationController.getUniqueDescriptions - Starting for foundation:', foundationId);
+
+    // All users need a valid foundation_id
+    if (!foundationId) {
+      console.error('❌ Missing foundation ID');
+      res.status(400).json(createError('Foundation ID is required'));
+      return;
+    }
+
+    // Validate that foundationId is a proper UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(foundationId)) {
+      console.error('❌ Invalid foundation ID format:', foundationId);
+      res.status(400).json(createError('Invalid foundation ID format. Please contact support.'));
+      return;
+    }
+
+    try {
+      let descriptions;
+      if (isAdmin) {
+        // Admin users can get ALL descriptions from all foundations
+        console.log('📊 Admin user - Fetching ALL descriptions from all foundations');
+        descriptions = await VerificationModel.getAllUniqueDescriptions();
+      } else {
+        // Regular users get only their foundation's descriptions
+        console.log('📊 Regular user - Fetching descriptions for foundation:', foundationId);
+        descriptions = await VerificationModel.getUniqueDescriptionsByFoundation(foundationId);
+      }
+
+      console.log('✅ Descriptions retrieved successfully, count:', descriptions.length);
+      res.status(200).json({
+        success: true,
+        data: descriptions,
+        message: 'Descriptions retrieved successfully'
+      });
+    } catch (error) {
+      console.error('❌ Error getting unique descriptions:', error);
+      res.status(500).json(createError(`Failed to fetch descriptions: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
 }

@@ -34,6 +34,7 @@ router.delete('/bulk', VerificationController.bulkDelete);
 router.post('/', VerificationController.createVerification);
 router.get('/', VerificationController.getVerifications);
 router.get('/next-number', VerificationController.getNextVerificationNumber);
+router.get('/descriptions', VerificationController.getUniqueDescriptions);
 router.get('/:id', VerificationController.getVerificationById);
 router.put('/:id', VerificationController.updateVerification);
 router.delete('/:id', VerificationController.deleteVerification);

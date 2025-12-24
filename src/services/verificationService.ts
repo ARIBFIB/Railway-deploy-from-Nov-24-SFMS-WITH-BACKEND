@@ -1,5 +1,22 @@
 import { apiFetch } from '../utils/api';
 
+interface AccountingTemplate {
+  id: string;
+  code: string;
+  name: string;
+  type: 'Verification' | 'Supplier invoice';
+  verificationSeries: string;
+  description: string;
+  transactions: AccountingTransaction[];
+}
+
+interface AccountingTransaction {
+  id: string;
+  account: string;
+  transactionInfo: string;
+  formula: string;
+}
+
 export interface VerificationEntry {
   id?: string;
   verification_id?: string;
@@ -328,6 +345,36 @@ export class VerificationService {
     return await response.json();
   }
 
+  static async getAccountingTemplates(): Promise<{ success: boolean; data: AccountingTemplate[]; message?: string }> {
+    const response = await apiFetch('/api/settings/accounting-templates');
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch accounting templates';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+        console.error('❌ VerificationService.getAccountingTemplates - Error response:', errorData);
+      } catch (parseError) {
+        console.error('❌ VerificationService.getAccountingTemplates - Failed to parse error response:', parseError);
+        const responseText = await response.text(); 
+        console.error('❌ Raw error response:', responseText);
+        errorMessage = `Server error (${response.status}): ${responseText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    try {
+      const result = await response.json();
+      console.log('✅ VerificationService.getAccountingTemplates - Success:', result);
+      return result;
+    } catch (parseError) {
+      console.error('❌ VerificationService.getAccountingTemplates - Failed to parse success response:', parseError);
+      const responseText = await response.text();
+      console.error('❌ Raw success response:', responseText);
+      throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
+  }
+
   static async bulkDelete(verificationIds: string[]): Promise<{ success: boolean; message?: string }> {
     const response = await apiFetch('/api/verifications/bulk', {
       method: 'DELETE',
@@ -342,6 +389,36 @@ export class VerificationService {
     }
 
     return await response.json();
+  }
+
+  static async getUniqueDescriptions(): Promise<{ success: boolean; data: string[]; message?: string }> {
+    const response = await apiFetch('/api/verifications/descriptions');
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch descriptions';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+        console.error('❌ VerificationService.getUniqueDescriptions - Error response:', errorData);
+      } catch (parseError) {
+        console.error('❌ VerificationService.getUniqueDescriptions - Failed to parse error response:', parseError);
+        const responseText = await response.text(); 
+        console.error('❌ Raw error response:', responseText);
+        errorMessage = `Server error (${response.status}): ${responseText}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    try {
+      const result = await response.json();
+      console.log('✅ VerificationService.getUniqueDescriptions - Success:', result);
+      return result;
+    } catch (parseError) {
+      console.error('❌ VerificationService.getUniqueDescriptions - Failed to parse success response:', parseError);
+      const responseText = await response.text();
+      console.error('❌ Raw success response:', responseText);
+      throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
   }
 }
 

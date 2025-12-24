@@ -423,7 +423,7 @@ const DEFAULT_SUPPLIER_TEST_NOTIFICATIONS: SupplierTestNotificationSettings = {
 const DEFAULT_SUPPLIER_VAT_SETTINGS: SupplierVatSettings = {
   vatType: 'VAT',
   about: '',
-  proposeVatOnSupplierInvoices: 'Always',
+  proposeVatOnSupplierInvoices: '0',
   incomingInvoicesAction: 'proposed',
   outputVATEntries: []
 };
@@ -1552,10 +1552,10 @@ const settingsCategories: SettingsCategory[] = [
     id: 'accounting',
     name: 'ACCOUNTING',
     items: [
-      { id: 'account-chart', name: 'Account chart', route: '/settings/account-chart' },
+      { id: 'account-chart', name: 'Chart of Accounts', route: '/settings/account-chart' },
       { id: 'accounting-certificate-general', name: 'Accounting Certificate - General Settings', route: '/settings/accounting-certificate-general' },
       { id: 'accounting-certificate-notices', name: 'Accounting certificate - Notices', route: '/settings/accounting-certificate-notices' },
-      { id: 'accounting-templates', name: 'Accounting templates', route: '/settings/accounting-templates' },
+      { id: 'accounting-templates', name: 'Coding templates', route: '/settings/accounting-templates' },
       { id: 'accounting-view', name: 'Accounting view', route: '/settings/accounting-view' },
       { id: 'accruals', name: 'Accruals', route: '/settings/accruals' },
       { id: 'asset-register-types', name: 'Asset register - Asset types', route: '/settings/asset-register-types' },
@@ -1723,7 +1723,7 @@ const settingsCategories: SettingsCategory[] = [
     name: 'SUPPLIER INVOICES',
     items: [
       { id: 'supplier-account-chart', name: 'Account chart', route: '/settings/supplier-account-chart' },
-      { id: 'supplier-accounting-templates', name: 'Accounting templates', route: '/settings/supplier-accounting-templates' },
+      { id: 'supplier-accounting-templates', name: 'Coding templates', route: '/settings/supplier-accounting-templates' },
       { id: 'supplier-accruals', name: 'Accruals', route: '/settings/supplier-accruals' },
       { id: 'supplier-automatic-accounting', name: 'Automatic accounting', route: '/settings/supplier-automatic-accounting' },
       { id: 'supplier-cost-centers', name: 'Cost centers', route: '/settings/supplier-cost-centers' },
@@ -2247,7 +2247,7 @@ const AccountingTemplatesInterface: React.FC<{
             <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center mr-3">
               <span className="text-white text-sm">✓</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900">Accounting templates</h3>
+            <h3 className="text-lg font-medium text-gray-900">Coding templates</h3>
           </div>
           <button
             onClick={handleCreateNew}
@@ -2307,7 +2307,7 @@ const AccountingTemplatesInterface: React.FC<{
           <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center mr-3">
             <span className="text-white text-sm">✓</span>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">Accounting templates</h3>
+          <h3 className="text-lg font-medium text-gray-900">Coding templates</h3>
         </div>
         <button
           onClick={handleShowList}
@@ -2609,29 +2609,31 @@ const VATInterface: React.FC<{
           {/* VAT Type and About */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">VAT Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type of VAT</label>
               <select
                 value={vatData.settings.vatType}
                 onChange={(e) => onSettingsChange('vatType', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={isBusy}
               >
-                <option value="Annual VAT">Annual VAT</option>
-                <option value="Monthly VAT">Monthly VAT</option>
+                <option value="Annual VAT">No VAT</option>
+                <option value="Monthly VAT">Monthly VAT (submission 12th)</option>
+                <option value="Quarterly VAT">Monthly VAT (submission 26th)</option>
                 <option value="Quarterly VAT">Quarterly VAT</option>
+                <option value="Quarterly VAT">Annual VAT</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">About</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
               <div className="relative">
                 <input
                   type="date"
                   value={vatData.settings.about}
                   onChange={(e) => onSettingsChange('about', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed pr-10"
                   disabled={isBusy}
                 />
-                <span className="absolute right-3 top-2.5 text-gray-400">📅</span>
+                <span className="absolute right-3 top-2.5 text-gray-400 pointer-events-none">📅</span>
               </div>
             </div>
           </div>
@@ -2642,13 +2644,17 @@ const VATInterface: React.FC<{
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Propose VAT on supplier invoices</label>
-                <input
-                  type="text"
+                <select
                   value={vatData.settings.proposeVatOnSupplierInvoices}
                   onChange={(e) => onSettingsChange('proposeVatOnSupplierInvoices', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   disabled={isBusy}
-                />
+                >
+                  <option value="0">0%</option>
+                  <option value="6">6%</option>
+                  <option value="12">12%</option>
+                  <option value="25">25%</option>
+                </select>
               </div>
 
               <div>
@@ -2829,7 +2835,7 @@ const VATInterface: React.FC<{
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valid empty</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Valid to</label>
               <div className="relative">
                 <input
                   type="date"
@@ -18807,6 +18813,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
+  const handleVATSaveSettings = async () => {
+    try {
+      // Prepare the payload with current VAT settings
+      const payload = {
+        vat_type: vatData.settings.vatType,
+        propose_vat_on_supplier_invoices: vatData.settings.proposeVatOnSupplierInvoices,
+        incoming_invoices_action: vatData.settings.incomingInvoicesAction,
+        about: vatData.settings.about, // This appears to be the 'From' date field
+      };
+      
+      console.log('Attempting to save VAT settings:', payload);
+      
+      const response = await apiFetch('/api/settings/vat', {
+        method: 'POST',
+        json: payload,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save VAT settings');
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('VAT settings saved successfully!');
+        // Optionally refresh the data after saving
+        await fetchVATSettings();
+      } else {
+        throw new Error(result.message || 'Failed to save VAT settings');
+      }
+    } catch (error) {
+      console.error('❌ Error saving VAT settings:', error);
+      alert(`Failed to save VAT settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const handleVATDeleteEntry = async (entryId: string) => {
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entryId);
 
@@ -21663,7 +21705,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                               <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center mr-3">
                                 <span className="text-white text-sm">✓</span>
                               </div>
-                              <h3 className="text-lg font-medium text-gray-900">Accounting view</h3>
+                              <h3 className="text-lg font-medium text-gray-900">Coding view</h3>
                             </div>
 
                             {/* Settings */}
@@ -21747,7 +21789,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                                 <div>
                                   <p className="text-sm text-gray-600">
-                                    Go to: <a href="#" className="text-blue-600 underline hover:text-blue-800">Quick Texts (Verification Descriptions and Transaction Information)</a>
+                                    Go to: <a 
+                                      onClick={() => toggleSection('quick-texts')}
+                                      className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
+                                    >
+                                      Quick Texts (Verification Descriptions and Transaction Information)
+                                    </a>
                                   </p>
                                 </div>
                               </div>
@@ -22105,6 +22152,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             onSaveEntry={handleVATSaveEntry}
                             onDeleteEntry={handleVATDeleteEntry}
                             onDeleteEntryFromForm={handleVATDeleteEntryFromForm}
+                            onSaveSettings={handleVATSaveSettings}
                           />
                         </div>
                       </div>
@@ -22718,7 +22766,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                   <option value="2 days">2 days</option>
                                   <option value="3 days">3 days</option>
                                   <option value="5 days">5 days</option>
-                                  <option value="7 days">7 days</option>
+                                  <option value="7 days">6 days</option>
                                 </select>
                               </div>
                             </div>
