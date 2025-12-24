@@ -399,8 +399,22 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           accountNumber = transaction.account;
         }
       } else {
-        // If transaction.account is not a string, convert to string
-        accountNumber = String(transaction.account || '');
+        // If transaction.account is not a string, it might be an object with properties
+        // Try to extract the account number from the object
+        if (transaction.account && typeof transaction.account === 'object') {
+          const accountObj = transaction.account as any;
+          if (accountObj.account_number) {
+            accountNumber = accountObj.account_number;
+          } else if (accountObj.id) {
+            accountNumber = accountObj.id;
+          } else {
+            // If it's an object but doesn't have expected properties, convert to string
+            accountNumber = String(transaction.account) || '';
+          }
+        } else {
+          // If it's not a string or object, convert to string
+          accountNumber = String(transaction.account || '');
+        }
       }
       
       // Find account details if available
