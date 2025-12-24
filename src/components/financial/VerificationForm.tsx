@@ -361,8 +361,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           if (formula.includes('amount')) {
             // If the formula contains "amount", replace it with the actual amount value
             formula = formula.replace(/\bamount\b/g, amount.toString());
+          } else {
+            // If the formula doesn't contain "amount", multiply the entire formula result by the amount
+            // For example, if formula is "2+2" and amount is 2, result should be (2+2)*2 = 8
+            if (amount && amount !== 0) {
+              formula = '(' + formula + ')*' + amount;
+            }
           }
-          // For fixed formulas like "2+2", we don't replace anything and just evaluate as-is
           
           // For more complex formulas, a proper parser would be needed
           formula = formula.replace(/\s/g, ''); // Remove spaces
@@ -416,7 +421,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         id: `template-${template.id}-entry-${index}`,
         account: accountNumber, // Use the extracted account number
         name: (accountDetails && typeof accountDetails.account_name === 'string') ? accountDetails.account_name : (accountNumber || ''), // Ensure name is always a string
-        transactionInfo: transaction.transactionInfo || '', // Ensure transaction info is set properly
+        transactionInfo: transaction.transactionInfo || transaction.transaction_info || transaction.description || '', // Ensure transaction info is set properly - checking multiple possible field names
         debit: isDebit ? Math.abs(calculatedValue).toFixed(2) : '0.00', // Use absolute value to ensure positive in debit
         credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
         balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
