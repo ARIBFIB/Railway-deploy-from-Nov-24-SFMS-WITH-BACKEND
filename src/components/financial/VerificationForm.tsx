@@ -579,7 +579,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       }
 
       // Get verification number
-      const series = formData.verificationSeries.split(' - ')[0];
+      const seriesCode = formData.verificationSeries || 'A'; // Default to 'A' if not set
+      const series = seriesCode.includes(' - ') ? seriesCode.split(' - ')[0] : seriesCode;
       let verificationNumber = '';
       if (initialData && initialData.verification_number) {
         verificationNumber = initialData.verification_number;

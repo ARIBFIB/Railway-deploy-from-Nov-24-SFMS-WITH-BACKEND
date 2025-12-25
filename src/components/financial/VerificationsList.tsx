@@ -48,6 +48,7 @@ export const VerificationsList: React.FC = () => {
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [editingVerification, setEditingVerification] = useState<Verification | null>(null);
   const [wasVerificationJustCreated, setWasVerificationJustCreated] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   // VAT state
   const [vatPeriods] = useState([
@@ -100,7 +101,7 @@ export const VerificationsList: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const cleanSearchTerm = searchTerm.trim() || undefined;
+      const cleanSearchTerm = debouncedSearchTerm.trim() || undefined;
 
       console.log('📊 Loading ALL verifications without filters');
 
@@ -152,7 +153,23 @@ export const VerificationsList: React.FC = () => {
     if (activeTab === 'verifications') {
       loadVerifications();
     }
-  }, [activeTab, searchTerm, verificationSeries, currentPage]);
+  }, [activeTab, debouncedSearchTerm, verificationSeries, currentPage]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    if (searchTerm !== '') {
+      setCurrentPage(1);
+    }
+  }, [searchTerm]);
 
   // Debug effect to log when verifications state changes
   useEffect(() => {
@@ -422,7 +439,7 @@ export const VerificationsList: React.FC = () => {
             <p><strong>Print Date:</strong> ${new Date().toLocaleDateString()}</p>
             <p><strong>Total Verifications:</strong> ${currentVerifications.length}</p>
             ${verificationSeries !== 'all' ? `<p><strong>Series Filter:</strong> ${verificationSeries}</p>` : ''}
-            ${searchTerm ? `<p><strong>Search:</strong> ${searchTerm}</p>` : ''}
+            ${debouncedSearchTerm ? `<p><strong>Search:</strong> ${debouncedSearchTerm}</p>` : ''}
           </div>
           <table>
             <thead>
@@ -668,7 +685,14 @@ export const VerificationsList: React.FC = () => {
                 <Input
                   placeholder="Verification number, Description"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setDebouncedSearchTerm(e.currentTarget.value);
+                    }
+                  }}
                   className="pl-10 w-80"
                 />
               </div>

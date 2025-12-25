@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
-import { 
-  Printer, 
-  Upload, 
+import {
+  Printer,
+  Upload,
   Calendar,
   ChevronDown,
   Eye,
@@ -124,7 +124,7 @@ export const AccountReconciliation: React.FC = () => {
   const handleTransactionSelect = (type: 'accounting' | 'loaded', transactionId: string) => {
     setData(prev => ({
       ...prev,
-      [type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions']: 
+      [type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions']:
         prev[type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions'].map(t =>
           t.id === transactionId ? { ...t, selected: !t.selected } : t
         )
@@ -184,11 +184,11 @@ export const AccountReconciliation: React.FC = () => {
     return balance + selected;
   };
 
-  const filteredAccountingTransactions = hideMatched 
+  const filteredAccountingTransactions = hideMatched
     ? data.accountingTransactions.filter(t => !t.matched)
     : data.accountingTransactions;
 
-  const filteredLoadedTransactions = hideMatched 
+  const filteredLoadedTransactions = hideMatched
     ? data.loadedTransactions.filter(t => !t.matched)
     : data.loadedTransactions;
 
@@ -202,197 +202,215 @@ export const AccountReconciliation: React.FC = () => {
   return (
     <div className="space-y-6">
 
+      {/* Header */}
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-gray-900 uppercase">RECONCILE ACCOUNT</h1>
+      </div>
+
       {/* Action Buttons */}
       <div className="py-4">
         <div className="flex items-center space-x-4">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleHideMatched}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             {hideMatched ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             <span>Hide matched</span>
           </Button>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleLoadHistory}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             <FileText className="w-4 h-4" />
-            <span>Loading history</span>
+            <span>Reading history</span>
           </Button>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleMassReconciliation}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             <BarChart3 className="w-4 h-4" />
-            <span>Mass reconciliation</span>
+            <span>Batch reconciliation</span>
           </Button>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleAccountAnalysis}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             <Printer className="w-4 h-4" />
             <span>Account analysis</span>
           </Button>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleReconciliationReport}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             <Printer className="w-4 h-4" />
             <span>Reconciliation report</span>
           </Button>
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleLoadFile}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
             <Upload className="w-4 h-4" />
-            <span>Load file</span>
+            <span>Read the file</span>
           </Button>
         </div>
       </div>
 
       {/* Filter Section */}
       <div className="py-4 bg-gray-50">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Account:</label>
+        <div className="grid grid-cols-5 gap-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Account</label>
             <Input
               value={data.account}
               onChange={(e) => handleInputChange('account', e.target.value)}
-              className="w-20"
+              className="w-full"
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Reconciliation period:</label>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Reconciliation period</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="date"
                 value={data.reconciliationPeriodStart}
                 onChange={(e) => handleInputChange('reconciliationPeriodStart', e.target.value)}
-                className="pl-10 w-40"
+                className="pl-10 w-full"
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Reconciliation period to</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="date"
                 value={data.reconciliationPeriodEnd}
                 onChange={(e) => handleInputChange('reconciliationPeriodEnd', e.target.value)}
-                className="pl-10 w-40"
+                className="pl-10 w-full"
               />
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Open records from:</label>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Open records from</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="date"
                 value={data.openRecordsFrom}
                 onChange={(e) => handleInputChange('openRecordsFrom', e.target.value)}
-                className="pl-10 w-40"
+                className="pl-10 w-full"
               />
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Verification series:</label>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Verification series:</label>
             <div className="relative">
               <Input
                 value={data.verificationSeries}
                 onChange={(e) => handleInputChange('verificationSeries', e.target.value)}
-                className="w-32 pr-8"
+                className="w-full pr-8"
               />
               <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
+            <Button
+              onClick={handleSearch}
+              className="bg-gray-800 hover:bg-gray-900 text-white w-full mt-2"
+            >
+              Search
+            </Button>
           </div>
-          <Button
-            onClick={handleSearch}
-            className="bg-gray-800 hover:bg-gray-900 text-white px-6"
-          >
-            Search
-          </Button>
         </div>
       </div>
 
       {/* Main Content - Two Column Layout */}
       <div className="flex-1 py-6">
-        <div className="grid grid-cols-2 gap-6 h-96">
+        <div className="grid grid-cols-2 gap-6">
           {/* Left Column - Accounting Transactions */}
-          <div className="border border-gray-300 rounded-lg">
-            <div className="bg-gray-100 px-4 py-2 border-b border-gray-300">
-              <h3 className="text-sm font-medium text-gray-900">Accounting transactions</h3>
+          <div>
+            <div className="mb-2">
+              <h3 className="text-sm font-medium text-gray-900 inline mr-4">Accounting transactions</h3>
+              <span className="text-sm text-gray-600">Opening account balance: -3,00</span>
             </div>
-            <div className="p-4 h-80 overflow-y-auto">
-              <div className="space-y-2">
-                {filteredAccountingTransactions.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className={`p-3 border rounded cursor-pointer hover:bg-gray-50 ${
-                      transaction.selected ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
-                    } ${transaction.matched ? 'opacity-50' : ''}`}
-                    onClick={() => handleTransactionSelect('accounting', transaction.id)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{transaction.date}</div>
-                        <div className="text-sm text-gray-600">{transaction.description}</div>
-                      </div>
-                      <div className={`text-sm font-medium ${
-                        transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            <div className="text-sm text-gray-600 mb-2">Date October 2025</div>
+            <div className="border border-gray-300 rounded-lg">
+              <div className="overflow-y-auto max-h-96">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voucher no.</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr className="hover:bg-[#dddddd] bg-white" onClick={() => handleTransactionSelect('accounting', '1')}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">&nbsp;</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">2025-10-07</td>
+                      <td className="px-4 py-2 text-sm text-gray-900">Other</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">-1 000,00</td>
+                    </tr>
+                    <tr className="hover:bg-[#dddddd] bg-white" onClick={() => handleTransactionSelect('accounting', '2')}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">F 8</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">2025-10-07</td>
+                      <td className="px-4 py-2 text-sm text-gray-900">Cash Sale</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">-1 000,00</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div className="px-4 py-2 border-t border-gray-300 bg-gray-50">
-              <div className="text-sm text-gray-600">
-                Opening account balance: {accountingBalance.toFixed(2)}
+            <div className="border-t border-gray-300 mt-2">
+              <div className="text-sm text-gray-600 text-right">
+                Account balance per 2025-11-01: -1 003,00
               </div>
             </div>
           </div>
 
           {/* Right Column - Loaded Transactions */}
-          <div className="border border-gray-300 rounded-lg">
-            <div className="bg-gray-100 px-4 py-2 border-b border-gray-300">
-              <h3 className="text-sm font-medium text-gray-900">Loaded transactions</h3>
+          <div>
+            <div className="mb-2">
+              <h3 className="text-sm font-medium text-gray-900 inline mr-4">Loaded transactions</h3>
+              <span className="text-sm text-gray-600">Opening account balance: 50,00</span>
             </div>
-            <div className="p-4 h-80 overflow-y-auto">
-              <div className="space-y-2">
-                {filteredLoadedTransactions.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className={`p-3 border rounded cursor-pointer hover:bg-gray-50 ${
-                      transaction.selected ? 'bg-blue-50 border-blue-300' : 'border-gray-200'
-                    } ${transaction.matched ? 'opacity-50' : ''}`}
-                    onClick={() => handleTransactionSelect('loaded', transaction.id)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{transaction.date}</div>
-                        <div className="text-sm text-gray-600">{transaction.description}</div>
-                      </div>
-                      <div className={`text-sm font-medium ${
-                        transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            <div className="text-sm text-gray-600 mb-2">Date October 2025</div>
+            <div className="border border-gray-300 rounded-lg">
+              <div className="overflow-y-auto max-h-96">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voucher no.</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr className="hover:bg-[#dddddd] bg-white" onClick={() => handleTransactionSelect('loaded', '1')}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">&nbsp;</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">2025-10-08</td>
+                      <td className="px-4 py-2 text-sm text-gray-900">Bank Deposit</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">+5 000,00</td>
+                    </tr>
+                    <tr className="hover:bg-[#dddddd] bg-white" onClick={() => handleTransactionSelect('loaded', '2')}>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">B 12</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">2025-10-09</td>
+                      <td className="px-4 py-2 text-sm text-gray-900">Supplier Payment</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900">-2 500,00</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div className="px-4 py-2 border-t border-gray-300 bg-gray-50">
-              <div className="text-sm text-gray-600">
-                Opening account balance: {loadedBalance.toFixed(2)}
+            <div className="border-t border-gray-300 mt-2">
+              <div className="text-sm text-gray-600 text-right">
+                Account balance per 2025-11-01: 2 550,00
               </div>
             </div>
           </div>
