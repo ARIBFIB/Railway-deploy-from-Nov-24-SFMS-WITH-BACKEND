@@ -211,7 +211,7 @@ export const AccountReconciliation: React.FC = () => {
       <div className="py-4">
         <div className="flex items-center space-x-4">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleHideMatched}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
@@ -219,7 +219,7 @@ export const AccountReconciliation: React.FC = () => {
             <span>Hide matched</span>
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleLoadHistory}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
@@ -227,7 +227,7 @@ export const AccountReconciliation: React.FC = () => {
             <span>Reading history</span>
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleMassReconciliation}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
@@ -235,7 +235,7 @@ export const AccountReconciliation: React.FC = () => {
             <span>Batch reconciliation</span>
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleAccountAnalysis}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
@@ -243,7 +243,7 @@ export const AccountReconciliation: React.FC = () => {
             <span>Account analysis</span>
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleReconciliationReport}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
@@ -251,7 +251,7 @@ export const AccountReconciliation: React.FC = () => {
             <span>Reconciliation report</span>
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handleLoadFile}
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600"
           >
