@@ -83,9 +83,17 @@ export class AccountingTemplatesController {
 
         console.log('✅ Accounting templates fetched successfully:', templates?.length || 0);
 
+        // Transform the data to use camelCase field names for the frontend
+        const transformedTemplates = (templates || []).map(template => ({
+          ...template,
+          verificationSeries: template.verification_series,
+          // Remove the snake_case field to avoid confusion
+          verification_series: undefined
+        }));
+
         res.status(200).json({
           success: true,
-          data: templates || [],
+          data: transformedTemplates,
           message: 'Accounting templates retrieved successfully'
         });
       } catch (error) {
@@ -135,9 +143,17 @@ export class AccountingTemplatesController {
 
         if (error) throw error;
 
+        // Transform the data to use camelCase field names for the frontend
+        const transformedTemplate = {
+          ...template,
+          verificationSeries: template.verification_series,
+          // Remove the snake_case field to avoid confusion
+          verification_series: undefined
+        };
+
         res.status(200).json({
           success: true,
-          data: template,
+          data: transformedTemplate,
           message: 'Accounting template retrieved successfully'
         });
       } catch (error) {
@@ -257,9 +273,17 @@ export class AccountingTemplatesController {
 
         if (fetchError) throw fetchError;
 
+        // Transform the data to use camelCase field names for the frontend
+        const transformedTemplate = {
+          ...completeTemplate,
+          verificationSeries: completeTemplate.verification_series,
+          // Remove the snake_case field to avoid confusion
+          verification_series: undefined
+        };
+
         res.status(201).json({
           success: true,
-          data: completeTemplate,
+          data: transformedTemplate,
           message: 'Accounting template created successfully'
         });
       } catch (error) {
@@ -402,9 +426,17 @@ export class AccountingTemplatesController {
 
         if (fetchError) throw fetchError;
 
+        // Transform the data to use camelCase field names for the frontend
+        const transformedTemplate = {
+          ...completeTemplate,
+          verificationSeries: completeTemplate.verification_series,
+          // Remove the snake_case field to avoid confusion
+          verification_series: undefined
+        };
+
         res.status(200).json({
           success: true,
-          data: completeTemplate,
+          data: transformedTemplate,
           message: 'Accounting template updated successfully'
         });
       } catch (error) {

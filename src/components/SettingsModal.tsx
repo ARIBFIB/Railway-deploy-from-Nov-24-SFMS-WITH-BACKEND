@@ -1558,7 +1558,7 @@ const settingsCategories: SettingsCategory[] = [
       { id: 'accounting-templates', name: 'Coding templates', route: '/settings/accounting-templates' },
       { id: 'accounting-view', name: 'Accounting view', route: '/settings/accounting-view' },
       { id: 'accruals', name: 'Accruals', route: '/settings/accruals' },
-      { id: 'asset-register-types', name: 'Asset register - Asset types', route: '/settings/asset-register-types' },
+      { id: 'asset-register-types', name: 'Assets Register - Asset types', route: '/settings/asset-register-types' },
       { id: 'automatic-accounting', name: 'Automatic accounting', route: '/settings/automatic-accounting' },
       { id: 'cost-centers', name: 'Cost centers', route: '/settings/cost-centers' },
       { id: 'accounting-default-accounts', name: 'Default accounts', route: '/settings/default-accounts' },
@@ -1568,17 +1568,15 @@ const settingsCategories: SettingsCategory[] = [
       { id: 'project', name: 'Project', route: '/settings/project' },
       { id: 'quantity-accounting', name: 'Quantity accounting', route: '/settings/quantity-accounting' },
       { id: 'quick-texts', name: 'Quick texts', route: '/settings/quick-texts' },
-      { id: 'reconcile-account', name: 'Reconcile account', route: '/settings/reconcile-account' },
       { id: 'registration-templates', name: 'Registration templates', route: '/settings/registration-templates' },
       { id: 'reports', name: 'Reports', route: '/settings/reports' },
       { id: 'trusted-senders-storage', name: 'Trusted Senders & Storage', route: '/settings/trusted-senders-storage' },
-      { id: 'vat', name: 'VAT', route: '/settings/vat' },
-      { id: 'verification-series', name: 'Verification series', route: '/settings/verification-series' }
+      { id: 'vat', name: 'VAT', route: '/settings/vat' }
     ],
     collapsibleSections: [
       {
         id: 'facility-register-general',
-        title: 'Facility register - General settings',
+        title: 'Assets Register - General Settings',
         isExpanded: true,
         facilityRegisterSettings: {
           proposedDepreciationStartDate: 'Acquisition month',
@@ -18822,19 +18820,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         incoming_invoices_action: vatData.settings.incomingInvoicesAction,
         about: vatData.settings.about, // This appears to be the 'From' date field
       };
-      
+
       console.log('Attempting to save VAT settings:', payload);
-      
+
       const response = await apiFetch('/api/settings/vat', {
         method: 'POST',
         json: payload,
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to save VAT settings');
       }
-      
+
       const result = await response.json();
       if (result.success) {
         alert('VAT settings saved successfully!');
@@ -21789,7 +21787,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                                 <div>
                                   <p className="text-sm text-gray-600">
-                                    Go to: <a 
+                                    Go to: <a
                                       onClick={() => toggleSection('quick-texts')}
                                       className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
                                     >
@@ -21832,8 +21830,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                                 The chart of accounts can now be found under Register - Chart of accounts. You also enter opening balances and budgets for your various accounts in the chart of accounts.
                               </p>
                               <p className="text-sm text-gray-700">
-                                Go to: <a 
-                                  onClick={() => navigate('/account-plan')} 
+                                Go to: <a
+                                  onClick={() => navigate('/account-plan')}
                                   className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
                                 >
                                   Register - Chart of Accounts

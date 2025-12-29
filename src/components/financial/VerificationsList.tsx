@@ -49,6 +49,8 @@ export const VerificationsList: React.FC = () => {
   const [editingVerification, setEditingVerification] = useState<Verification | null>(null);
   const [wasVerificationJustCreated, setWasVerificationJustCreated] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [showGalleryPanel, setShowGalleryPanel] = useState(false);
+  const [currentVerification, setCurrentVerification] = useState<Verification | null>(null);
 
   // VAT state
   const [vatPeriods] = useState([
@@ -973,7 +975,18 @@ export const VerificationsList: React.FC = () => {
                             )}
                             {/* Gallery icon - show when verification has images */}
                             {verification.has_gallery && (
-                              <Image className="w-4 h-4 text-gray-600" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentVerification(verification);
+                                  setShowGalleryPanel(true);
+                                }}
+                                className="p-1 text-gray-600 hover:text-[#5c6f2b] transition-colors"
+                                title="View gallery"
+                              >
+                                <Image className="w-4 h-4" />
+                              </button>
                             )}
                           </div>
                         </td>
@@ -1614,6 +1627,64 @@ export const VerificationsList: React.FC = () => {
         }}
         onVerificationCreated={handleVerificationCreated}
       />
+      
+      {/* Gallery Panel - Slide out from right */}
+      {showGalleryPanel && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowGalleryPanel(false)}></div>
+          <div className="absolute right-0 top-0 h-full w-96 bg-white shadow-xl transform transition-transform duration-300 ease-in-out translate-x-0">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-[#9bbb48]/20">
+                <h3 className="text-lg font-semibold text-gray-800">Choose picture</h3>
+                <button 
+                  type="button" 
+                  onClick={() => setShowGalleryPanel(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex-1 p-4 overflow-y-auto">
+                <p className="text-gray-600 mb-6">There are no available documents to attach.</p>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-12H16m8 8h8m-8 0V8m0 0h8m-8 0a4 4 0 01-4-4z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Drag and drop a document here or click
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PNG, JPG, GIF up to 10MB
+                  </p>
+                  <button 
+                    type="button" 
+                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#5c6f2b] hover:bg-[#4a5a25] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6f2b]"
+                  >
+                    Upload
+                  </button>
+                </div>
+                
+                <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
+                  <p className="mb-2">Once the document has been uploaded, it is saved and archived, and you may discard the original.</p>
+                  <p>From July 1 2024, digital storage of documents will be sufficient.</p>
+                </div>
+              </div>
+              
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <button 
+                  type="button" 
+                  onClick={() => setShowGalleryPanel(false)}
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#5c6f2b] hover:bg-[#4a5a25] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6f2b]"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 };

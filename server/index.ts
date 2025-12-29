@@ -73,6 +73,7 @@ import quickTextsRoutes from './routes/quickTexts';
 import registrationTemplatesRoutes from './routes/registrationTemplates';
 import verificationSeriesSettingsRoutes from './routes/verificationSeriesSettings';
 import reconcileAccountSettingsRoutes from './routes/reconcileAccountSettings';
+import reconciliationRoutes from './routes/reconciliation';
 import supplierSettingsRoutes from './routes/supplierSettings';
 import accountingSettingsRoutes from './routes/accountingSettings';
 import quoteOrderSettingsRoutes from './routes/quoteOrderSettings';
@@ -212,6 +213,7 @@ app.use('/api/settings/quick-texts', quickTextsRoutes);
 app.use('/api/settings/registration-templates', registrationTemplatesRoutes);
 app.use('/api/settings/verification-series', verificationSeriesSettingsRoutes);
 app.use('/api/settings/reconcile-account', reconcileAccountSettingsRoutes);
+app.use('/api/reconciliation', reconciliationRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorLogging);

@@ -229,6 +229,47 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     }
   }, [isOpen, initialData, settingsLoaded, descriptions, verificationSeries]);
 
+  // Update verification series when accounting templates change
+  useEffect(() => {
+    if (accountingTemplates.length > 0 && formData.accountingTemplate) {
+      const currentTemplate = accountingTemplates.find(t => t.id === formData.accountingTemplate);
+      if (currentTemplate && currentTemplate.verificationSeries !== formData.verificationSeries) {
+        // If the template's verification series has changed, update it
+        const templateVerificationSeries = currentTemplate.verificationSeries;
+        const seriesExists = verificationSeries.some(series => series.code === templateVerificationSeries);
+        
+        setFormData(prev => ({
+          ...prev,
+          verificationSeries: templateVerificationSeries
+        }));
+        
+        // If the template's verification series is not in the current list, add it temporarily
+        if (!seriesExists) {
+          const newSeriesItem: VerificationSeriesItem = {
+            id: `temp-${currentTemplate.id}`,
+            code: templateVerificationSeries,
+            name: templateVerificationSeries.split(' - ')[1] || templateVerificationSeries,
+            manualAccounting: true,
+            position: verificationSeries.length
+          };
+          
+          setVerificationSeries(prev => [
+            ...prev,
+            newSeriesItem
+          ]);
+        }
+      }
+    }
+  }, [accountingTemplates, formData.accountingTemplate]);
+
+  // Clean up temporary verification series when form is closed
+  useEffect(() => {
+    if (!isOpen) {
+      // Remove temporary verification series (those with IDs starting with 'temp-')
+      setVerificationSeries(prev => prev.filter(series => !series.id.startsWith('temp-')));
+    }
+  }, [isOpen]);
+
   // Watch for changes in amount and template to update account entries
   useEffect(() => {
     if (formData.accountingTemplate && formData.amount) {
@@ -332,12 +373,32 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const handleTemplateSelect = (templateId: string) => {
     const template = accountingTemplates.find(t => t.id === templateId);
     if (template) {
+      // Check if the template's verification series is in the current list
+      const templateVerificationSeries = template.verificationSeries;
+      const seriesExists = verificationSeries.some(series => series.code === templateVerificationSeries);
+      
       setFormData(prev => ({
         ...prev,
         accountingTemplate: templateId, // Store the template ID
         description: template.description,
-        verificationSeries: template.verificationSeries
+        verificationSeries: templateVerificationSeries
       }));
+      
+      // If the template's verification series is not in the current list, add it temporarily
+      if (!seriesExists) {
+        const newSeriesItem: VerificationSeriesItem = {
+          id: `temp-${templateId}`,
+          code: templateVerificationSeries,
+          name: templateVerificationSeries.split(' - ')[1] || templateVerificationSeries,
+          manualAccounting: true,
+          position: verificationSeries.length
+        };
+        
+        setVerificationSeries(prev => [
+          ...prev,
+          newSeriesItem
+        ]);
+      }
       
       // If there's an amount entered, update the account entries based on the template
       if (formData.amount) {
