@@ -369,6 +369,193 @@ export const AccountReconciliation: React.FC = () => {
     }
   };
 
+  const generateReconciliationReport = (format: 'screen' | 'pdf' | 'txt') => {
+    // According to user, unselected items are unreconciled
+    const unreconciledAccounting = data.accountingTransactions.filter(t => !t.selected);
+    const unreconciledBank = data.loadedTransactions.filter(t => !t.selected);
+
+    const totalUnreconciledAccounting = unreconciledAccounting.reduce((sum, t) => sum + t.amount, 0);
+    const totalUnreconciledBank = unreconciledBank.reduce((sum, t) => sum + t.amount, 0);
+
+    // Mock bank balance for now
+    const bankBalance = 0.00;
+    const ledgerBalance = calculateBalance(data.accountingTransactions);
+    const difference = bankBalance - ledgerBalance + totalUnreconciledAccounting - totalUnreconciledBank;
+
+    const reportData = {
+      account: data.account,
+      dateFrom: data.reconciliationPeriodStart,
+      dateTo: data.reconciliationPeriodEnd,
+      printDate: new Date().toLocaleDateString(),
+      printTime: new Date().toLocaleTimeString(),
+      companyName: "Company Name",
+      systemVersion: "v1.0.0",
+      bankBalance,
+      unreconciledAccounting,
+      unreconciledBank,
+      totalUnreconciledAccounting,
+      totalUnreconciledBank,
+      ledgerBalance,
+      difference
+    };
+
+    const filterInfo = `Filters: Customers: ${customerPaymentsFilter}, Suppliers: ${supplierPaymentsFilter}, Others: ${otherItemsFilter}`;
+
+    if (format === 'txt') {
+      const content = `CASH / BANK RECONCILIATION REPORT\n` +
+        `Company: ${reportData.companyName}\n` +
+        `Period: ${reportData.dateFrom} to ${reportData.dateTo}\n` +
+        `Account: ${reportData.account}\n` +
+        `${filterInfo}\n\n` +
+        `BANK BALANCE: ${reportData.bankBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n\n` +
+        `UNRECONCILED ACCOUNTING TRANSACTIONS\n` +
+        `Date | Ver. No | Description | Amount\n` +
+        unreconciledAccounting.map(t => `${t.date} | ${t.voucher_number || ''} | ${t.description} | ${t.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}`).join('\n') +
+        `\nTotal Unreconciled Accounting: ${totalUnreconciledAccounting.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n\n` +
+        `UNRECONCILED BANK TRANSACTIONS\n` +
+        `Date | Description | Amount\n` +
+        unreconciledBank.map(t => `${t.date} | ${t.description} | ${t.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}`).join('\n') +
+        `\nTotal Unreconciled Bank: ${totalUnreconciledBank.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n\n` +
+        `SUMMARY\n` +
+        `Total Unreconciled: ${(totalUnreconciledAccounting + totalUnreconciledBank).toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n` +
+        `Ledger Balance: ${ledgerBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n` +
+        `Difference: ${difference.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}\n`;
+
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ReconciliationReport_${reportData.account}.txt`;
+      a.click();
+      return;
+    }
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Reconciliation Report</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; color: #333; }
+            .header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            .section-title { background: #f3f4f6; padding: 8px; font-weight: bold; margin-top: 20px; border-left: 4px solid #9bbb48; }
+            .highlight-box { background: #fef3c7; border: 1px solid #f59e0b; padding: 10px; margin-top: 10px; display: inline-block; float: right; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.9em; }
+            .right { text-align: right; }
+            .summary-block { margin-top: 30px; float: right; width: 300px; }
+            .summary-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+            .total-row { font-weight: bold; background: #eee; }
+            .clearfix::after { content: ""; clear: both; display: table; }
+          </style>
+        </head>
+        <body class="clearfix">
+          <div class="header">
+            <div>
+              <strong>${reportData.companyName}</strong><br/>
+              Period: ${reportData.dateFrom} - ${reportData.dateTo}
+            </div>
+            <div style="text-align: center;">
+              <h2>Cash / Bank Reconciliation Report</h2>
+              <strong>Account: ${reportData.account}</strong><br/>
+              <span style="font-size: 0.8em; color: #666;">${filterInfo}</span>
+            </div>
+            <div class="right">
+              Date: ${reportData.printDate}<br/>
+              Time: ${reportData.printTime}<br/>
+              Version: ${reportData.systemVersion}
+            </div>
+          </div>
+
+          <div class="clearfix">
+            <div class="highlight-box">
+              <strong>Bank Balance:</strong> 
+              <span style="font-size: 1.2em; margin-left: 10px;">${reportData.bankBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          <div class="section-title">Accounting transactions not yet reconciled</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Ver. No</th>
+                <th>Description</th>
+                <th class="right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${unreconciledAccounting.map(t => `
+                <tr>
+                  <td>${t.date}</td>
+                  <td>${t.voucher_number || ''}</td>
+                  <td>${t.description}</td>
+                  <td class="right">${t.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              ${unreconciledAccounting.length === 0 ? '<tr><td colspan="4" style="text-align:center;">No unreconciled accounting items</td></tr>' : ''}
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3">Total unreconciled accounting items</td>
+                <td class="right">${totalUnreconciledAccounting.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="section-title">Bank transactions not yet reconciled</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${unreconciledBank.map(t => `
+                <tr>
+                  <td>${t.date}</td>
+                  <td>${t.description}</td>
+                  <td class="right">${t.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+              ${unreconciledBank.length === 0 ? '<tr><td colspan="3" style="text-align:center;">No unreconciled bank items</td></tr>' : ''}
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2">Total unreconciled bank items</td>
+                <td class="right">${totalUnreconciledBank.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="summary-block">
+            <div class="summary-row">
+              <span>Total Unreconciled Items:</span>
+              <span>${(totalUnreconciledAccounting + totalUnreconciledBank).toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div class="summary-row">
+              <span>Balance according to general ledger:</span>
+              <span>${ledgerBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div class="summary-row" style="font-weight: bold; border-top: 2px solid #333;">
+              <span>Difference:</span>
+              <span style="${difference !== 0 ? 'color: red;' : ''}">${difference.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(htmlContent);
+      if (format === 'pdf') {
+        newTab.print();
+      }
+    }
+  };
+
   const handleLoadFile = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -1112,13 +1299,22 @@ export const AccountReconciliation: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex space-x-4">
-                  <Button className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white">
+                  <Button
+                    onClick={() => generateReconciliationReport('screen')}
+                    className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white"
+                  >
                     Show on screen
                   </Button>
-                  <Button className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white">
+                  <Button
+                    onClick={() => generateReconciliationReport('pdf')}
+                    className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white"
+                  >
                     Show PDF
                   </Button>
-                  <Button className="flex-1 bg-[#637e2f] hover:bg-[#526a27] text-white">
+                  <Button
+                    onClick={() => generateReconciliationReport('txt')}
+                    className="flex-1 bg-[#637e2f] hover:bg-[#526a27] text-white"
+                  >
                     Show TXT
                   </Button>
                 </div>
