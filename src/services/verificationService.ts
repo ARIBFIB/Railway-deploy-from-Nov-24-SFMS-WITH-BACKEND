@@ -356,7 +356,7 @@ export class VerificationService {
         console.error('❌ VerificationService.getAccountingTemplates - Error response:', errorData);
       } catch (parseError) {
         console.error('❌ VerificationService.getAccountingTemplates - Failed to parse error response:', parseError);
-        const responseText = await response.text(); 
+        const responseText = await response.text();
         console.error('❌ Raw error response:', responseText);
         errorMessage = `Server error (${response.status}): ${responseText}`;
       }
@@ -402,7 +402,7 @@ export class VerificationService {
         console.error('❌ VerificationService.getUniqueDescriptions - Error response:', errorData);
       } catch (parseError) {
         console.error('❌ VerificationService.getUniqueDescriptions - Failed to parse error response:', parseError);
-        const responseText = await response.text(); 
+        const responseText = await response.text();
         console.error('❌ Raw error response:', responseText);
         errorMessage = `Server error (${response.status}): ${responseText}`;
       }
@@ -419,6 +419,32 @@ export class VerificationService {
       console.error('❌ Raw success response:', responseText);
       throw new Error(`Failed to parse server response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
+  }
+
+  static async searchEntries(filters: {
+    min_amount?: number;
+    max_amount?: number;
+    verification_series?: string;
+    date_from?: string;
+    date_to?: string;
+    account_number?: string;
+  }): Promise<{ success: boolean; data: any[]; message?: string }> {
+    const queryParams = new URLSearchParams();
+    if (filters.min_amount !== undefined) queryParams.append('min_amount', filters.min_amount.toString());
+    if (filters.max_amount !== undefined) queryParams.append('max_amount', filters.max_amount.toString());
+    if (filters.verification_series) queryParams.append('verification_series', filters.verification_series);
+    if (filters.date_from) queryParams.append('date_from', filters.date_from);
+    if (filters.date_to) queryParams.append('date_to', filters.date_to);
+    if (filters.account_number) queryParams.append('account_number', filters.account_number);
+
+    const response = await apiFetch(`/api/verifications/search-entries?${queryParams.toString()}`);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to search verification entries');
+    }
+
+    return await response.json();
   }
 }
 

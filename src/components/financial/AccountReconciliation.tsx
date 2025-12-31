@@ -60,6 +60,9 @@ export const AccountReconciliation: React.FC = () => {
     loadedTransactions: []
   });
 
+  const [savedAccountingTransactions, setSavedAccountingTransactions] = useState<Transaction[]>([]);
+  const [savedLoadedTransactions, setSavedLoadedTransactions] = useState<Transaction[]>([]);
+
   const [selectAllAccounting, setSelectAllAccounting] = useState(false);
   const [selectAllLoaded, setSelectAllLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -133,6 +136,10 @@ export const AccountReconciliation: React.FC = () => {
           accountingTransactions: response.data.accountingTransactions,
           loadedTransactions: response.data.loadedTransactions
         }));
+
+        // Initialize saved state from search results
+        setSavedAccountingTransactions(response.data.accountingTransactions);
+        setSavedLoadedTransactions(response.data.loadedTransactions);
 
         // Reset selection states
         setSelectAllAccounting(false);
@@ -233,6 +240,14 @@ export const AccountReconciliation: React.FC = () => {
     setCommentText('');
   };
 
+  const handleSave = () => {
+    console.log('Saving reconciliation...');
+    // Persist current state to saved state for reports
+    setSavedAccountingTransactions([...data.accountingTransactions]);
+    setSavedLoadedTransactions([...data.loadedTransactions]);
+    showToast('Reconciliation complete.', 'success');
+  };
+
   const handleAccountAnalysis = () => {
     setAnalysisDateFrom(data.reconciliationPeriodStart);
     setAnalysisDateTo(data.reconciliationPeriodEnd);
@@ -244,11 +259,19 @@ export const AccountReconciliation: React.FC = () => {
   };
 
   const generateAccountAnalysisReport = (format: 'screen' | 'pdf' | 'txt') => {
+    // Use saved state instead of live state for reports
+    const sourceTransactions = savedAccountingTransactions;
+
+    if (sourceTransactions.length === 0) {
+      showToast("No saved transactions to report. Please save your changes first.", "info");
+      return;
+    }
+
     const transactions = activeTransactionFilter === 'All'
-      ? data.accountingTransactions
+      ? sourceTransactions
       : activeTransactionFilter === 'Reconciled'
-        ? data.accountingTransactions.filter(t => t.selected)
-        : data.accountingTransactions.filter(t => !t.selected);
+        ? sourceTransactions.filter(t => t.selected)
+        : sourceTransactions.filter(t => !t.selected);
 
     const reportData = {
       transactions,
@@ -370,9 +393,14 @@ export const AccountReconciliation: React.FC = () => {
   };
 
   const generateReconciliationReport = (format: 'screen' | 'pdf' | 'txt') => {
-    // According to user, unselected items are unreconciled
-    const unreconciledAccounting = data.accountingTransactions.filter(t => !t.selected);
-    const unreconciledBank = data.loadedTransactions.filter(t => !t.selected);
+    // Use saved state instead of live state
+    const unreconciledAccounting = savedAccountingTransactions.filter(t => !t.selected);
+    const unreconciledBank = savedLoadedTransactions.filter(t => !t.selected);
+
+    if (savedAccountingTransactions.length === 0 && savedLoadedTransactions.length === 0) {
+      showToast("No saved transactions to report. Please save your changes first.", "info");
+      return;
+    }
 
     const totalUnreconciledAccounting = unreconciledAccounting.reduce((sum, t) => sum + t.amount, 0);
     const totalUnreconciledBank = unreconciledBank.reduce((sum, t) => sum + t.amount, 0);
@@ -634,10 +662,6 @@ export const AccountReconciliation: React.FC = () => {
     setSelectAllLoaded(allLoadedSelected);
   }, [data.accountingTransactions, data.loadedTransactions]);
 
-  const handleSave = () => {
-    console.log('Saving reconciliation...');
-    showToast("Reconciliation complete.", "success");
-  };
 
   const handleCancel = () => {
     console.log('Canceling reconciliation...');
@@ -780,7 +804,7 @@ export const AccountReconciliation: React.FC = () => {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Open records from</label>
+            <label className="block text-sm font-medium text-gray-700">Open posts from</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -1051,7 +1075,7 @@ export const AccountReconciliation: React.FC = () => {
             <Button
               onClick={handleSave}
               className="bg-green-600 hover:bg-green-700 text-white"
-              disabled={data.accountingTransactions.length === 0 || data.loadedTransactions.length === 0}
+              disabled={data.accountingTransactions.length === 0}
             >
               Save
             </Button>
@@ -1159,19 +1183,19 @@ export const AccountReconciliation: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-4">Show Transactions</h3>
                   <div className="flex rounded-lg border border-gray-300 overflow-hidden mb-6">
                     <Button
-                      className={`flex-1 ${activeTransactionFilter === 'Reconciled' ? 'bg-[#5c6f2b] text-white hover:bg-[#4a5a25]' : 'bg-[#9bbb48] text-gray-700 hover:bg-[#a9c56a]'} border-r border-gray-300 rounded-none`}
+                      className={`flex-1 ${activeTransactionFilter === 'Reconciled' ? 'bg-[#10b981] text-white hover:bg-[#059669]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} border-r border-gray-300 rounded-none h-10`}
                       onClick={() => setActiveTransactionFilter('Reconciled')}
                     >
                       Reconciled
                     </Button>
                     <Button
-                      className={`flex-1 ${activeTransactionFilter === 'Not reconciled' ? 'bg-[#5c6f2b] text-white hover:bg-[#4a5a25]' : 'bg-[#9bbb48] text-gray-700 hover:bg-[#a9c56a]'} border-r border-gray-300 rounded-none`}
+                      className={`flex-1 ${activeTransactionFilter === 'Not reconciled' ? 'bg-[#f59e0b] text-white hover:bg-[#d97706]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} border-r border-gray-300 rounded-none h-10`}
                       onClick={() => setActiveTransactionFilter('Not reconciled')}
                     >
                       Not reconciled
                     </Button>
                     <Button
-                      className={`flex-1 ${activeTransactionFilter === 'All' ? 'bg-[#5c6f2b] text-white hover:bg-[#4a5a25]' : 'bg-[#9bbb48] text-gray-700 hover:bg-[#a9c56a]'} rounded-none`}
+                      className={`flex-1 ${activeTransactionFilter === 'All' ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} rounded-none h-10`}
                       onClick={() => setActiveTransactionFilter('All')}
                     >
                       All

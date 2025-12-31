@@ -35,6 +35,7 @@ router.post('/', VerificationController.createVerification);
 router.get('/', VerificationController.getVerifications);
 router.get('/next-number', VerificationController.getNextVerificationNumber);
 router.get('/descriptions', VerificationController.getUniqueDescriptions);
+router.get('/search-entries', VerificationController.searchEntries);
 router.get('/:id', VerificationController.getVerificationById);
 router.put('/:id', VerificationController.updateVerification);
 router.delete('/:id', VerificationController.deleteVerification);

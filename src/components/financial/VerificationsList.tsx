@@ -5,6 +5,7 @@ import { AccountReconciliation } from './AccountReconciliation';
 import { VerificationForm } from './VerificationForm';
 import { CashReconciliation } from './CashReconciliation';
 import { VerificationService, type Verification } from '../../services/verificationService';
+import { AccountService, type Account } from '../../services/accountService';
 import {
   Search,
   Plus,
@@ -17,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Calendar,
   Pin,
   X
@@ -43,8 +45,16 @@ export const VerificationsList: React.FC = () => {
   // Search amount state
   const [searchAmountFrom, setSearchAmountFrom] = useState('');
   const [searchAmountTo, setSearchAmountTo] = useState('');
+  const [searchDateFrom, setSearchDateFrom] = useState('');
+  const [searchDateTo, setSearchDateTo] = useState('');
+  const [searchAccount, setSearchAccount] = useState('');
+  const [searchSeries, setSearchSeries] = useState('all');
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [searchResultsDensity, setSearchResultsDensity] = useState<'compact' | 'normal' | 'expanded'>('normal');
+  const [searchResultsPage, setSearchResultsPage] = useState(1);
+  const [searchResultsRowsPerPage, setSearchResultsRowsPerPage] = useState(10);
+  const [showExtendedSearch, setShowExtendedSearch] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [editingVerification, setEditingVerification] = useState<Verification | null>(null);
   const [wasVerificationJustCreated, setWasVerificationJustCreated] = useState(false);
@@ -235,8 +245,20 @@ export const VerificationsList: React.FC = () => {
     }
   };
 
+  const loadAccounts = async () => {
+    try {
+      const response = await AccountService.getAccounts({ limit: 1000 });
+      if (response.success) {
+        setAccounts(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to load accounts:', err);
+    }
+  };
+
   useEffect(() => {
     loadTemplates();
+    loadAccounts();
   }, []);
 
   const handleTemplateSelection = (templateId: string, templatesList = registrationTemplates) => {
@@ -479,14 +501,115 @@ export const VerificationsList: React.FC = () => {
     }, 250);
   };
 
-  const handleSearchAmount = () => {
-    console.log('Searching amounts from:', searchAmountFrom, 'to:', searchAmountTo);
-    loadVerifications();
-    setActiveTab('verifications'); // Switch back to list to see results
+  const handleSearchAmount = async () => {
+    console.log('Searching with filters:', {
+      searchAmountFrom,
+      searchAmountTo,
+      searchSeries,
+      searchDateFrom,
+      searchDateTo,
+      searchAccount
+    });
+
+    setLoading(true);
+    try {
+      const response = await VerificationService.searchEntries({
+        min_amount: searchAmountFrom ? parseFloat(searchAmountFrom) : undefined,
+        max_amount: searchAmountTo ? parseFloat(searchAmountTo) : undefined,
+        verification_series: searchSeries !== 'all' ? searchSeries : undefined,
+        date_from: searchDateFrom || undefined,
+        date_to: searchDateTo || undefined,
+        account_number: searchAccount || undefined
+      });
+
+      if (response.success) {
+        setSearchResults(response.data);
+      } else {
+        setError(response.message || 'Failed to search verification entries');
+      }
+    } catch (err) {
+      console.error('Search amount error:', err);
+      setError('An error occurred while searching. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchAmountFrom('');
+    setSearchAmountTo('');
+    setSearchDateFrom('');
+    setSearchDateTo('');
+    setSearchAccount('');
+    setSearchSeries('all');
+    setSearchResults([]);
+    setSearchResultsPage(1);
+  };
+
+  const cycleViewDensity = () => {
+    setSearchResultsDensity(prev => {
+      if (prev === 'compact') return 'normal';
+      if (prev === 'normal') return 'expanded';
+      return 'compact';
+    });
   };
 
   const handlePrintSearchResults = () => {
-    console.log('Printing search results');
+    if (searchResults.length === 0) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Search Amount Results</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+            h1 { text-align: center; margin-bottom: 20px; font-size: 18px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+            th { background-color: #f3f4f6; font-weight: bold; }
+            .right { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <h1>SEARCH AMOUNT RESULTS</h1>
+          <p>Filtered by: Amount ${searchAmountFrom || '0'} to ${searchAmountTo || '0'}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Verification no.</th>
+                <th>Posting date</th>
+                <th>Description</th>
+                <th>Account</th>
+                <th>Transaction information</th>
+                <th class="right">Debit</th>
+                <th class="right">Credit</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${searchResults.map(r => `
+                <tr>
+                  <td>${r.verification_number}</td>
+                  <td>${r.accounting_date}</td>
+                  <td>${r.description || ''}</td>
+                  <td>${r.account_number}</td>
+                  <td>${r.transaction_info || ''}</td>
+                  <td class="right">${r.debit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                  <td class="right">${r.credit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 250);
   };
 
   const handleReadMoreAboutKivra = () => {
@@ -593,6 +716,12 @@ export const VerificationsList: React.FC = () => {
 
   // No local filtering anymore
   const currentVerifications = verifications;
+
+  const totalPagesSearch = Math.ceil(searchResults.length / searchResultsRowsPerPage);
+  const paginatedSearchResults = searchResults.slice(
+    (searchResultsPage - 1) * searchResultsRowsPerPage,
+    searchResultsPage * searchResultsRowsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -1372,108 +1501,262 @@ export const VerificationsList: React.FC = () => {
                 <Printer className="w-4 h-4" />
                 Print list
               </button>
-              <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-1">
-                <Grid className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-600">0</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              </div>
             </div>
           </div>
 
           {/* Search Inputs */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
             <div className="flex items-center gap-4">
-              <Input
-                placeholder="Amount, from"
-                value={searchAmountFrom}
-                onChange={(e) => setSearchAmountFrom(e.target.value)}
-                className="w-40"
-              />
-              <Input
-                placeholder="Amount, to"
-                value={searchAmountTo}
-                onChange={(e) => setSearchAmountTo(e.target.value)}
-                className="w-40"
-              />
+              <div className="flex items-center gap-4">
+                <Input
+                  placeholder="Amount from"
+                  value={searchAmountFrom}
+                  onChange={(e) => setSearchAmountFrom(e.target.value)}
+                  className="w-40"
+                />
+                <Input
+                  placeholder="Amount to"
+                  value={searchAmountTo}
+                  onChange={(e) => setSearchAmountTo(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <button
+                onClick={() => setShowExtendedSearch(!showExtendedSearch)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+              >
+                {showExtendedSearch ? 'Hide search' : 'Extended Search'}
+                {showExtendedSearch ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              <div className="flex-1"></div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={handleClearSearch}
+                  className="text-gray-700 border-gray-300 hover:bg-gray-50"
+                >
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleSearchAmount}
+                  disabled={loading}
+                  className="bg-green-600 hover:bg-green-700 text-white min-w-[100px]"
+                >
+                  {loading ? 'Searching...' : 'Search'}
+                </Button>
+              </div>
             </div>
-            <button
-              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            >
-              Advanced search
-            </button>
-            <Button
-              onClick={handleSearchAmount}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              Search
-            </Button>
+
+            {/* Extended Search Panel */}
+            {showExtendedSearch && (
+              <div className="pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Verification Series</label>
+                  <select
+                    value={searchSeries}
+                    onChange={(e) => setSearchSeries(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All series</option>
+                    <option value="A">Series A (General)</option>
+                    <option value="B">Series B (Bank)</option>
+                    <option value="C">Series C (Cash)</option>
+                    <option value="D">Series D (Daily Sales)</option>
+                    <option value="K">Series K (Receipts)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Date from</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="date"
+                      value={searchDateFrom}
+                      onChange={(e) => setSearchDateFrom(e.target.value)}
+                      className="pl-10 h-[38px] w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Date to</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="date"
+                      value={searchDateTo}
+                      onChange={(e) => setSearchDateTo(e.target.value)}
+                      className="pl-10 h-[38px] w-full"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Account</label>
+                  <select
+                    value={searchAccount}
+                    onChange={(e) => setSearchAccount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All accounts</option>
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.account_number}>
+                        {acc.account_number} - {acc.account_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Search Results Table */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    VERIFICATION NUMBER
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ACCOUNTING DATE
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    DESCRIPTION
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ACCOUNT
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    TRANSACTION INFO
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    DEBIT
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    CREDIT
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {searchResults.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      No search results found. Enter amount range and click Search.
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Verification no.
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Posting date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Account
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Transaction information
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Debit
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Credit
+                    </th>
                   </tr>
-                ) : (
-                  searchResults.map((result) => (
-                    <tr key={result.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {result.verificationNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.accountingDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.account}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.transactionInfo}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.debit}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {result.credit}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {searchResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        {loading ? 'Searching for entries...' : 'No search results found. Enter filters and click Search.'}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    paginatedSearchResults.map((result) => {
+                      const rowPadding = searchResultsDensity === 'compact' ? 'py-1' : searchResultsDensity === 'expanded' ? 'py-6' : 'py-4';
+
+                      return (
+                        <tr
+                          key={result.id}
+                          className="hover:bg-gray-100 transition-colors cursor-pointer group"
+                          onClick={() => handleVerificationClick({ id: result.verification_id } as Verification)}
+                        >
+                          <td className={`px-6 ${rowPadding} whitespace-nowrap text-sm font-semibold text-gray-900 border-r border-gray-100 group-hover:text-blue-600`}>
+                            {result.verification_number}
+                          </td>
+                          <td className={`px-6 ${rowPadding} whitespace-nowrap text-sm text-gray-600`}>
+                            {result.accounting_date}
+                          </td>
+                          <td className={`px-6 ${rowPadding} text-sm text-gray-600 max-w-xs truncate`}>
+                            {result.description}
+                          </td>
+                          <td className={`px-6 ${rowPadding} whitespace-nowrap text-sm text-gray-900 font-medium`}>
+                            {result.account_number} <span className="text-gray-400 font-normal">| {result.account_name}</span>
+                          </td>
+                          <td className={`px-6 ${rowPadding} text-sm text-gray-600 truncate`}>
+                            {result.transaction_info}
+                          </td>
+                          <td className={`px-6 ${rowPadding} whitespace-nowrap text-sm text-right font-mono text-gray-900`}>
+                            {result.debit > 0 ? result.debit.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) : '0,00'}
+                          </td>
+                          <td className={`px-6 ${rowPadding} whitespace-nowrap text-sm text-right font-mono text-gray-900`}>
+                            {result.credit > 0 ? result.credit.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) : '0,00'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination and View Density Control */}
+            {searchResults.length > 0 && (
+              <div className="bg-gray-50 border-t border-gray-200 px-6 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      cycleViewDensity();
+                    }}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                    title="Toggle Row Height (Compact -> Normal -> Expanded)"
+                  >
+                    <Grid className={`w-5 h-5 transition-transform ${searchResultsDensity === 'compact' ? 'scale-75' : searchResultsDensity === 'expanded' ? 'scale-125' : 'scale-100'}`} />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Rows per page:</span>
+                    <select
+                      value={searchResultsRowsPerPage}
+                      onChange={(e) => {
+                        setSearchResultsRowsPerPage(Number(e.target.value));
+                        setSearchResultsPage(1);
+                      }}
+                      className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer text-gray-700"
+                    >
+                      {[10, 20, 50, 100].map(val => (
+                        <option key={val} value={val}>{val}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                  <span className="text-sm text-gray-600">
+                    {Math.min(searchResults.length, (searchResultsPage - 1) * searchResultsRowsPerPage + 1)}-
+                    {Math.min(searchResults.length, searchResultsPage * searchResultsRowsPerPage)} of {searchResults.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSearchResultsPage(p => Math.max(1, p - 1))}
+                      disabled={searchResultsPage === 1}
+                      className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed text-gray-600"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPagesSearch }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPagesSearch || Math.abs(p - searchResultsPage) <= 1)
+                        .map((p, i, arr) => (
+                          <React.Fragment key={p}>
+                            {i > 0 && arr[i - 1] !== p - 1 && <span className="text-gray-400 px-1">...</span>}
+                            <button
+                              onClick={() => setSearchResultsPage(p)}
+                              className={`px-3 py-1 text-sm font-semibold rounded transition-colors ${searchResultsPage === p
+                                ? 'bg-green-600 text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        ))
+                      }
+                    </div>
+                    <button
+                      onClick={() => setSearchResultsPage(p => Math.min(totalPagesSearch, p + 1))}
+                      disabled={searchResultsPage === totalPagesSearch}
+                      className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed text-gray-600"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'incoming-documents' ? (
@@ -1627,7 +1910,7 @@ export const VerificationsList: React.FC = () => {
         }}
         onVerificationCreated={handleVerificationCreated}
       />
-      
+
       {/* Gallery Panel - Slide out from right */}
       {showGalleryPanel && (
         <div className="fixed inset-0 z-50 overflow-hidden">
@@ -1636,18 +1919,18 @@ export const VerificationsList: React.FC = () => {
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-[#9bbb48]/20">
                 <h3 className="text-lg font-semibold text-gray-800">Choose picture</h3>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowGalleryPanel(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              
+
               <div className="flex-1 p-4 overflow-y-auto">
                 <p className="text-gray-600 mb-6">There are no available documents to attach.</p>
-                
+
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
                   <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-12H16m8 8h8m-8 0V8m0 0h8m-8 0a4 4 0 01-4-4z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -1658,23 +1941,23 @@ export const VerificationsList: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     PNG, JPG, GIF up to 10MB
                   </p>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#5c6f2b] hover:bg-[#4a5a25] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6f2b]"
                   >
                     Upload
                   </button>
                 </div>
-                
+
                 <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
                   <p className="mb-2">Once the document has been uploaded, it is saved and archived, and you may discard the original.</p>
                   <p>From July 1 2024, digital storage of documents will be sufficient.</p>
                 </div>
               </div>
-              
+
               <div className="border-t border-gray-200 p-4 bg-gray-50">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowGalleryPanel(false)}
                   className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#5c6f2b] hover:bg-[#4a5a25] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6f2b]"
                 >

@@ -611,7 +611,7 @@ export class VerificationModel {
   static async getUniqueDescriptionsByFoundation(foundationId: string): Promise<string[]> {
     try {
       console.log('🔍 VerificationModel.getUniqueDescriptionsByFoundation - Starting for foundation:', foundationId);
-      
+
       const { data, error } = await supabase
         .from('verifications')
         .select('description')
@@ -626,7 +626,7 @@ export class VerificationModel {
 
       // Extract descriptions and remove duplicates
       const descriptions = Array.from(new Set(data.map(item => item.description).filter(desc => desc && desc.trim() !== '')));
-      
+
       console.log('✅ Fetched unique descriptions:', descriptions.length);
       return descriptions;
     } catch (error) {
@@ -638,7 +638,7 @@ export class VerificationModel {
   static async getAllUniqueDescriptions(): Promise<string[]> {
     try {
       console.log('🔍 VerificationModel.getAllUniqueDescriptions - Starting');
-      
+
       const { data, error } = await supabase
         .from('verifications')
         .select('description')
@@ -652,11 +652,107 @@ export class VerificationModel {
 
       // Extract descriptions and remove duplicates
       const descriptions = Array.from(new Set(data.map(item => item.description).filter(desc => desc && desc.trim() !== '')));
-      
+
       console.log('✅ Fetched all unique descriptions:', descriptions.length);
       return descriptions;
     } catch (error) {
       console.error('Error in VerificationModel.getAllUniqueDescriptions:', error);
+      throw error;
+    }
+  }
+
+  static async searchEntries(foundationId: string, filters: {
+    min_amount?: number;
+    max_amount?: number;
+    verification_series?: string;
+    date_from?: string;
+    date_to?: string;
+    account_number?: string;
+  }): Promise<any[]> {
+    try {
+      console.log('🚀 VerificationModel.searchEntries - Starting with filters:', filters);
+
+      let query = supabase
+        .from('verification_entries')
+        .select(`
+          id,
+          account_number,
+          account_name,
+          transaction_info,
+          debit,
+          credit,
+          verifications!inner (
+            id,
+            verification_number,
+            accounting_date,
+            description,
+            verification_series,
+            foundation_id
+          )
+        `)
+        .eq('verifications.foundation_id', foundationId);
+
+      const min = filters.min_amount;
+      const max = filters.max_amount;
+
+      if (min !== undefined && max !== undefined) {
+        // Range check for either debit or credit: (min <= debit <= max) OR (min <= credit <= max)
+        query = query.or(`and(debit.gte.${min},debit.lte.${max}),and(credit.gte.${min},credit.lte.${max})`);
+      } else if (min !== undefined) {
+        // Only min threshold: (debit >= min) OR (credit >= min)
+        query = query.or(`debit.gte.${min},credit.gte.${min}`);
+      } else if (max !== undefined) {
+        // Only max threshold: (debit <= max) OR (credit <= max)
+        query = query.or(`debit.lte.${max},credit.lte.${max}`);
+      }
+
+      if (filters.verification_series && filters.verification_series !== 'all') {
+        query = query.eq('verifications.verification_series', filters.verification_series);
+      }
+
+      if (filters.date_from) {
+        query = query.gte('verifications.accounting_date', filters.date_from);
+      }
+
+      if (filters.date_to) {
+        query = query.lte('verifications.accounting_date', filters.date_to);
+      }
+
+      if (filters.account_number) {
+        query = query.eq('account_number', filters.account_number);
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error in searchEntries:', error);
+        throw new Error(`Failed to search verification entries: ${error.message}`);
+      }
+
+      // Flatten the results for easier frontend consumption
+      const results = (data || []).map(entry => {
+        // PostgREST/Supabase might return joined objects as an array even if it's a many-to-one relationship
+        const v = Array.isArray(entry.verifications) ? entry.verifications[0] : entry.verifications;
+
+        return {
+          id: entry.id,
+          verification_id: v?.id,
+          verification_number: v?.verification_number,
+          accounting_date: v?.accounting_date,
+          description: v?.description,
+          account_number: entry.account_number,
+          account_name: entry.account_name,
+          transaction_info: entry.transaction_info,
+          debit: entry.debit,
+          credit: entry.credit
+        };
+      });
+
+      console.log('✅ searchEntries returned results:', results.length);
+      return results;
+    } catch (error) {
+      console.error('❌ Error in VerificationModel.searchEntries:', error);
       throw error;
     }
   }

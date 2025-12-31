@@ -525,4 +525,34 @@ export class VerificationController {
       res.status(500).json(createError(`Failed to fetch descriptions: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   });
+
+  static searchEntries = asyncHandler(async (req: JWTRequest, res: Response) => {
+    console.log('🚀 VerificationController.searchEntries - Starting');
+    const foundationId = req.user?.foundation_id;
+
+    if (!foundationId) {
+      res.status(400).json(createError('Foundation ID is required'));
+      return;
+    }
+
+    const filters = {
+      min_amount: req.query.min_amount ? parseFloat(req.query.min_amount as string) : undefined,
+      max_amount: req.query.max_amount ? parseFloat(req.query.max_amount as string) : undefined,
+      verification_series: req.query.verification_series as string,
+      date_from: req.query.date_from as string,
+      date_to: req.query.date_to as string,
+      account_number: req.query.account_number as string,
+    };
+
+    try {
+      const results = await VerificationModel.searchEntries(foundationId, filters);
+      res.status(200).json({
+        success: true,
+        data: results
+      });
+    } catch (error) {
+      console.error('❌ Error in searchEntries controller:', error);
+      res.status(500).json(createError(`Failed to search verification entries: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
 }
