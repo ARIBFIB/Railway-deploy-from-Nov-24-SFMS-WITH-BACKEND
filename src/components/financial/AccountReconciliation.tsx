@@ -11,7 +11,10 @@ import {
   FileText,
   BarChart3,
   Grid,
-  X
+  X,
+  MessageSquare,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { verificationSeriesService, type VerificationSeriesItem } from '../../services/verificationSeriesService';
 import { ReconciliationService } from '../../services/reconciliationService';
@@ -33,6 +36,7 @@ interface Transaction {
   selected: boolean;
   matched: boolean;
   voucher_number?: string;
+  comment?: string;
 }
 
 interface ReconciliationData {
@@ -49,7 +53,7 @@ export const AccountReconciliation: React.FC = () => {
   const [data, setData] = useState<ReconciliationData>({
     account: '',
     reconciliationPeriodStart: '',
-    reconciliationPeriodEnd: '',
+    reconciliationPeriodEnd: new Date().toISOString().split('T')[0],
     openRecordsFrom: '',
     verificationSeries: '',
     accountingTransactions: [],
@@ -59,6 +63,7 @@ export const AccountReconciliation: React.FC = () => {
   const [selectAllAccounting, setSelectAllAccounting] = useState(false);
   const [selectAllLoaded, setSelectAllLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [batchDate, setBatchDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [verificationSeries, setVerificationSeries] = useState<VerificationSeriesItem[]>([]);
   const [loadingSeries, setLoadingSeries] = useState(true);
@@ -72,7 +77,23 @@ export const AccountReconciliation: React.FC = () => {
   const [customerPaymentsFilter, setCustomerPaymentsFilter] = useState('Yes');
   const [supplierPaymentsFilter, setSupplierPaymentsFilter] = useState('Yes');
   const [otherItemsFilter, setOtherItemsFilter] = useState('Yes');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'; visible: boolean }>({
+    message: '',
+    type: 'info',
+    visible: false
+  });
+  const [activeCommentRow, setActiveCommentRow] = useState<{ id: string; type: 'accounting' | 'loaded' } | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [analysisDateFrom, setAnalysisDateFrom] = useState('');
+  const [analysisDateTo, setAnalysisDateTo] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 5000);
+  };
 
   const handleInputChange = (field: keyof ReconciliationData, value: string) => {
     setData(prev => ({
@@ -140,12 +161,212 @@ export const AccountReconciliation: React.FC = () => {
     setShowBatchReconciliationPopup(true);
   };
 
+  const executeBatchReconciliation = (action: 'reconcile' | 'undo') => {
+    if (data.accountingTransactions.length === 0) {
+      showToast("No transactions were found in the selected period.", "info");
+      return;
+    }
+
+    const hasSelection = data.accountingTransactions.some(t => t.selected);
+    const dateRange = `${data.reconciliationPeriodStart || ''} - ${data.reconciliationPeriodEnd || ''}`;
+
+    if (action === 'reconcile') {
+      if (hasSelection) {
+        showToast("No transactions were found in the selected period.", "info");
+        return;
+      }
+      setData(prev => ({
+        ...prev,
+        accountingTransactions: prev.accountingTransactions.map(t => ({ ...t, selected: true }))
+      }));
+      showToast(`Mass reconciliation conducted for period ${dateRange}`, "success");
+    } else {
+      if (!hasSelection) {
+        showToast("No transactions were found in the selected period.", "info");
+        return;
+      }
+      setData(prev => ({
+        ...prev,
+        accountingTransactions: prev.accountingTransactions.map(t => ({ ...t, selected: false }))
+      }));
+      showToast(`Mass reconciliation has been regressed for period ${dateRange}`, "success");
+    }
+    setShowBatchReconciliationPopup(false);
+  };
+
+  const handleOpenComment = (id: string, type: 'accounting' | 'loaded') => {
+    const transaction = data[type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions'].find(t => t.id === id);
+    setCommentText(transaction?.comment || '');
+    setActiveCommentRow({ id, type });
+  };
+
+  const handleSaveComment = async () => {
+    if (!activeCommentRow) return;
+    const { id, type } = activeCommentRow;
+
+    // Update local state first for immediate feedback
+    setData(prev => ({
+      ...prev,
+      [type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions']:
+        prev[type === 'accounting' ? 'accountingTransactions' : 'loadedTransactions'].map(t =>
+          t.id === id ? { ...t, comment: commentText } : t
+        )
+    }));
+
+    try {
+      // For accounting transactions, persist to backend
+      if (type === 'accounting') {
+        const response = await ReconciliationService.updateComment(id, commentText);
+        if (response.success) {
+          showToast("Comment saved successfully", "success");
+        }
+      } else {
+        // Loaded transactions (bank file) don't have persistence yet
+        showToast("Comment updated (Local)", "info");
+      }
+    } catch (error) {
+      console.error('Error saving comment:', error);
+      showToast("Failed to save comment to server", "error");
+    }
+
+    setActiveCommentRow(null);
+    setCommentText('');
+  };
+
   const handleAccountAnalysis = () => {
+    setAnalysisDateFrom(data.reconciliationPeriodStart);
+    setAnalysisDateTo(data.reconciliationPeriodEnd);
     setShowAccountAnalysisPopup(true);
   };
 
   const handleReconciliationReport = () => {
     setShowReconciliationReportPopup(true);
+  };
+
+  const generateAccountAnalysisReport = (format: 'screen' | 'pdf' | 'txt') => {
+    const transactions = activeTransactionFilter === 'All'
+      ? data.accountingTransactions
+      : activeTransactionFilter === 'Reconciled'
+        ? data.accountingTransactions.filter(t => t.selected)
+        : data.accountingTransactions.filter(t => !t.selected);
+
+    const reportData = {
+      transactions,
+      account: data.account,
+      dateFrom: analysisDateFrom,
+      dateTo: analysisDateTo,
+      printDate: new Date().toLocaleDateString(),
+      printTime: new Date().toLocaleTimeString(),
+      companyName: "Company Name",
+      systemVersion: "v1.0.0"
+    };
+
+    let runningBalance = 0;
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    const rows = transactions.map(t => {
+      const debit = t.amount > 0 ? t.amount : 0;
+      const credit = t.amount < 0 ? Math.abs(t.amount) : 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      runningBalance += t.amount;
+      return { ...t, debit, credit, runningBalance };
+    });
+
+    if (format === 'txt') {
+      const content = `ACCOUNT ANALYSIS REPORT\n` +
+        `Company: ${reportData.companyName}\n` +
+        `Period: ${reportData.dateFrom} to ${reportData.dateTo}\n` +
+        `Account: ${reportData.account}\n\n` +
+        `Ver. No. | Date | Description | Debit | Credit | Balance\n` +
+        transactions.map(t => `${t.voucher_number || ''} | ${t.date} | ${t.description} | ${t.amount > 0 ? t.amount.toFixed(2) : ''} | ${t.amount < 0 ? Math.abs(t.amount).toFixed(2) : ''}`).join('\n');
+
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AccountAnalysis_${reportData.account}.txt`;
+      a.click();
+      return;
+    }
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Account Analysis Report</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; }
+            .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .title { text-align: center; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            .right { text-align: right; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <strong>${reportData.companyName}</strong><br/>
+              Period: ${reportData.dateFrom} - ${reportData.dateTo}
+            </div>
+            <div class="title">
+              <h2>Account Analysis</h2>
+              Account: ${reportData.account}
+            </div>
+            <div class="right">
+              Date: ${reportData.printDate}<br/>
+              Time: ${reportData.printTime}<br/>
+              Version: ${reportData.systemVersion}
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Ver. No</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="right">Debit</th>
+                <th class="right">Credit</th>
+                <th class="right">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(t => `
+                <tr>
+                  <td>${t.voucher_number || ''}</td>
+                  <td>${t.date}</td>
+                  <td>${t.description}</td>
+                  <td class="right">${t.debit > 0 ? t.debit.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) : ''}</td>
+                  <td class="right">${t.credit > 0 ? t.credit.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) : ''}</td>
+                  <td class="right">${t.runningBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="font-weight: bold; background-color: #f9fafb;">
+                <td colspan="3">Account Total</td>
+                <td class="right">${totalDebit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                <td class="right">${totalCredit.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+                <td class="right">${runningBalance.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div style="margin-top: 30px; font-size: 0.9em; color: #666;">
+            <strong>Account Analysis Report Description:</strong><br/>
+            This report provides a detailed overview of transactions for the specified account within the selected period...
+          </div>
+        </body>
+      </html>
+    `;
+
+    const newTab = window.open();
+    if (newTab) {
+      newTab.document.write(htmlContent);
+      if (format === 'pdf') {
+        newTab.print();
+      }
+    }
   };
 
   const handleLoadFile = () => {
@@ -228,6 +449,7 @@ export const AccountReconciliation: React.FC = () => {
 
   const handleSave = () => {
     console.log('Saving reconciliation...');
+    showToast("Reconciliation complete.", "success");
   };
 
   const handleCancel = () => {
@@ -422,7 +644,7 @@ export const AccountReconciliation: React.FC = () => {
             <div className="mb-2">
               <h3 className="text-sm font-medium text-gray-900 inline mr-4">Accounting transactions</h3>
               <span className="text-sm text-gray-600">
-                {data.accountingTransactions.length > 0 ? 'Opening account balance: 0,00' : 'Opening account balance: -'}</span>
+                {data.accountingTransactions.length > 0 ? 'Opening account balance: 0,00' : 'Opening account balance: 0,00'}</span>
             </div>
             <div className="text-sm text-gray-600 mb-2">
               {data.reconciliationPeriodStart ? new Date(data.reconciliationPeriodStart).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : ''}
@@ -444,6 +666,7 @@ export const AccountReconciliation: React.FC = () => {
                       <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                       <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                       <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">Comment</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -462,7 +685,6 @@ export const AccountReconciliation: React.FC = () => {
                               className="h-4 w-4 text-[#5c6f2b] rounded border-gray-300 focus:ring-[#5c6f2b]/50"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleTransactionSelect('accounting', transaction.id);
                               }}
                             />
                           </td>
@@ -474,11 +696,19 @@ export const AccountReconciliation: React.FC = () => {
                               ? `-${Math.abs(transaction.amount).toLocaleString('sv-SE', { minimumFractionDigits: 2 })}`
                               : transaction.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}
                           </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-center text-gray-400">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenComment(transaction.id, 'accounting'); }}
+                              className={`hover:text-blue-500 ${transaction.comment ? 'text-blue-500' : ''}`}
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
                           {loading ? 'Loading transactions...' : 'No accounting transactions found. Search to populate this table after creating and posting verifications.'}
                         </td>
                       </tr>
@@ -523,6 +753,7 @@ export const AccountReconciliation: React.FC = () => {
                       <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                       <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                       <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">Comment</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -541,7 +772,6 @@ export const AccountReconciliation: React.FC = () => {
                               className="h-4 w-4 text-[#5c6f2b] rounded border-gray-300 focus:ring-[#5c6f2b]/50"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleTransactionSelect('loaded', transaction.id);
                               }}
                             />
                           </td>
@@ -553,11 +783,19 @@ export const AccountReconciliation: React.FC = () => {
                               ? `-${Math.abs(transaction.amount).toLocaleString('sv-SE', { minimumFractionDigits: 2 })}`
                               : transaction.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })}
                           </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-center text-gray-400">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenComment(transaction.id, 'loaded'); }}
+                              className={`hover:text-blue-500 ${transaction.comment ? 'text-blue-500' : ''}`}
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
                           {loading ? 'Loading transactions...' : 'No loaded transactions found. Search to populate this table after creating and posting verifications.'}
                         </td>
                       </tr>
@@ -596,7 +834,7 @@ export const AccountReconciliation: React.FC = () => {
             </div>
             <div className="text-sm">
               <span className="text-gray-600">Total selected: </span>
-              <span className="font-medium">
+              <span className="font-medium text-[#f54a26]">
                 {data.accountingTransactions.length > 0 ? accountingSelected.toFixed(2) : '0.00'}</span>
             </div>
             <div className="text-sm">
@@ -615,7 +853,7 @@ export const AccountReconciliation: React.FC = () => {
             </div>
             <div className="text-sm">
               <span className="text-gray-600">Total selected: </span>
-              <span className="font-medium">
+              <span className="font-medium text-[#f54a26]">
                 {data.loadedTransactions.length > 0 ? loadedSelected.toFixed(2) : '0.00'}</span>
             </div>
             <div className="text-sm">
@@ -679,6 +917,8 @@ export const AccountReconciliation: React.FC = () => {
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       type="date"
+                      value={batchDate}
+                      onChange={(e) => setBatchDate(e.target.value)}
                       className="pl-10 w-full"
                     />
                   </div>
@@ -686,15 +926,22 @@ export const AccountReconciliation: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Account</label>
                   <Input
-                    value="1030"
-                    className="w-full"
+                    value={data.account}
+                    readOnly
+                    className="w-full bg-gray-50"
                   />
                 </div>
                 <div className="flex space-x-4 pt-4">
-                  <Button className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white">
+                  <Button
+                    onClick={() => executeBatchReconciliation('undo')}
+                    className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white"
+                  >
                     Undo reconciliation
                   </Button>
-                  <Button className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white">
+                  <Button
+                    onClick={() => executeBatchReconciliation('reconcile')}
+                    className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white"
+                  >
                     Reconcile
                   </Button>
                 </div>
@@ -751,6 +998,8 @@ export const AccountReconciliation: React.FC = () => {
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         type="date"
+                        value={analysisDateFrom}
+                        onChange={(e) => setAnalysisDateFrom(e.target.value)}
                         className="pl-10 w-full"
                       />
                     </div>
@@ -761,19 +1010,30 @@ export const AccountReconciliation: React.FC = () => {
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         type="date"
+                        value={analysisDateTo}
+                        onChange={(e) => setAnalysisDateTo(e.target.value)}
                         className="pl-10 w-full"
                       />
                     </div>
                   </div>
                 </div>
                 <div className="flex space-x-4">
-                  <Button className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white">
+                  <Button
+                    onClick={() => generateAccountAnalysisReport('screen')}
+                    className="flex-1 bg-[#5c6f2b] hover:bg-[#4a5a25] text-white"
+                  >
                     Show on screen
                   </Button>
-                  <Button className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white">
+                  <Button
+                    onClick={() => generateAccountAnalysisReport('pdf')}
+                    className="flex-1 bg-[#9bbb48] hover:bg-[#a9c56a] text-white"
+                  >
                     Show PDF
                   </Button>
-                  <Button className="flex-1 bg-[#637e2f] hover:bg-[#526a27] text-white">
+                  <Button
+                    onClick={() => generateAccountAnalysisReport('txt')}
+                    className="flex-1 bg-[#637e2f] hover:bg-[#526a27] text-white"
+                  >
                     Show TXT
                   </Button>
                 </div>
@@ -867,6 +1127,61 @@ export const AccountReconciliation: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Comment Popup (Notepad Style) */}
+      {activeCommentRow && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[60]">
+          <div className="bg-[#fef3c7] rounded-lg shadow-xl w-96 border border-[#f59e0b] overflow-hidden">
+            <div className="bg-[#fde68a] px-4 py-2 border-b border-[#f59e0b] flex justify-between items-center">
+              <span className="text-sm font-bold text-[#92400e] uppercase tracking-wider">Note Pad</span>
+              <button onClick={() => setActiveCommentRow(null)} className="text-[#92400e] hover:text-black">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write your comment here..."
+                className="w-full h-40 bg-transparent border-none focus:ring-0 text-gray-800 resize-none font-mono text-sm leading-6"
+                style={{
+                  backgroundImage: 'linear-gradient(#d1d5db 1px, transparent 1px)',
+                  backgroundSize: '100% 1.5rem',
+                  lineHeight: '1.5rem'
+                }}
+                autoFocus
+              />
+              <div className="flex justify-end space-x-2 mt-4 pt-2 border-t border-[#f59e0b]/30">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveCommentRow(null)}
+                  className="text-[#92400e] hover:bg-[#fde68a] text-xs h-7"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveComment}
+                  className="bg-[#d97706] hover:bg-[#b45309] text-white text-xs h-7"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.visible && (
+        <div className={`fixed bottom-4 right-4 z-[70] flex items-center space-x-2 px-4 py-2 rounded-lg shadow-lg text-white transition-opacity duration-300 ${toast.type === 'success' ? 'bg-[#5c6f2b]' :
+          toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+          }`}>
+          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span className="text-xs font-medium">{toast.message}</span>
+        </div>
+      )}
+
       {/* Hidden file input */}
       <input
         type="file"

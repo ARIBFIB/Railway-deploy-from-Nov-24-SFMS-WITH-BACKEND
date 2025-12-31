@@ -11,5 +11,6 @@ router.use(setSupabaseContext as any);
 
 // Reconciliation routes
 router.get('/ledger-entries', ReconciliationController.getLedgerEntries);
+router.post('/update-comment', ReconciliationController.updateEntryComment);
 
 export default router;

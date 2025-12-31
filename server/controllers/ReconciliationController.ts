@@ -113,6 +113,7 @@ export class ReconciliationController {
           verification_series: verification?.verification_series || '',
           // Prepend series to number for full display (e.g. "F 13")
           voucher_number: `${verification?.verification_series || ''} ${verification?.verification_number || ''}`.trim(),
+          comment: entry.comment || '',
           selected: false,
           matched: false
         };
@@ -130,6 +131,32 @@ export class ReconciliationController {
     } catch (error) {
       console.error('Error fetching ledger entries:', error);
       res.status(500).json(createError(`Failed to fetch ledger entries: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  static updateEntryComment = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const { id, comment } = req.body;
+
+    if (!id) {
+      res.status(400).json(createError('Entry ID is required'));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('verification_entries')
+        .update({ comment })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      res.status(200).json({
+        success: true,
+        message: 'Comment updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating entry comment:', error);
+      res.status(500).json(createError(`Failed to update comment: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   });
 }

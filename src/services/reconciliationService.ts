@@ -8,6 +8,7 @@ export interface Transaction {
   selected: boolean;
   matched: boolean;
   voucher_number?: string;
+  comment?: string;
 }
 
 export interface ReconciliationData {
@@ -28,7 +29,7 @@ export class ReconciliationService {
     queryParams.append('account', filters.account);
     queryParams.append('start_date', filters.start_date);
     queryParams.append('end_date', filters.end_date);
-    
+
     if (filters.verification_series) {
       queryParams.append('verification_series', filters.verification_series);
     }
@@ -38,6 +39,20 @@ export class ReconciliationService {
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to fetch ledger entries');
+    }
+
+    return await response.json();
+  }
+
+  static async updateComment(id: string, comment: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiFetch('/api/reconciliation/update-comment', {
+      method: 'POST',
+      body: JSON.stringify({ id, comment })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update comment');
     }
 
     return await response.json();
