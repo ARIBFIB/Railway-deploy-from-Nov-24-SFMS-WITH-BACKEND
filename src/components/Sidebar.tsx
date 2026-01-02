@@ -18,7 +18,7 @@ import {
   ChevronRight,
   CreditCard,
   ShoppingCart,
-  
+
   DollarSign,
   FileText as QuoteIcon
 } from 'lucide-react';
@@ -63,10 +63,10 @@ const allowedSubScreens: { [key: string]: string[] } = {
 
 const allNavigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: Home, screen: 'dashboard' },
-  { 
-    name: 'Governance', 
-    href: '/governance', 
-    icon: Shield, 
+  {
+    name: 'Governance',
+    href: '/governance',
+    icon: Shield,
     screen: 'governance',
     children: [
       { name: 'Role Management', href: '/governance?tab=roles', screen: 'governance' },
@@ -76,33 +76,32 @@ const allNavigation: NavigationItem[] = [
     ]
   },
   { name: 'Documents', href: '/documents', icon: FileText, screen: 'documents' },
-  { 
-    name: 'Financial', 
-    href: '/financial', 
-    icon: Calculator, 
+  {
+    name: 'Financial',
+    href: '/financial',
+    icon: Calculator,
     screen: 'financial',
     children: [
       { name: 'Accounting', href: '/financial?tab=accounting', screen: 'financial' },
       { name: 'Bookkeeping', href: '/financial?tab=bookkeeping', screen: 'financial' },
       { name: 'Invoicing', href: '/financial?tab=invoicing', screen: 'financial' },
       { name: 'Supplier Invoices', href: '/financial?tab=supplier-invoices', screen: 'financial' },
-      { name: 'Payroll', href: '/financial?tab=payroll', screen: 'financial' },
-      { name: 'Bank Integration', href: '/financial?tab=bank-integration', screen: 'financial' },
-      { name: 'BankID Auth', href: '/financial?tab=bankid', screen: 'financial' },
-      
-      { name: 'Expenses', href: '/expenses', screen: 'expenses' },
+      // { name: 'Payroll', href: '/financial?tab=payroll', screen: 'financial' },
+      // { name: 'Bank Integration', href: '/financial?tab=bank-integration', screen: 'financial' },
+      // { name: 'BankID Auth', href: '/financial?tab=bankid', screen: 'financial' },
+      // { name: 'Expenses', href: '/expenses', screen: 'expenses' },
     ]
   },
-  { name: 'Facility register', href: '/facility-register', icon: Building2, screen: 'facility-register' },
+  { name: 'Warehouse', href: '/facility-register', icon: Building2, screen: 'facility-register' },
   { name: 'Meetings', href: '/meetings', icon: Calendar, screen: 'meetings' },
-  { name: 'Investments', href: '/investments', icon: TrendingUp, screen: 'investments' },
-  { name: 'Projects', href: '/projects', icon: FolderOpen, screen: 'projects' },
-  { name: 'Grants', href: '/grants', icon: Gift, screen: 'grants' },
-  { name: 'Billing', href: '/billing', icon: CreditCard, screen: 'billing' },
+  // { name: 'Investments', href: '/investments', icon: TrendingUp, screen: 'investments' },
+  // { name: 'Projects', href: '/projects', icon: FolderOpen, screen: 'projects' },
+  // { name: 'Grants', href: '/grants', icon: Gift, screen: 'grants' },
+  // { name: 'Billing', href: '/billing', icon: CreditCard, screen: 'billing' },
   { name: 'Order', href: '/order', icon: ShoppingCart, screen: 'order' },
   { name: 'Salary', href: '/salary', icon: DollarSign, screen: 'salary' },
   { name: 'Quotes', href: '/quotes', icon: QuoteIcon, screen: 'quotes' },
-  { name: 'Reports', href: '/reports', icon: BarChart3, screen: 'reports' },
+  // { name: 'Reports', href: '/reports', icon: BarChart3, screen: 'reports' },
   { name: 'Profile', href: '/profile', icon: User, screen: 'profile' },
   { name: 'Settings', href: '/settings', icon: Settings, screen: 'settings' },
 ];
@@ -110,7 +109,7 @@ const allNavigation: NavigationItem[] = [
 export const Sidebar: React.FC = () => {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const location = useLocation();
-  
+
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
   const userRole = userData.role || 'member';
   const roleBadge = userData.roleId ? userData.roleId.split('_role_')[0] : userRole;
@@ -118,8 +117,8 @@ export const Sidebar: React.FC = () => {
   const toggleExpanded = (e: React.MouseEvent, itemName: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setExpandedItems(prev => 
-      prev.includes(itemName) 
+    setExpandedItems(prev =>
+      prev.includes(itemName)
         ? prev.filter(name => name !== itemName)
         : [...prev, itemName]
     );
@@ -132,8 +131,8 @@ export const Sidebar: React.FC = () => {
   };
 
   const isSubScreenAccessible = (parentName: string, childName: string) => {
-    return allowedSubScreens[parentName.toLowerCase()]?.includes(childName) && 
-           hasPermission(roleBadge, parentName.toLowerCase());
+    return allowedSubScreens[parentName.toLowerCase()]?.includes(childName) &&
+      hasPermission(roleBadge, parentName.toLowerCase());
   };
 
   return (
@@ -145,17 +144,16 @@ export const Sidebar: React.FC = () => {
         </div>
         {userRole && (
           <div className="mt-2">
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-              roleBadge === 'admin' ? 'bg-red-100 text-red-800' :
+            <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleBadge === 'admin' ? 'bg-red-100 text-red-800' :
               roleBadge === 'foundation_owner' ? 'bg-blue-100 text-blue-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
+                'bg-gray-100 text-gray-800'
+              }`}>
               {roleBadge.replace('_', ' ')}
             </span>
           </div>
         )}
       </div>
-      
+
       <nav className="px-3 pb-6 flex-1 overflow-y-auto">
         <ul className="space-y-1">
           {allNavigation.map((item) => (
@@ -166,10 +164,9 @@ export const Sidebar: React.FC = () => {
                     <NavLink
                       to={isMainScreenAccessible(item.screen) ? item.href : '#'}
                       className={({ isActive }) =>
-                        `flex items-center flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                          isActive && !location.search && isMainScreenAccessible(item.screen)
-                            ? 'bg-primary-100 text-primary-700'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        `flex items-center flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${isActive && !location.search && isMainScreenAccessible(item.screen)
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }`
                       }
                     >
@@ -199,12 +196,11 @@ export const Sidebar: React.FC = () => {
                               const currentTab = urlParams.get('tab');
                               const childTab = new URLSearchParams(child.href.split('?')[1] || '').get('tab');
                               const isChildActive = isActive && currentTab === childTab && isSubScreenAccessible(item.name, child.name);
-                              
-                              return `flex items-center px-3 py-1 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                                isChildActive
-                                  ? 'bg-primary-100 text-primary-700'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                              }`;
+
+                              return `flex items-center px-3 py-1 text-sm font-medium rounded-lg transition-colors duration-200 ${isChildActive
+                                ? 'bg-primary-100 text-primary-700'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                }`;
                             }}
                           >
                             <span className="truncate">{child.name}</span>
@@ -218,10 +214,9 @@ export const Sidebar: React.FC = () => {
                 <NavLink
                   to={isMainScreenAccessible(item.screen) ? item.href : '#'}
                   className={({ isActive }) =>
-                    `flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                      isActive && isMainScreenAccessible(item.screen)
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    `flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${isActive && isMainScreenAccessible(item.screen)
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`
                   }
                 >
