@@ -549,6 +549,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
         balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
       };
+      
+      console.log(`📋 Template entry ${index}:`, {
+        originalAccount: transaction.account,
+        extractedAccountNumber: accountNumber,
+        accountDetailsFound: !!accountDetails,
+        finalEntry: newEntry
+      });
 
       newEntries.push(newEntry);
     });
@@ -691,6 +698,29 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           credit: parseFloat(entry.credit) || 0,
           balance: accountingViewSettings.show_account_balance_column_in_posting_view ? parseFloat(entry.balance) || 0 : 0
         }));
+      
+      // Additional check: ensure all account numbers are valid before sending to server
+      for (const entry of entries) {
+        if (entry.account_number && typeof entry.account_number === 'string') {
+          // Account numbers should be numeric (like 1000, 1100, etc.)
+          const isLikelyAccountName = /^[a-zA-Z]/.test(entry.account_number);
+          
+          if (isLikelyAccountName) {
+            setError(`Invalid account number in entry: "${entry.account_number}". Account numbers should be numeric codes (like 1000, 1100) that exist in the chart of accounts. Please select a valid account from the dropdown.`);
+            setLoading(false);
+            return;
+          }
+          
+          // Additional check: ensure account number is not just empty or whitespace
+          if (!entry.account_number.trim()) {
+            setError('Account number cannot be empty. Please enter a valid account number.');
+            setLoading(false);
+            return;
+          }
+        }
+      }
+      
+      console.log('📊 Final validation passed - entries:', entries);
 
       if (entries.length === 0) {
         setError('Please add at least one account entry with valid account information.');
@@ -757,7 +787,12 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
             console.error('Failed to get next verification number:', err);
             attempts++;
             if (attempts >= maxAttempts) {
-              setError('Failed to generate a unique verification number after multiple attempts. Please try again later.');
+              // Check if the error is related to account validation vs verification number
+              if (err instanceof Error && err.message.toLowerCase().includes('account')) {
+                setError('Account validation failed. Please ensure all account numbers are valid numeric codes (like 1000, 1100) that exist in the chart of accounts.');
+              } else {
+                setError('Failed to generate a unique verification number after multiple attempts. Please try again later.');
+              }
               setLoading(false);
               return;
             }
@@ -807,6 +842,18 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         entries,
         ...(formattedImages.length > 0 ? { images: formattedImages } : {})
       };
+      
+      // Debug: Log the verification data before sending
+      console.log('📊 Verification data to send:', {
+        ...verificationData,
+        entries: verificationData.entries ? verificationData.entries.map(e => ({
+          ...e,
+          debit: e.debit,
+          credit: e.credit,
+          balance: e.balance
+        })) : [],
+        images: verificationData.images ? verificationData.images.length : 0
+      });
 
       // For new verifications, implement retry mechanism for various failures
       let response: any = null; // Initialize to avoid TypeScript error
@@ -817,7 +864,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         console.log('🔄 VerificationForm - Updating existing verification:', initialData.id);
         response = await VerificationService.updateVerification(initialData.id, verificationData);
       } else {
-        // Retry creation for various potential failures
+        // Retry creation only for verification number conflicts
         while (attempts < maxAttempts) {
           console.log('🔄 VerificationForm - Creating new verification, attempt:', attempts + 1);
           try {
@@ -828,7 +875,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
               break;
             }
             
-            // If it's a verification number conflict, get a new number and try again
+            // Only retry if it's a verification number conflict
             if (response.message && response.message.includes('already exists')) {
               attempts++;
               if (attempts < maxAttempts) {
@@ -849,18 +896,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                 }
               }
             } else {
-              // If it's not a verification number conflict, break the loop to show the error
+              // If it's not a verification number conflict, break the loop immediately to show the real error
               break;
             }
           } catch (error) {
             console.error('Error during verification creation attempt:', error);
-            attempts++;
-            if (attempts >= maxAttempts) {
-              // Re-throw the error if we've exhausted attempts
-              throw error;
-            }
-            // Wait a bit before retrying
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // If it's not related to verification number conflicts, don't retry
+            break;
           }
         }
       }
@@ -920,6 +962,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           setError('Account validation failed. Please ensure all account numbers exist in the system.');
         } else if (err.message.includes('account') && err.message.toLowerCase().includes('invalid')) {
           setError('Invalid account number found. Please verify all account numbers are correct.');
+        } else if (err.message.includes('Failed to create verification')) {
+          setError('Failed to create verification. Please check that all account numbers are valid numeric codes (like 1000, 1100) that exist in the chart of accounts.');
         } else {
           setError(`Error creating verification: ${err.message}`);
         }
@@ -1118,6 +1162,17 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
                   placeholder={!formData.accountingTemplate ? 'Select a coding template first' : 'Enter amount'}
                 />
               </div>
+            </div>
+
+            {/* Add Entry Button */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={addAccountEntry}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add Entry
+              </button>
             </div>
 
             {/* Account Entries Table */}

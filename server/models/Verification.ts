@@ -592,8 +592,7 @@ export class VerificationModel {
         .select('verification_number')
         .eq('foundation_id', foundationId)
         .eq('verification_series', series)
-        .order('verification_number', { ascending: false })
-        .limit(1);
+        .order('verification_number'); // Get all in ascending order to process properly
 
       if (error) {
         throw new Error(`Failed to get next verification number: ${error.message}`);
@@ -603,14 +602,24 @@ export class VerificationModel {
         return `${series}1`;
       }
 
-      const lastNumber = data[0]?.verification_number;
-      if (!lastNumber) {
-        return `${series}1`;
+      // Find the highest numeric value among existing verification numbers
+      let maxNumber = 0;
+      
+      for (const record of data) {
+        const verificationNumber = record.verification_number;
+        if (verificationNumber) {
+          // Extract the numeric part after the series prefix
+          const numberPart = verificationNumber.replace(series, '');
+          const numericValue = parseInt(numberPart);
+          
+          if (!isNaN(numericValue) && numericValue > maxNumber) {
+            maxNumber = numericValue;
+          }
+        }
       }
-
-      const numberPart = lastNumber.replace(series, '');
-      const nextNumber = parseInt(numberPart) + 1;
-
+      
+      const nextNumber = maxNumber + 1;
+      
       return `${series}${nextNumber}`;
     } catch (error) {
       console.error('Error in VerificationModel.getNextVerificationNumber:', error);

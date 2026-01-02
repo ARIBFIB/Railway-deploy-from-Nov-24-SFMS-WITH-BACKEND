@@ -1032,13 +1032,23 @@ export const VerificationsList: React.FC = () => {
               >
                 Clear Cache
               </Button>
-              <Button
-                onClick={handleCreateVerification}
-                className="bg-yellow-400 text-gray-800 hover:bg-yellow-500 border-yellow-400"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create verification
-              </Button>
+              {selectedVerifications.length > 0 ? (
+                <Button
+                  onClick={handleBulkDelete}
+                  className="bg-red-600 text-white hover:bg-red-700 border-red-600 mr-3"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Delete ({selectedVerifications.length})
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleCreateVerification}
+                  className="bg-yellow-400 text-gray-800 hover:bg-yellow-500 border-yellow-400"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create verification
+                </Button>
+              )}
             </div>
           </div>
 
