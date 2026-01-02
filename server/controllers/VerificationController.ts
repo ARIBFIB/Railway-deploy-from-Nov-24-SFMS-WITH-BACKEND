@@ -103,10 +103,12 @@ export class VerificationController {
       status: req.query.status as string,
       accounting_date_from: req.query.accounting_date_from as string,
       accounting_date_to: req.query.accounting_date_to as string,
-      page: req.query.page ? parseInt(req.query.page as string) : 1,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+      verification_number: req.query.verification_number as string,
+      description: req.query.description as string,
       min_amount: req.query.min_amount ? parseFloat(req.query.min_amount as string) : undefined,
-      max_amount: req.query.max_amount ? parseFloat(req.query.max_amount as string) : undefined
+      max_amount: req.query.max_amount ? parseFloat(req.query.max_amount as string) : undefined,
+      page: req.query.page ? parseInt(req.query.page as string) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 10
     };
 
     console.log('📊 Filters applied:', filters);
@@ -119,8 +121,8 @@ export class VerificationController {
         result = await VerificationModel.getAll();
       } else {
         // Regular users see only their foundation's verifications
-        console.log('📊 Regular user - Fetching ALL verifications for foundation:', foundationId);
-        result = await VerificationModel.getAllByFoundation(foundationId);
+        console.log('📊 Regular user - Fetching verifications for foundation:', foundationId);
+        result = await VerificationModel.getByFoundation(foundationId, filters);
       }
 
       console.log('✅ VerificationModel.getAllByFoundation result:', {

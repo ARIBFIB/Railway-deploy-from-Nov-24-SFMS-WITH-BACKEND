@@ -113,6 +113,8 @@ export interface VerificationFilters {
   status?: string;
   accounting_date_from?: string;
   accounting_date_to?: string;
+  verification_number?: string;
+  description?: string;
   page?: number;
   limit?: number;
   min_amount?: number;
@@ -189,6 +191,8 @@ export class VerificationService {
     if (filters.status) queryParams.append('status', filters.status);
     if (filters.accounting_date_from) queryParams.append('accounting_date_from', filters.accounting_date_from);
     if (filters.accounting_date_to) queryParams.append('accounting_date_to', filters.accounting_date_to);
+    if (filters.verification_number) queryParams.append('verification_number', filters.verification_number);
+    if (filters.description) queryParams.append('description', filters.description);
     if (filters.page) queryParams.append('page', filters.page.toString());
     if (filters.limit) queryParams.append('limit', filters.limit.toString());
     if (filters.min_amount !== undefined) queryParams.append('min_amount', filters.min_amount.toString());

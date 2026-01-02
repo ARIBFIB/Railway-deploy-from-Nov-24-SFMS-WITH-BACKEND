@@ -82,6 +82,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
+import { Toaster } from 'react-hot-toast';
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLimitedAccess, setIsLimitedAccess] = useState(false);
@@ -111,6 +113,7 @@ function App() {
 
   return (
     <ErrorBoundary>
+      <Toaster position="bottom-center" toastOptions={{ duration: 3000 }} />
       <Router>
         <Routes>
           {/* Landing Page */}

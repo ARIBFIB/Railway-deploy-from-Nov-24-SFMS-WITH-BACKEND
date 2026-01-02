@@ -71,33 +71,31 @@ export const ForumsInterface: React.FC = () => {
     }
   };
 
-  const ToggleSwitch = ({ 
-    value, 
-    onChange, 
-    options = ['Yes', 'No'] 
-  }: { 
-    value: boolean; 
-    onChange: () => void; 
+  const ToggleSwitch = ({
+    value,
+    onChange,
+    options = ['Yes', 'No']
+  }: {
+    value: boolean;
+    onChange: () => void;
     options?: [string, string];
   }) => (
     <div className="flex space-x-1">
       <button
         onClick={onChange}
-        className={`px-4 py-2 rounded-l-lg border transition-colors ${
-          value
+        className={`px-4 py-2 rounded-l-lg border transition-colors ${value
             ? 'bg-green-600 text-white border-green-600'
             : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50'
-        }`}
+          }`}
       >
         {options[0]}
       </button>
       <button
         onClick={onChange}
-        className={`px-4 py-2 rounded-r-lg border transition-colors ${
-          !value
+        className={`px-4 py-2 rounded-r-lg border transition-colors ${!value
             ? 'bg-gray-200 text-gray-700 border-gray-200'
             : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-50'
-        }`}
+          }`}
       >
         {options[1]}
       </button>
@@ -140,8 +138,8 @@ export const ForumsInterface: React.FC = () => {
 
       {/* Help Link */}
       <div>
-        <a 
-          href="#" 
+        <a
+          href="#"
           className="text-blue-600 hover:text-blue-800 underline text-sm"
         >
           Read more in the help section
@@ -155,9 +153,9 @@ export const ForumsInterface: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Foresigned
           </label>
-          <ToggleSwitch 
-            value={settings.foresigned} 
-            onChange={handleToggle} 
+          <ToggleSwitch
+            value={settings.foresigned}
+            onChange={handleToggle}
           />
         </div>
 
@@ -183,7 +181,7 @@ export const ForumsInterface: React.FC = () => {
               Fora agreement number - Monthly reporting
             </label>
             <p className="text-sm text-gray-600">
-              The contract number for monthly reporting is not used in the reporting. It therefore does not currently need to be entered in Fortnox Lön.
+              The contract number for monthly reporting is not used in the reporting. It therefore does not currently need to be entered in SFMS Lön.
             </p>
           </div>
         </div>
@@ -197,7 +195,7 @@ export const ForumsInterface: React.FC = () => {
           </div>
           <div className="p-4 space-y-2">
             {settings.markups.map((markup, index) => (
-              <div 
+              <div
                 key={index}
                 className="py-2 text-gray-700 text-sm"
               >

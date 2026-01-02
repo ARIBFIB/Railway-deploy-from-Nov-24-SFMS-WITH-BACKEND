@@ -97,6 +97,8 @@ export interface VerificationFilters {
   status?: string;
   accounting_date_from?: string;
   accounting_date_to?: string;
+  verification_number?: string;
+  description?: string;
   page?: number;
   limit?: number;
   min_amount?: number;
@@ -288,6 +290,14 @@ export class VerificationModel {
       // Apply filters
       if (filters.search) {
         query = query.or(`verification_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+      }
+
+      if (filters.verification_number) {
+        query = query.eq('verification_number', filters.verification_number);
+      }
+
+      if (filters.description) {
+        query = query.ilike('description', `%${filters.description}%`);
       }
 
       if (filters.verification_series) {

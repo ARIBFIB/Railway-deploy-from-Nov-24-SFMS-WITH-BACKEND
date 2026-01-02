@@ -8,6 +8,7 @@ import { accountingViewSettingsService, type AccountingViewSettings } from '../.
 import { verificationSeriesService, type VerificationSeriesItem } from '../../services/verificationSeriesService';
 import type { AccountingTemplate, AccountingTransaction } from '../../services/verificationService';
 
+
 interface AccountEntry {
   id: string;
   account: string;
@@ -23,7 +24,8 @@ interface VerificationFormProps {
   onClose: () => void;
   onSave?: (data: any) => void;
   onVerificationCreated?: () => void;
-  initialData?: any; // Consider typing this properly if possible, but 'any' allows flexibility for now
+  initialData?: any;
+  linkedFiles?: any[];
 }
 
 export const VerificationForm: React.FC<VerificationFormProps> = ({
@@ -31,7 +33,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   onClose,
   onSave,
   onVerificationCreated,
-  initialData
+  initialData,
+  linkedFiles: propLinkedFiles = []
 }) => {
   const [formData, setFormData] = useState({
     description: '',
@@ -101,6 +104,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   // State for description dropdown
   const [descriptions, setDescriptions] = useState<string[]>([]);
   const [showDescriptionDropdown, setShowDescriptionDropdown] = useState(false);
+  const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
+  const [linkedFiles, setLinkedFiles] = useState<any[]>(propLinkedFiles);
   const [filteredDescriptions, setFilteredDescriptions] = useState<string[]>([]);
 
   // Ref for description dropdown
@@ -229,6 +234,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
     }
   }, [isOpen, initialData, settingsLoaded, descriptions, verificationSeries]);
 
+  // Sync linked files from props
+  useEffect(() => {
+    if (propLinkedFiles) {
+      setLinkedFiles(propLinkedFiles);
+    }
+  }, [propLinkedFiles]);
+
   // Update verification series when accounting templates change
   useEffect(() => {
     if (accountingTemplates.length > 0 && formData.accountingTemplate) {
@@ -237,12 +249,12 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         // If the template's verification series has changed, update it
         const templateVerificationSeries = currentTemplate.verificationSeries;
         const seriesExists = verificationSeries.some(series => series.code === templateVerificationSeries);
-        
+
         setFormData(prev => ({
           ...prev,
           verificationSeries: templateVerificationSeries
         }));
-        
+
         // If the template's verification series is not in the current list, add it temporarily
         if (!seriesExists) {
           const newSeriesItem: VerificationSeriesItem = {
@@ -252,7 +264,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
             manualAccounting: true,
             position: verificationSeries.length
           };
-          
+
           setVerificationSeries(prev => [
             ...prev,
             newSeriesItem
@@ -329,10 +341,15 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         const updatedEntry = { ...entry, [field]: value };
 
         // If account number is changed, try to find matching account
-        if (field === 'account' && value) {
-          const matchingAccount = accounts.find(acc => acc.account_number === value);
-          if (matchingAccount) {
-            updatedEntry.name = (matchingAccount && typeof matchingAccount.account_name === 'string') ? matchingAccount.account_name : value;
+        if (field === 'account') {
+          if (value && value.trim()) {
+            const matchingAccount = accounts.find(acc => acc.account_number === value);
+            if (matchingAccount) {
+              updatedEntry.name = (matchingAccount && typeof matchingAccount.account_name === 'string') ? matchingAccount.account_name : value;
+            }
+          } else {
+            // Clear the name when account number is removed
+            updatedEntry.name = '';
           }
         }
 
@@ -376,14 +393,14 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       // Check if the template's verification series is in the current list
       const templateVerificationSeries = template.verificationSeries;
       const seriesExists = verificationSeries.some(series => series.code === templateVerificationSeries);
-      
+
       setFormData(prev => ({
         ...prev,
         accountingTemplate: templateId, // Store the template ID
         description: template.description,
         verificationSeries: templateVerificationSeries
       }));
-      
+
       // If the template's verification series is not in the current list, add it temporarily
       if (!seriesExists) {
         const newSeriesItem: VerificationSeriesItem = {
@@ -393,13 +410,13 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           manualAccounting: true,
           position: verificationSeries.length
         };
-        
+
         setVerificationSeries(prev => [
           ...prev,
           newSeriesItem
         ]);
       }
-      
+
       // If there's an amount entered, update the account entries based on the template
       if (formData.amount) {
         updateAccountEntriesFromTemplate(template, parseFloat(formData.amount));
@@ -409,7 +426,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
   const updateAccountEntriesFromTemplate = (template: AccountingTemplate, amount: number) => {
     const newEntries: AccountEntry[] = [];
-    
+
     template.transactions.forEach((transaction: AccountingTransaction, index: number) => {
       // Calculate the value based on the formula
       let calculatedValue = 0;
@@ -429,10 +446,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
               formula = '(' + formula + ')*' + amount;
             }
           }
-          
+
           // For more complex formulas, a proper parser would be needed
           formula = formula.replace(/\s/g, ''); // Remove spaces
-          
+
           // Simple evaluation for basic operations
           if (formula.includes('+') || formula.includes('-') || formula.includes('*') || formula.includes('/')) {
             // Use Function constructor as a safer alternative to eval for simple expressions
@@ -445,10 +462,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           calculatedValue = 0;
         }
       }
-      
+
       // Determine if it's a debit or credit based on the calculated value
       const isDebit = calculatedValue > 0;
-      
+
       // Extract account number from the transaction.account field
       // The transaction.account might be a string like "1 - car" or just "1", or an object
       let accountNumber = '';
@@ -477,10 +494,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           accountNumber = String(transaction.account || '');
         }
       }
-      
+
       // Find account details if available
       const accountDetails = accounts.find(acc => acc.account_number === accountNumber);
-      
+
       const newEntry: AccountEntry = {
         id: `template-${template.id}-entry-${index}`,
         account: accountNumber, // Use the extracted account number
@@ -490,10 +507,10 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         credit: isDebit ? '0.00' : Math.abs(calculatedValue).toFixed(2), // Credit gets absolute value if calculatedValue is negative
         balance: accountingViewSettings.show_account_balance_column_in_posting_view ? '0.00' : '0.00'
       };
-      
+
       newEntries.push(newEntry);
     });
-    
+
     setAccountEntries(newEntries);
   };
 
@@ -738,519 +755,470 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {initialData ? `VERIFICATION ${initialData.verification_number}` : 'NEW VERIFICATION'}
-          </h2>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="secondary"
-              className="bg-gray-500 text-white hover:bg-gray-600"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {initialData ? 'Edit Verification' : 'Create verification'}
-            </Button>
-            <Button
-              variant="secondary"
-              className="bg-yellow-400 text-gray-800 hover:bg-yellow-500"
-              onClick={onClose}
-            >
-              📋 Show list
-            </Button>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {initialData ? `VERIFICATION ${initialData.verification_number}` : 'NEW VERIFICATION'}
+            </h2>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="secondary"
+                className="bg-gray-500 text-white hover:bg-gray-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {initialData ? 'Edit Verification' : 'Create verification'}
+              </Button>
+              <Button
+                variant="secondary"
+                className="bg-yellow-400 text-gray-800 hover:bg-yellow-500"
+                onClick={onClose}
+              >
+                📋 Show list
+              </Button>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Form Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Top Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="relative" ref={descriptionDropdownRef}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  onClick={() => {
-                    if (formData.description.trim() === '') {
-                      setFilteredDescriptions(descriptions);
-                      setShowDescriptionDropdown(true);
-                    } else {
-                      const filtered = descriptions.filter(desc =>
-                        desc.toLowerCase().includes(formData.description.toLowerCase())
-                      );
-                      setFilteredDescriptions(filtered);
-                      setShowDescriptionDropdown(filtered.length > 0);
-                    }
-                  }}
-                  className="w-full pr-10"
-                  placeholder="Enter description or select from previous..."
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formData.description.trim() === '') {
-                      setFilteredDescriptions(descriptions);
-                      setShowDescriptionDropdown(!showDescriptionDropdown);
-                    } else {
-                      const filtered = descriptions.filter(desc =>
-                        desc.toLowerCase().includes(formData.description.toLowerCase())
-                      );
-                      setFilteredDescriptions(filtered);
-                      setShowDescriptionDropdown(!showDescriptionDropdown && filtered.length > 0);
-                    }
-                  }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </div>
-              
-              {/* Description Dropdown */}
-              {showDescriptionDropdown && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {filteredDescriptions.map((desc, index) => (
-                    <div
-                      key={index}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => handleDescriptionSelect(desc)}
-                    >
-                      {desc}
-                    </div>
-                  ))}
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Top Form Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="relative" ref={descriptionDropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    onClick={() => {
+                      if (formData.description.trim() === '') {
+                        setFilteredDescriptions(descriptions);
+                        setShowDescriptionDropdown(true);
+                      } else {
+                        const filtered = descriptions.filter(desc =>
+                          desc.toLowerCase().includes(formData.description.toLowerCase())
+                        );
+                        setFilteredDescriptions(filtered);
+                        setShowDescriptionDropdown(filtered.length > 0);
+                      }
+                    }}
+                    className="w-full pr-10"
+                    placeholder="Enter description or select from previous..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formData.description.trim() === '') {
+                        setFilteredDescriptions(descriptions);
+                        setShowDescriptionDropdown(!showDescriptionDropdown);
+                      } else {
+                        const filtered = descriptions.filter(desc =>
+                          desc.toLowerCase().includes(formData.description.toLowerCase())
+                        );
+                        setFilteredDescriptions(filtered);
+                        setShowDescriptionDropdown(!showDescriptionDropdown && filtered.length > 0);
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Verification series
-              </label>
-              <select
-                value={formData.verificationSeries}
-                onChange={(e) => handleInputChange('verificationSeries', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {verificationSeries.map((series) => (
-                  <option key={series.id} value={series.code}>
-                    {series.code} - {series.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Description Dropdown */}
+                {showDescriptionDropdown && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredDescriptions.map((desc, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                        onClick={() => handleDescriptionSelect(desc)}
+                      >
+                        {desc}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Accounting date
-              </label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={formData.accountingDate}
-                  onChange={(e) => handleInputChange('accountingDate', e.target.value)}
-                  className="w-full"
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Verification series
+                </label>
+                <select
+                  value={formData.verificationSeries}
+                  onChange={(e) => handleInputChange('verificationSeries', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {verificationSeries.map((series) => (
+                    <option key={series.id} value={series.code}>
+                      {series.code} - {series.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Accounting date
+                </label>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    value={formData.accountingDate}
+                    onChange={(e) => handleInputChange('accountingDate', e.target.value)}
+                    className="w-full"
+                  />
+                  <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Comment Field */}
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Comment (Optional)
-            </label>
-            <textarea
-              value={formData.comment}
-              onChange={(e) => handleInputChange('comment', e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter any additional comments or notes..."
-            />
-          </div>
-
-          {/* Second Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
+            {/* Comment Field */}
+            <div className="mb-8">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Coding template
+                Comment (Optional)
               </label>
-              <select
-                value={formData.accountingTemplate}
-                onChange={(e) => handleTemplateSelect(e.target.value)}
+              <textarea
+                value={formData.comment}
+                onChange={(e) => handleInputChange('comment', e.target.value)}
+                rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a coding template</option>
-                {accountingTemplates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.code} - {template.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount
-              </label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleInputChange('amount', value);
-                }}
-                className="w-full"
+                placeholder="Enter any additional comments or notes..."
               />
             </div>
-          </div>
 
-          {/* Account Entries Table */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ACCOUNT
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      NAME
-                    </th>
-                    {accountingViewSettings.enable_transaction_info && (
+            {/* Second Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Coding template
+                </label>
+                <select
+                  value={formData.accountingTemplate}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a coding template</option>
+                  {accountingTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.code} - {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleInputChange('amount', value);
+                  }}
+                  className={`w-full ${!formData.accountingTemplate ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  disabled={!formData.accountingTemplate}
+                  placeholder={!formData.accountingTemplate ? 'Select a coding template first' : 'Enter amount'}
+                />
+              </div>
+            </div>
+
+            {/* Account Entries Table */}
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        TRANSACTION INFO
+                        ACCOUNT
                       </th>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      DEBIT
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CREDIT
-                    </th>
-                    {accountingViewSettings.show_account_balance_column_in_posting_view && (
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ACCOUNT BALANCE
+                        NAME
                       </th>
-                    )}
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {accountEntries.map((entry, index) => (
-                    <tr
-                      key={entry.id}
-                      draggable
-                      onDragStart={() => onDragStart(index)}
-                      onDragEnd={onDragEnd}
-                      onDragOver={(e) => onDragOver(e, index)}
-                      className={`hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50' : ''}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="relative">
-                          <div className="flex">
-                            <Input
-                              type="text"
-                              value={entry.account}
-                              onChange={(e) => handleAccountEntryChange(entry.id, 'account', e.target.value)}
-                              className="w-full border-0 focus:ring-1 focus:ring-blue-500 rounded-r-none"
-                              placeholder="Enter account number"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => toggleAccountDropdown(entry.id)}
-                              className="px-2 py-1 border border-gray-300 border-l-0 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
-                              <ChevronDown className="w-4 h-4 text-gray-500" />
-                            </button>
-                          </div>
+                      {accountingViewSettings.enable_transaction_info && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          TRANSACTION INFO
+                        </th>
+                      )}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        DEBIT
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        CREDIT
+                      </th>
+                      {accountingViewSettings.show_account_balance_column_in_posting_view && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ACCOUNT BALANCE
+                        </th>
+                      )}
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {accountEntries.map((entry, index) => (
+                      <tr
+                        key={entry.id}
+                        draggable
+                        onDragStart={() => onDragStart(index)}
+                        onDragEnd={onDragEnd}
+                        onDragOver={(e) => onDragOver(e, index)}
+                        className={`hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50' : ''}`}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="relative">
+                            <div className="flex">
+                              <Input
+                                type="text"
+                                value={entry.account}
+                                onChange={(e) => handleAccountEntryChange(entry.id, 'account', e.target.value)}
+                                className="w-full border-0 focus:ring-1 focus:ring-blue-500 rounded-r-none"
+                                placeholder="Enter account number"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleAccountDropdown(entry.id)}
+                                className="px-2 py-1 border border-gray-300 border-l-0 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              </button>
+                            </div>
 
-                          {showAccountDropdown[entry.id] && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-                              {/* Create Account Button - Top Right */}
-                              <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-gray-500 uppercase">Select Account</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Close the dropdown
-                                    setShowAccountDropdown({});
-                                    // Close the verification form
-                                    onClose();
-                                    // Navigate to Financial page with bookkeeping tab
-                                    // Use setTimeout to ensure form closes first
-                                    setTimeout(() => {
-                                      const currentPath = window.location.pathname;
-                                      if (currentPath !== '/financial') {
-                                        window.location.href = '/financial?tab=bookkeeping';
-                                      } else {
-                                        // If already on financial page, just update the tab
-                                        const url = new URL(window.location.href);
-                                        url.searchParams.set('tab', 'bookkeeping');
-                                        window.history.pushState({}, '', url);
-                                        window.location.reload();
-                                      }
-                                    }, 100);
-                                  }}
-                                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                  New Account
-                                </button>
-                              </div>
+                            {showAccountDropdown[entry.id] && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                                {/* Create Account Button - Top Right */}
+                                <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-gray-500 uppercase">Select Account</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Close the dropdown
+                                      setShowAccountDropdown({});
+                                      // Close the verification form
+                                      onClose();
+                                      // Navigate to Financial page with bookkeeping tab
+                                      // Use setTimeout to ensure form closes first
+                                      setTimeout(() => {
+                                        const currentPath = window.location.pathname;
+                                        if (currentPath !== '/financial') {
+                                          window.location.href = '/financial?tab=bookkeeping';
+                                        } else {
+                                          // If already on financial page, just update the tab
+                                          const url = new URL(window.location.href);
+                                          url.searchParams.set('tab', 'bookkeeping');
+                                          window.history.pushState({}, '', url);
+                                          window.location.reload();
+                                        }
+                                      }, 100);
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    New Account
+                                  </button>
+                                </div>
 
-                              {/* Account List */}
-                              <div className="max-h-48 overflow-auto">
-                                {accounts
-                                  .filter(acc =>
+                                {/* Account List */}
+                                <div className="max-h-48 overflow-auto">
+                                  {accounts
+                                    .filter(acc =>
+                                      acc.account_number.toLowerCase().includes((entry.account || '').toLowerCase()) ||
+                                      acc.account_name.toLowerCase().includes((entry.account || '').toLowerCase())
+                                    )
+                                    .map((account) => (
+                                      <div
+                                        key={account.id}
+                                        onClick={() => handleAccountSelect(entry.id, account)}
+                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      >
+                                        <div className="font-medium text-sm">{account.account_number}</div>
+                                        <div className="text-xs text-gray-600">{account.account_name}</div>
+                                      </div>
+                                    ))}
+                                  {accounts.filter(acc =>
                                     acc.account_number.toLowerCase().includes((entry.account || '').toLowerCase()) ||
                                     acc.account_name.toLowerCase().includes((entry.account || '').toLowerCase())
-                                  )
-                                  .map((account) => (
-                                    <div
-                                      key={account.id}
-                                      onClick={() => handleAccountSelect(entry.id, account)}
-                                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                    >
-                                      <div className="font-medium text-sm">{account.account_number}</div>
-                                      <div className="text-xs text-gray-600">{account.account_name}</div>
-                                    </div>
-                                  ))}
-                                {accounts.filter(acc =>
-                                  acc.account_number.toLowerCase().includes((entry.account || '').toLowerCase()) ||
-                                  acc.account_name.toLowerCase().includes((entry.account || '').toLowerCase())
-                                ).length === 0 && (
-                                    <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
-                                  )}
+                                  ).length === 0 && (
+                                      <div className="px-3 py-2 text-sm text-gray-500">No accounts found</div>
+                                    )}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm text-gray-700 px-3 py-2 bg-gray-50/50 rounded-md border border-transparent truncate" title={typeof entry.name === 'string' ? entry.name : ''}>
-                          {typeof entry.name === 'string' && entry.name ? entry.name : <span className="text-gray-400 italic text-xs">Auto-filled</span>}
-                        </div>
-                      </td>
-                      {accountingViewSettings.enable_transaction_info && (
-                        <td className="px-4 py-3">
-                          <Input
-                            type="text"
-                            value={entry.transactionInfo}
-                            onChange={(e) => handleAccountEntryChange(entry.id, 'transactionInfo', e.target.value)}
-                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                          />
+                            )}
+                          </div>
                         </td>
-                      )}
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={entry.debit}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'debit', e.target.value)}
-                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={entry.credit}
-                          onChange={(e) => handleAccountEntryChange(entry.id, 'credit', e.target.value)}
-                          className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                        />
-                      </td>
-                      {accountingViewSettings.show_account_balance_column_in_posting_view && (
+                        <td className="px-4 py-3">
+                          <div className="text-sm text-gray-700 px-3 py-2 bg-gray-50/50 rounded-md border border-transparent truncate" title={typeof entry.name === 'string' ? entry.name : ''}>
+                            {typeof entry.name === 'string' && entry.name ? entry.name : <span className="text-gray-400 italic text-xs">Auto-filled</span>}
+                          </div>
+                        </td>
+                        {accountingViewSettings.enable_transaction_info && (
+                          <td className="px-4 py-3">
+                            <Input
+                              type="text"
+                              value={entry.transactionInfo}
+                              onChange={(e) => handleAccountEntryChange(entry.id, 'transactionInfo', e.target.value)}
+                              className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                            />
+                          </td>
+                        )}
                         <td className="px-4 py-3">
                           <Input
                             type="number"
                             step="0.01"
-                            value={entry.balance}
-                            onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
+                            value={entry.debit}
+                            onChange={(e) => handleAccountEntryChange(entry.id, 'debit', e.target.value)}
                             className="w-full border-0 focus:ring-1 focus:ring-blue-500"
-                            readOnly
                           />
                         </td>
-                      )}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <div
-                            className="cursor-move text-gray-400 hover:text-gray-600"
-                            title="Drag to reorder"
-                          >
-                            <GripVertical className="w-4 h-4" />
+                        <td className="px-4 py-3">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={entry.credit}
+                            onChange={(e) => handleAccountEntryChange(entry.id, 'credit', e.target.value)}
+                            className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        {accountingViewSettings.show_account_balance_column_in_posting_view && (
+                          <td className="px-4 py-3">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={entry.balance}
+                              onChange={(e) => handleAccountEntryChange(entry.id, 'balance', e.target.value)}
+                              className="w-full border-0 focus:ring-1 focus:ring-blue-500"
+                              readOnly
+                            />
+                          </td>
+                        )}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <div
+                              className="cursor-move text-gray-400 hover:text-gray-600"
+                              title="Drag to reorder"
+                            >
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                            <button
+                              onClick={() => duplicateAccountEntry(entry.id)}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Duplicate row"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => removeAccountEntry(entry.id)}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete row"
+                              disabled={accountEntries.length <= 1}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button
-                            onClick={() => duplicateAccountEntry(entry.id)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Duplicate row"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => removeAccountEntry(entry.id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete row"
-                            disabled={accountEntries.length <= 1}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Image Upload Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Attach Images (Optional)</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                  <Upload className="w-4 h-4" />
-                  Upload Images
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <span className="text-sm text-gray-600">
-                  {selectedImages.length} image(s) selected
-                </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
 
-              {(selectedImages.length > 0 || existingImages.length > 0) && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Existing Images */}
-                  {existingImages.map((image) => (
-                    <div key={image.id} className="relative">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300">
-                        <img
-                          src={image.image_url}
-                          alt={image.image_name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeExistingImage(image.id)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <p className="text-xs text-gray-600 mt-1 truncate">{image.image_name}</p>
-                    </div>
-                  ))}
-
-                  {/* Newly Selected Images */}
-                  {selectedImages.map((image, index) => (
-                    <div key={`new-${index}`} className="relative">
-                      <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-blue-300">
-                        <img
-                          src={URL.createObjectURL(image)}
-                          alt={image.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-sm"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <p className="text-xs text-gray-600 mt-1 truncate">{image.name}</p>
+            {/* Linked Images Section (Replaces Old Upload) */}
+            {linkedFiles.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Linked Images</h3>
+                <div className="space-y-2">
+                  {linkedFiles.map((file) => (
+                    <div key={file.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <Paperclip className="w-4 h-4 text-gray-500" />
+                      <span>{file.name}</span>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <div className="text-red-600 text-sm">{error}</div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Balance Check */}
-          {parseFloat(totals.difference) !== 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <div className="text-yellow-800 text-sm">
-                  ⚠️ Verification is not balanced. Difference: {totals.difference}
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-red-600 text-sm">{error}</div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Totals Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <div className="flex justify-end">
-              <div className="w-80">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Total Debit:</span>
-                    <span>{accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.debit) || 0), 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Total Credit:</span>
-                    <span>{accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.credit) || 0), 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="font-medium">Difference:</span>
-                    <span className={parseFloat(totals.difference) === 0 ? 'text-green-600' : 'text-red-600'}>
-                      {totals.difference}
-                    </span>
+            {/* Balance Check */}
+            {parseFloat(totals.difference) !== 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-yellow-800 text-sm">
+                    ⚠️ Verification is not balanced. Difference: {totals.difference}
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Totals Section */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <div className="flex justify-end">
+                <div className="w-80">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Total Debit:</span>
+                      <span>{accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.debit) || 0), 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Total Credit:</span>
+                      <span>{accountEntries.reduce((sum, entry) => sum + (parseFloat(entry.credit) || 0), 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="font-medium">Difference:</span>
+                      <span className={parseFloat(totals.difference) === 0 ? 'text-green-600' : 'text-red-600'}>
+                        {totals.difference}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-200">
-          <Button
-            variant="secondary"
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-            className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Processing...' : (initialData ? 'Update' : 'Book')}
-          </Button>
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-200">
+            <Button
+              variant="secondary"
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Processing...' : (initialData ? 'Update' : 'Book')}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+
+    </>
   );
 };

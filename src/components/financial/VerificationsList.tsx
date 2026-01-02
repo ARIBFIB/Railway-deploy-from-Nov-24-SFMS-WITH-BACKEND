@@ -4,6 +4,8 @@ import { Input } from '../Input';
 import { AccountReconciliation } from './AccountReconciliation';
 import { VerificationForm } from './VerificationForm';
 import { CashReconciliation } from './CashReconciliation';
+import { VatReportingPeriods } from './VatReportingPeriods';
+import { VatPeriodDetail } from './VatPeriodDetail';
 import { VerificationService, type Verification } from '../../services/verificationService';
 import { AccountService, type Account } from '../../services/accountService';
 import {
@@ -21,9 +23,20 @@ import {
   ChevronUp,
   Calendar,
   Pin,
-  X
+  X,
+  Paperclip,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Copy,
+  CheckCircle
 } from 'lucide-react';
 import { RegistrationTemplateService, type RegistrationTemplate } from '../../services/registrationTemplateService';
+import { AttachmentSidePanel } from './AttachmentSidePanel';
+import { ExtendedSearchPanel } from './ExtendedSearchPanel';
+import { TablePagination, type RowDensity } from '../TablePagination';
+import { verificationSeriesService, type VerificationSeriesItem } from '../../services/verificationSeriesService';
+import { toast } from 'react-hot-toast';
 
 // Remove the old interface as we're now using the one from the service
 
@@ -31,7 +44,13 @@ import { RegistrationTemplateService, type RegistrationTemplate } from '../../se
 
 export const VerificationsList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [verificationSeries, setVerificationSeries] = useState('all');
+  const [verificationSeries, setVerificationSeries] = useState('all'); // Original series state
+
+  // Extended Search State
+  const [showExtendedSearch, setShowExtendedSearch] = useState(false);
+  const [extendedFilters, setExtendedFilters] = useState<any>(null);
+
+  // Pagination & Display State
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('verifications');
   const [verifications, setVerifications] = useState<Verification[]>([]);
@@ -54,13 +73,27 @@ export const VerificationsList: React.FC = () => {
   const [searchResultsDensity, setSearchResultsDensity] = useState<'compact' | 'normal' | 'expanded'>('normal');
   const [searchResultsPage, setSearchResultsPage] = useState(1);
   const [searchResultsRowsPerPage, setSearchResultsRowsPerPage] = useState(10);
-  const [showExtendedSearch, setShowExtendedSearch] = useState(false);
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [editingVerification, setEditingVerification] = useState<Verification | null>(null);
+
+  // New State for Refinements
+  const [rowDensity, setRowDensity] = useState<RowDensity>('compact');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+  const [seriesList, setSeriesList] = useState<VerificationSeriesItem[]>([]);
   const [wasVerificationJustCreated, setWasVerificationJustCreated] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showGalleryPanel, setShowGalleryPanel] = useState(false);
   const [currentVerification, setCurrentVerification] = useState<Verification | null>(null);
+
+  // Attachment Panel State
+  const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
+  const [linkedFiles, setLinkedFiles] = useState<any[]>([]);
+
+  // Reset attachment state when changing tabs
+  useEffect(() => {
+    setIsAttachmentOpen(false);
+    setLinkedFiles([]);
+  }, [activeTab]);
 
   // VAT state
   const [vatPeriods] = useState([
@@ -84,6 +117,7 @@ export const VerificationsList: React.FC = () => {
   const [registrationTemplates, setRegistrationTemplates] = useState<RegistrationTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<RegistrationTemplate | null>(null);
   const [selectedReceiptTemplate, setSelectedReceiptTemplate] = useState<RegistrationTemplate | null>(null);
+  const [selectedVatPeriod, setSelectedVatPeriod] = useState<any | null>(null);
 
   // Daily cash register form state
   const [cashRegisterData, setCashRegisterData] = useState({
@@ -103,10 +137,6 @@ export const VerificationsList: React.FC = () => {
     comment: ''
   });
 
-  const handleAdvancedSearch = () => {
-    console.log('Advanced search clicked');
-  };
-
   // Load verifications from API
   const loadVerifications = async () => {
     console.log('🔄 VerificationsList.loadVerifications - Starting');
@@ -121,8 +151,20 @@ export const VerificationsList: React.FC = () => {
       const filters: any = {};
       if (cleanSearchTerm) filters.search = cleanSearchTerm;
       if (verificationSeries !== 'all') filters.verification_series = verificationSeries;
-      if (searchAmountFrom) filters.min_amount = parseFloat(searchAmountFrom);
-      if (searchAmountTo) filters.max_amount = parseFloat(searchAmountTo);
+
+      // Apply extended filters if they exist
+      if (extendedFilters) {
+        if (extendedFilters.verificationNumber) filters.verification_number = extendedFilters.verificationNumber;
+        if (extendedFilters.description) filters.description = extendedFilters.description;
+        if (extendedFilters.dateFrom) filters.date_from = extendedFilters.dateFrom;
+        if (extendedFilters.dateTo) filters.date_to = extendedFilters.dateTo;
+        if (extendedFilters.amountFrom) filters.min_amount = parseFloat(extendedFilters.amountFrom);
+        if (extendedFilters.amountTo) filters.max_amount = parseFloat(extendedFilters.amountTo);
+        if (extendedFilters.accountNumber) filters.account_number = extendedFilters.accountNumber;
+        if (extendedFilters.comment) filters.comment = extendedFilters.comment;
+        if (extendedFilters.createdBy) filters.created_by = extendedFilters.createdBy;
+        if (extendedFilters.status && extendedFilters.status !== 'all') filters.status = extendedFilters.status;
+      }
 
       console.log('🔍 Applying filters:', filters);
 
@@ -165,7 +207,7 @@ export const VerificationsList: React.FC = () => {
     if (activeTab === 'verifications') {
       loadVerifications();
     }
-  }, [activeTab, debouncedSearchTerm, verificationSeries, currentPage]);
+  }, [activeTab, debouncedSearchTerm, verificationSeries, currentPage, extendedFilters]);
 
   // Debounce search term
   useEffect(() => {
@@ -223,6 +265,39 @@ export const VerificationsList: React.FC = () => {
     await loadVerifications();
   };
 
+  const loadSeries = async () => {
+    try {
+      const response = await verificationSeriesService.getSettings('accounting');
+      if (response.success && response.data?.accounting?.series) {
+        setSeriesList(response.data.accounting.series);
+      }
+    } catch (err) {
+      console.error('Failed to load series settings:', err);
+    }
+  };
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleCopyEmail = (email: string) => {
+    navigator.clipboard.writeText(email);
+    toast.success('The address was copied to the clipboard.', {
+      position: 'bottom-center',
+      duration: 3000,
+      style: {
+        background: '#333',
+        color: '#fff',
+        borderRadius: '4px',
+        fontSize: '14px'
+      }
+    });
+  };
+
   const loadTemplates = async () => {
     try {
       const templates = await RegistrationTemplateService.getTemplates();
@@ -259,6 +334,7 @@ export const VerificationsList: React.FC = () => {
   useEffect(() => {
     loadTemplates();
     loadAccounts();
+    loadSeries();
   }, []);
 
   const handleTemplateSelection = (templateId: string, templatesList = registrationTemplates) => {
@@ -622,9 +698,46 @@ export const VerificationsList: React.FC = () => {
     // Navigate to Corporate Mailbox section
   };
 
-  const handleVatPeriodClick = (periodId: string) => {
-    console.log('VAT period clicked:', periodId);
-    // Navigate to VAT period details or open modal
+  const handleVatPeriodClick = (id: string) => {
+    const vatPeriods = [
+      {
+        id: 'dec-2025',
+        name: 'December',
+        startDate: '2025-12-01',
+        endDate: '2025-12-31',
+        dueDate: '2026-02-12',
+        status: 'Future'
+      },
+      {
+        id: 'nov-2025',
+        name: 'November',
+        startDate: '2025-11-01',
+        endDate: '2025-11-30',
+        dueDate: '2026-01-19',
+        status: 'Open'
+      },
+      {
+        id: 'mar-2025',
+        name: 'March',
+        startDate: '2025-03-01',
+        endDate: '2025-03-31',
+        dueDate: '2025-05-12',
+        status: 'Delayed'
+      },
+      {
+        id: 'q2-2025',
+        name: 'Second quarter',
+        startDate: '2025-04-01',
+        endDate: '2025-06-30',
+        dueDate: '2025-08-18',
+        status: 'Delayed'
+      }
+    ];
+
+    const period = vatPeriods.find(p => p.id === id);
+    if (period) {
+      setSelectedVatPeriod(period);
+    }
   };
 
 
@@ -677,7 +790,8 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handleBook = () => {
-    console.log('Book clicked');
+    console.log('Book clicked', { data: cashRegisterData, attachments: linkedFiles });
+    // TODO: Implement actual booking logic with attachments
   };
 
   const handleReceiptChange = (field: string, value: string) => {
@@ -711,11 +825,34 @@ export const VerificationsList: React.FC = () => {
   };
 
   const handleBookReceipt = () => {
-    console.log('Book receipt clicked');
+    console.log('Book receipt clicked', { data: receiptData, attachments: linkedFiles });
+    // TODO: Implement actual booking logic with attachments
   };
 
   // No local filtering anymore
-  const currentVerifications = verifications;
+
+  // Sort Logic
+  const sortedVerifications = React.useMemo(() => {
+    if (!sortConfig) return verifications;
+
+    return [...verifications].sort((a, b) => {
+      let aValue: any = a[sortConfig.key as keyof Verification];
+      let bValue: any = b[sortConfig.key as keyof Verification];
+
+      // Handle specific fields
+      if (sortConfig.key === 'amount') {
+        // Amount might be calculated or direct
+        aValue = a.amount || 0;
+        bValue = b.amount || 0;
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [verifications, sortConfig]);
+
+  const currentVerifications = sortedVerifications;
 
   const totalPagesSearch = Math.ceil(searchResults.length / searchResultsRowsPerPage);
   const paginatedSearchResults = searchResults.slice(
@@ -828,10 +965,10 @@ export const VerificationsList: React.FC = () => {
                 />
               </div>
               <button
-                onClick={handleAdvancedSearch}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                onClick={() => setShowExtendedSearch(!showExtendedSearch)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium min-w-[160px] text-left"
               >
-                Advanced search
+                {showExtendedSearch ? 'Close Extended Search' : 'Extended Search'}
               </button>
             </div>
             <div className="flex items-center gap-4">
@@ -905,10 +1042,42 @@ export const VerificationsList: React.FC = () => {
             </div>
           </div>
 
+          {/* Extended Search Panel - Inline */}
+          {showExtendedSearch && (
+            <ExtendedSearchPanel
+              onClose={() => setShowExtendedSearch(false)}
+              seriesList={seriesList}
+              accounts={accounts}
+              onSearch={(filters) => {
+                setExtendedFilters(filters);
+                // Don't close on search, allow refinement? User didn't specify, but usually search closes or updates list.
+                // User said "input text which I will do input also save and when I do search again do the previous..."
+                // Keeping it open might be annoying if it takes up space. Let's keep existing behavior (close on search) unless requested otherwise.
+                // Wait, "when click the extended serch then the text will change to close extended search". implies toggle.
+                // If I click Search, does it close? The previous logic closed it.
+                // Refactor: kept logic to close on search for now.
+                setShowExtendedSearch(false);
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setExtendedFilters(null);
+                // setShowExtendedSearch(false); // Maybe don't close on clear? existing logic did.
+                setCurrentPage(1);
+              }}
+            />
+          )}
+
           {/* Email and Print Links */}
           <div className="mb-6">
             <div className="flex items-center gap-6 text-sm text-gray-600">
-              <span>E-mail supporting documents: inbox.ver.1520105@erkivplats.se</span>
+              <span
+                className="text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 group"
+                onClick={() => handleCopyEmail('inbox.ver.1520105@erkivplats.se')}
+                title="Click to copy email address"
+              >
+                E-mail supporting documents: inbox.ver.1520105@erkivplats.se
+                <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </span>
               <button
                 onClick={handlePrintList}
                 className="flex items-center gap-2 hover:text-gray-800"
@@ -919,7 +1088,6 @@ export const VerificationsList: React.FC = () => {
             </div>
           </div>
 
-          {/* Filters */}
           <div className="mb-6">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -927,66 +1095,34 @@ export const VerificationsList: React.FC = () => {
                 <select
                   value={verificationSeries}
                   onChange={(e) => setVerificationSeries(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[100px]"
                 >
                   <option value="all">All</option>
-                  <option value="A">A</option>
-                  <option value="C">C</option>
-                  <option value="F">F</option>
-                  <option value="G">G</option>
-                  <option value="K">K</option>
+                  {seriesList.map(series => (
+                    <option key={series.id} value={series.code}>{series.code} - {series.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Grid className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-600">{totalItems} verifications</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(1)}
-                className={`px-3 py-1 rounded-md text-sm font-medium ${currentPage === 1
-                  ? 'bg-green-100 text-green-800'
-                  : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-              >
-                1
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          {/* Top Pagination Control */}
+          <div className="mb-4">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              rowDensity={rowDensity}
+              onRowDensityChange={setRowDensity}
+              totalItems={totalItems}
+            />
           </div>
 
           {/* Success Message Display */}
           {successMessage && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="text-green-600 text-sm font-medium">{successMessage}</div>
-                </div>
-                <button
-                  onClick={() => setSuccessMessage(null)}
-                  className="text-green-400 hover:text-green-600 ml-4"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-md flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              {successMessage}
             </div>
           )}
 
@@ -1007,13 +1143,14 @@ export const VerificationsList: React.FC = () => {
             </div>
           )}
 
-          {/* Verifications Table */}
+
+
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
                       <input
                         type="checkbox"
                         checked={selectedVerifications.length === currentVerifications.length && currentVerifications.length > 0}
@@ -1021,14 +1158,53 @@ export const VerificationsList: React.FC = () => {
                         className="rounded border-gray-300"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      VERIFICATION NUMBER
+                    <th
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 group select-none ${sortConfig?.key === 'verification_number' ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}
+                      onClick={() => handleSort('verification_number')}
+                    >
+                      <div className="flex items-center gap-1">
+                        VERIFICATION NUMBER
+                        {sortConfig?.key === 'verification_number' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                        {sortConfig?.key !== 'verification_number' && <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-50" />}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ACCOUNTING DATE
+                    <th
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 group select-none ${sortConfig?.key === 'accounting_date' ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}
+                      onClick={() => handleSort('accounting_date')}
+                    >
+                      <div className="flex items-center gap-1">
+                        ACCOUNTING DATE
+                        {sortConfig?.key === 'accounting_date' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                        {sortConfig?.key !== 'accounting_date' && <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-50" />}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      DESCRIPTION
+                    <th
+                      className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 group select-none ${sortConfig?.key === 'description' ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}
+                      onClick={() => handleSort('description')}
+                    >
+                      <div className="flex items-center gap-1">
+                        DESCRIPTION
+                        {sortConfig?.key === 'description' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                        {sortConfig?.key !== 'description' && <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-50" />}
+                      </div>
+                    </th>
+                    <th
+                      className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider cursor-pointer hover:bg-gray-100 group select-none ${sortConfig?.key === 'amount' ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}
+                      onClick={() => handleSort('amount')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        AMOUNT
+                        {sortConfig?.key === 'amount' && (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                        {sortConfig?.key !== 'amount' && <ArrowUpDown className="w-3 h-3 opacity-0 group-hover:opacity-50" />}
+                      </div>
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ACTIONS
@@ -1041,13 +1217,13 @@ export const VerificationsList: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         Loading verifications...
                       </td>
                     </tr>
                   ) : currentVerifications.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         No verifications found
                       </td>
                     </tr>
@@ -1066,24 +1242,43 @@ export const VerificationsList: React.FC = () => {
                           />
                         </td>
                         <td
-                          className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 cursor-pointer"
+                          className={`px-6 whitespace-nowrap text-sm font-medium text-gray-900 cursor-pointer ${rowDensity === 'compact' ? 'py-1.5 text-[13px]' :
+                            rowDensity === 'expanded' ? 'py-3.5 text-[15px]' : 'py-2.5 text-[14px]'
+                            }`}
                           onClick={() => handleVerificationClick(verification)}
                         >
                           {verification.verification_number}
                         </td>
                         <td
-                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                          className={`px-6 whitespace-nowrap text-sm text-gray-500 cursor-pointer ${rowDensity === 'compact' ? 'py-1.5 text-[13px]' :
+                            rowDensity === 'expanded' ? 'py-3.5 text-[15px]' : 'py-2.5 text-[14px]'
+                            }`}
                           onClick={() => handleVerificationClick(verification)}
                         >
                           {verification.accounting_date}
                         </td>
                         <td
-                          className="px-6 py-4 text-sm text-gray-900 cursor-pointer"
+                          className={`px-6 text-sm text-gray-900 cursor-pointer ${rowDensity === 'compact' ? 'py-1.5 text-[13px]' :
+                            rowDensity === 'expanded' ? 'py-3.5 text-[15px]' : 'py-2.5 text-[14px]'
+                            }`}
                           onClick={() => handleVerificationClick(verification)}
                         >
                           {verification.description || 'No description'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                        <td
+                          className={`px-6 text-sm text-gray-900 text-right cursor-pointer font-mono ${rowDensity === 'compact' ? 'py-1.5 text-[13px]' :
+                            rowDensity === 'expanded' ? 'py-3.5 text-[15px]' : 'py-2.5 text-[14px]'
+                            }`}
+                          onClick={() => handleVerificationClick(verification)}
+                        >
+                          {/* Assuming total_debit or amount is the value to show. Using generic amount if available or calculated */}
+                          {(verification.amount || verification.total_debit || 0).toLocaleString('sv-SE', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className={`px-6 whitespace-nowrap text-center ${rowDensity === 'compact' ? 'py-1.5' :
+                          rowDensity === 'expanded' ? 'py-3.5' : 'py-2.5'
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <div className="flex items-center justify-center gap-2">
                             {/* Man icon - always show for all entries */}
                             <div className="relative group">
@@ -1119,7 +1314,11 @@ export const VerificationsList: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className={`px-6 whitespace-nowrap text-center ${rowDensity === 'compact' ? 'py-1.5' :
+                          rowDensity === 'expanded' ? 'py-3.5' : 'py-2.5'
+                          }`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <a
                             href={`/financial/account-analysis?verificationId=${verification.id}`}
                             target="_blank"
@@ -1139,36 +1338,15 @@ export const VerificationsList: React.FC = () => {
           </div>
 
           {/* Bottom Pagination */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <button className="px-3 py-1 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100">
-              K
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(1)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${currentPage === 1
-                ? 'bg-green-100 text-green-800'
-                : 'text-gray-600 hover:bg-gray-100'
-                }`}
-            >
-              1
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button className="px-3 py-1 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100">
-              M
-            </button>
+          <div className="flex justify-center mt-6">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              rowDensity={rowDensity}
+              onRowDensityChange={setRowDensity}
+              totalItems={totalItems}
+            />
           </div>
         </>
       ) : activeTab === 'register-daily-cash' ? (
@@ -1272,7 +1450,7 @@ export const VerificationsList: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {selectedTemplate ? selectedTemplate.headingPaymentMethod : 'Title Payment'}
               </h3>
-              {/* Since the template only seems to have saleEntries, we might just show a static placeholder or entries tagged for payment if that existed. 
+              {/* Since the template only seems to have saleEntries, we might just show a static placeholder or entries tagged for payment if that existed.
                   For now we'll stick to the heading being dynamic as per User Request. */}
             </div>
 
@@ -1297,6 +1475,21 @@ export const VerificationsList: React.FC = () => {
             {/* Cash Reconciliation */}
             <CashReconciliation defaultExpanded={false} />
 
+            {/* Linked Images Section */}
+            {linkedFiles.length > 0 && (
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Linked Images</h3>
+                <div className="space-y-2">
+                  {linkedFiles.map((file) => (
+                    <div key={file.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <Paperclip className="w-4 h-4 text-gray-500" />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Comment Section */}
             <div className="bg-white rounded-lg p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
@@ -1310,15 +1503,6 @@ export const VerificationsList: React.FC = () => {
             </div>
           </div>
 
-          {/* Floating Image Button */}
-          <div className="fixed right-6 top-1/2 transform -translate-y-1/2 z-10">
-            <Button
-              className="w-12 h-12 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-lg"
-              onClick={() => console.log('Image button clicked')}
-            >
-              <Image className="w-6 h-6" />
-            </Button>
-          </div>
 
           {/* Bottom Action Bar */}
           <div className="flex items-center justify-between bg-white border-t border-gray-200 p-4">
@@ -1443,6 +1627,36 @@ export const VerificationsList: React.FC = () => {
               </div>
             </div>
 
+            {/* Linked Images Section */}
+            {linkedFiles.length > 0 && (
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Linked Images</h3>
+                <div className="space-y-2">
+                  {linkedFiles.map((file) => (
+                    <div key={file.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <Paperclip className="w-4 h-4 text-gray-500" />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Linked Images Section */}
+            {linkedFiles.length > 0 && (
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Linked Images</h3>
+                <div className="space-y-2">
+                  {linkedFiles.map((file) => (
+                    <div key={file.id} className="flex items-center gap-2 text-sm text-gray-700">
+                      <Paperclip className="w-4 h-4 text-gray-500" />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Comment Section */}
             <div className="bg-white rounded-lg p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
@@ -1456,15 +1670,6 @@ export const VerificationsList: React.FC = () => {
             </div>
           </div>
 
-          {/* Floating Image Button */}
-          <div className="fixed right-6 top-1/2 transform -translate-y-1/2 z-10">
-            <Button
-              className="w-12 h-12 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-lg"
-              onClick={() => console.log('Image button clicked')}
-            >
-              <Image className="w-6 h-6" />
-            </Button>
-          </div>
 
           {/* Bottom Action Bar */}
           <div className="flex items-center justify-between bg-white border-t border-gray-200 p-4">
@@ -1488,19 +1693,25 @@ export const VerificationsList: React.FC = () => {
         <AccountReconciliation />
       ) : activeTab === 'search-amount' ? (
         <div className="space-y-6">
-          {/* Search Amount Header */}
+          {/* Actions Bar */}
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 uppercase">SEARCH AMOUNT</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handlePrintSearchResults}
-                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+            <h1 className="text-2xl font-bold text-gray-900">Verifications</h1>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => setShowExtendedSearch(true)}
               >
-                <Printer className="w-4 h-4" />
-                Print list
-              </button>
+                <Search className="w-4 h-4" />
+                Extended Search
+              </Button>
+              <Button
+                className="bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 flex items-center gap-2"
+                onClick={() => setShowVerificationForm(true)}
+              >
+                <Plus className="w-4 h-4" />
+                Create verification
+              </Button>
             </div>
           </div>
 
@@ -1819,70 +2030,14 @@ export const VerificationsList: React.FC = () => {
           </div>
         </div>
       ) : activeTab === 'vat' ? (
-        <div className="space-y-6">
-          {/* VAT Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">VAT accounting periods to manage</h1>
-            <p className="text-gray-600">
-              Check each VAT reporting period and register the documentation with the Swedish Tax Agency before the last reporting day for each period.
-            </p>
-          </div>
-
-          {/* VAT Periods List */}
-          <div className="space-y-4">
-            {vatPeriods.map((period) => (
-              <div
-                key={period.id}
-                onClick={() => handleVatPeriodClick(period.id)}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {/* Status Badge */}
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${period.status === 'Delayed'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : period.status === 'Completed'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                      }`}>
-                      {period.status}
-                    </span>
-
-                    {/* Period Info */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{period.name}</h3>
-                      <p className="text-sm text-gray-600">Refers to the period {period.period}</p>
-                    </div>
-                  </div>
-
-                  {/* Last Reporting Date and Arrow */}
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Last reporting date</p>
-                      <p className="text-sm font-medium text-gray-900">{period.lastReportingDate}</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Additional VAT Actions */}
-          <div className="mt-8 flex justify-end space-x-4">
-            <Button
-              variant="secondary"
-              onClick={() => console.log('Add new VAT period')}
-            >
-              Add New Period
-            </Button>
-            <Button
-              onClick={() => console.log('Export VAT data')}
-            >
-              Export VAT Data
-            </Button>
-          </div>
-        </div>
+        selectedVatPeriod ? (
+          <VatPeriodDetail
+            period={selectedVatPeriod}
+            onBack={() => setSelectedVatPeriod(null)}
+          />
+        ) : (
+          <VatReportingPeriods onPeriodClick={handleVatPeriodClick} />
+        )
       ) : null}
 
       {/* Verification Form Modal */}
@@ -1908,9 +2063,10 @@ export const VerificationsList: React.FC = () => {
         onSave={(data) => {
           console.log('Verification data saved:', data);
         }}
-        onVerificationCreated={handleVerificationCreated}
+        onVerificationCreated={loadVerifications}
+        onSave={() => loadVerifications()}
+        linkedFiles={linkedFiles}
       />
-
       {/* Gallery Panel - Slide out from right */}
       {showGalleryPanel && (
         <div className="fixed inset-0 z-50 overflow-hidden">
@@ -1968,6 +2124,15 @@ export const VerificationsList: React.FC = () => {
           </div>
         </div>
       )}
-    </div >
+      {/* Conditional Attachment Panel */}
+      {(activeTab === 'register-daily-cash' || activeTab === 'register-receipt' || showVerificationForm) && (
+        <AttachmentSidePanel
+          isOpen={isAttachmentOpen}
+          onToggle={() => setIsAttachmentOpen(!isAttachmentOpen)}
+          onClose={() => setIsAttachmentOpen(false)}
+          onLink={(files) => setLinkedFiles(files)}
+        />
+      )}
+    </div>
   );
 };

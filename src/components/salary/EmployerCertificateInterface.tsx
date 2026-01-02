@@ -90,7 +90,7 @@ export const EmployerCertificateInterface: React.FC = () => {
       {/* Informational Text */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-700">
-          The employer certificate in Fortnox lön is integrated with the unemployment insurance funds' e-service{' '}
+          The employer certificate in SFMS is integrated with the unemployment insurance funds' e-service{' '}
           <a href="https://arbetsgivarintyg.nu" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
             Arbetsgivarintyg.nu
           </a>
