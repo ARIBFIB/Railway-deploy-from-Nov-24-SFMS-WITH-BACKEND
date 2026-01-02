@@ -343,9 +343,24 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         // If account number is changed, try to find matching account
         if (field === 'account') {
           if (value && value.trim()) {
-            const matchingAccount = accounts.find(acc => acc.account_number === value);
+            // First try to find by account number
+            let matchingAccount = accounts.find(acc => acc.account_number === value);
+            
+            // If not found and value looks like a name (starts with letters), try to find by name
+            if (!matchingAccount && /^[a-zA-Z]/.test(value)) {
+              matchingAccount = accounts.find(acc => 
+                acc.account_name && 
+                acc.account_name.toLowerCase().includes(value.toLowerCase())
+              );
+            }
+            
             if (matchingAccount) {
-              updatedEntry.name = (matchingAccount && typeof matchingAccount.account_name === 'string') ? matchingAccount.account_name : value;
+              // Use the actual account number from the system
+              updatedEntry.account = matchingAccount.account_number;
+              updatedEntry.name = (matchingAccount && typeof matchingAccount.account_name === 'string') ? matchingAccount.account_name : matchingAccount.account_number;
+            } else {
+              // If no match found, keep the user's input but set the name to match
+              updatedEntry.name = value;
             }
           } else {
             // Clear the name when account number is removed
@@ -362,7 +377,11 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const handleAccountSelect = (entryId: string, account: Account) => {
     setAccountEntries(prev => prev.map(entry =>
       entry.id === entryId
-        ? { ...entry, account: account.account_number, name: (account && typeof account.account_name === 'string') ? account.account_name : account.account_number }
+        ? { 
+            ...entry, 
+            account: account.account_number, 
+            name: (account && typeof account.account_name === 'string') ? account.account_name : account.account_number 
+          }
         : entry
     ));
     setShowAccountDropdown(prev => ({ ...prev, [entryId]: false }));
@@ -496,7 +515,30 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       }
 
       // Find account details if available
-      const accountDetails = accounts.find(acc => acc.account_number === accountNumber);
+      let accountDetails = accounts.find(acc => acc.account_number === accountNumber);
+      
+      // If account number from template doesn't exist in the system, try to find by name
+      if (!accountDetails && accountNumber) {
+        // First, check if accountNumber is actually a name (starts with letters) and try to find matching account
+        if (/^[a-zA-Z]/.test(accountNumber)) {
+          // Try to find an account that matches the accountNumber as a name
+          accountDetails = accounts.find(acc => 
+            acc.account_name && 
+            acc.account_name.toLowerCase().includes(accountNumber.toLowerCase())
+          );
+          
+          if (accountDetails) {
+            // Use the actual account number from the system
+            accountNumber = accountDetails.account_number;
+          }
+        }
+      }
+      
+      // If still no account details found, show an error or use a default
+      if (!accountDetails && accountNumber.trim() !== '') {
+        console.warn(`Template references account "${accountNumber}" which doesn't exist in the system. This may cause verification creation to fail.`);
+        // For now, we'll keep the original account number, but validation will catch this later
+      }
 
       const newEntry: AccountEntry = {
         id: `template-${template.id}-entry-${index}`,
@@ -613,6 +655,32 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         return;
       }
 
+      // Additional validation: ensure account numbers are valid (exist in the accounts list or are properly formatted)
+      for (const entry of validEntries) {
+        const accountNumber = (entry.account || '').toString().trim();
+        
+        // Skip validation for empty account numbers
+        if (!accountNumber) continue;
+        
+        // Check if the account number exists in the loaded accounts
+        const accountExists = accounts.some(acc => acc.account_number === accountNumber);
+        
+        // If account doesn't exist in the loaded accounts, check if it's a valid format
+        if (!accountExists) {
+          // Account numbers should be numeric or follow a specific format (e.g., 1000, 1100, etc.)
+          // Names like 'cash', 'car' are not valid account numbers
+          const isLikelyAccountName = /^[a-zA-Z]/.test(accountNumber);
+          
+          if (isLikelyAccountName) {
+            setError(`Invalid account number: "${accountNumber}". Account numbers should be numeric codes (like 1000, 1100) that exist in the chart of accounts. Please select a valid account from the dropdown.`);
+            setLoading(false);
+            return;
+          }
+          
+          console.warn(`Account number "${accountNumber}" not found in loaded accounts. This verification might fail if the account doesn't exist in the database.`);
+        }
+      }
+
       // Convert account entries to the format expected by the API
       const entries: Omit<VerificationEntry, 'id' | 'verification_id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>[] =
         validEntries.map(entry => ({
@@ -644,7 +712,14 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         try {
           const uploadResult = await VerificationService.uploadImage(image);
           if (uploadResult.success) {
-            uploadedImages.push(uploadResult.data);
+            // Format the uploaded image to exclude restricted fields for CreateVerificationData
+            const formattedImage = {
+              image_url: uploadResult.data.image_url,
+              image_name: uploadResult.data.image_name,
+              image_size: uploadResult.data.image_size,
+              mime_type: uploadResult.data.mime_type
+            };
+            uploadedImages.push(formattedImage);
           } else {
             console.warn('Failed to upload image:', image.name, uploadResult.message);
             // Continue with verification creation even if image upload fails
@@ -663,24 +738,57 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       if (initialData && initialData.verification_number) {
         verificationNumber = initialData.verification_number;
       } else {
-        try {
-          const nextNumberResponse = await VerificationService.getNextVerificationNumber(series);
-          if (nextNumberResponse.success) {
-            verificationNumber = nextNumberResponse.data.verification_number;
-          } else {
-            setError('Failed to generate verification number. Please try again.');
-            setLoading(false);
-            return;
+        // Retry mechanism in case verification number already exists
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (attempts < maxAttempts) {
+          try {
+            const nextNumberResponse = await VerificationService.getNextVerificationNumber(series);
+            if (nextNumberResponse.success) {
+              verificationNumber = nextNumberResponse.data.verification_number;
+              break; // Exit the loop if successful
+            } else {
+              setError('Failed to generate verification number. Please try again.');
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Failed to get next verification number:', err);
+            attempts++;
+            if (attempts >= maxAttempts) {
+              setError('Failed to generate a unique verification number after multiple attempts. Please try again later.');
+              setLoading(false);
+              return;
+            }
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
-        } catch (err) {
-          console.error('Failed to get next verification number:', err);
-          setError('Failed to generate verification number. Please check your connection and try again.');
-          setLoading(false);
-          return;
         }
       }
 
       // Prepare verification data
+      // For new verifications, we need to format images properly (without id, verification_id, uploaded_at, uploaded_by)
+      let formattedImages = [];
+      
+      if (initialData && initialData.id) {
+        // When updating existing verification, format existing images to exclude restricted fields
+        const formattedExistingImages = existingImages
+          .filter(img => img) // Filter out any undefined/null images
+          .map(img => ({
+            image_url: img.image_url,
+            image_name: img.image_name,
+            image_size: img.image_size,
+            mime_type: img.mime_type
+          }));
+        
+        // Combine formatted existing images with newly uploaded images
+        formattedImages = [...formattedExistingImages, ...uploadedImages];
+      } else {
+        // When creating new verification, only include newly uploaded images (already formatted)
+        formattedImages = [...uploadedImages];
+      }
+      
       const verificationData: CreateVerificationData = {
         verification_number: verificationNumber,
         verification_series: series,
@@ -695,21 +803,69 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         status: 'draft',
         has_person: false,
         has_comment: formData.comment && formData.comment.trim() ? true : false,
-        has_gallery: (selectedImages.length + existingImages.length) > 0,
+        has_gallery: (selectedImages.length + formattedImages.length) > 0,
         entries,
-        images: [...existingImages, ...uploadedImages]
+        ...(formattedImages.length > 0 ? { images: formattedImages } : {})
       };
 
-      let response;
+      // For new verifications, implement retry mechanism for various failures
+      let response: any = null; // Initialize to avoid TypeScript error
+      let attempts = 0;
+      const maxAttempts = 3;
+      
       if (initialData && initialData.id) {
         console.log('🔄 VerificationForm - Updating existing verification:', initialData.id);
         response = await VerificationService.updateVerification(initialData.id, verificationData);
       } else {
-        console.log('🔄 VerificationForm - Creating new verification');
-        response = await VerificationService.createVerification(verificationData);
+        // Retry creation for various potential failures
+        while (attempts < maxAttempts) {
+          console.log('🔄 VerificationForm - Creating new verification, attempt:', attempts + 1);
+          try {
+            response = await VerificationService.createVerification(verificationData);
+            
+            // If successful, break the loop
+            if (response.success) {
+              break;
+            }
+            
+            // If it's a verification number conflict, get a new number and try again
+            if (response.message && response.message.includes('already exists')) {
+              attempts++;
+              if (attempts < maxAttempts) {
+                // Get a new verification number and try again
+                try {
+                  const nextNumberResponse = await VerificationService.getNextVerificationNumber(series);
+                  if (nextNumberResponse.success) {
+                    verificationData.verification_number = nextNumberResponse.data.verification_number;
+                    console.log('🔄 Got new verification number:', nextNumberResponse.data.verification_number);
+                  } else {
+                    setError('Failed to generate new verification number.');
+                    break; // Exit the loop if we can't get a new number
+                  }
+                } catch (err) {
+                  console.error('Failed to get new verification number:', err);
+                  setError('Failed to generate new verification number.');
+                  break; // Exit the loop if we can't get a new number
+                }
+              }
+            } else {
+              // If it's not a verification number conflict, break the loop to show the error
+              break;
+            }
+          } catch (error) {
+            console.error('Error during verification creation attempt:', error);
+            attempts++;
+            if (attempts >= maxAttempts) {
+              // Re-throw the error if we've exhausted attempts
+              throw error;
+            }
+            // Wait a bit before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
       }
 
-      if (response.success) {
+      if (response && response.success) {
         console.log('✅ VerificationForm - Operation successful:', response.data);
 
         // Close form first
@@ -726,7 +882,28 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         }
       } else {
         console.error('❌ VerificationForm - Failed:', response);
-        setError(response.message || 'Operation failed. Please check your data and try again.');
+        // If we exhausted all attempts due to verification number conflicts
+        if (attempts >= maxAttempts && response && response.message && response.message.includes('already exists')) {
+          setError('Failed to create verification after multiple attempts due to verification number conflicts. Please try again later.');
+        } else {
+          // Extract more specific error information
+          let errorMessage = 'Operation failed. Please check your data and try again.';
+          if (response && response.message) {
+            errorMessage = response.message;
+            
+            // Check for specific error patterns
+            if (response.message.toLowerCase().includes('account') && response.message.toLowerCase().includes('not found')) {
+              errorMessage = 'Account validation failed. Please ensure all account numbers exist in the system.';
+            } else if (response.message.toLowerCase().includes('account') && response.message.toLowerCase().includes('invalid')) {
+              errorMessage = 'Invalid account number found. Please verify all account numbers are correct.';
+            } else if (response.message.toLowerCase().includes('account') && response.message.toLowerCase().includes('verification_entries')) {
+              errorMessage = 'Account validation failed. Please make sure all account numbers are valid numeric codes (like 1000, 1100) that exist in the chart of accounts.';
+            } else if (response.message.toLowerCase().includes('verification number')) {
+              errorMessage = 'Verification number error. Please try creating the verification again.';
+            }
+          }
+          setError(errorMessage);
+        }
       }
     } catch (err) {
       console.error('Error creating verification:', err);
@@ -737,6 +914,12 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           setError('Request timeout: The server is taking too long to respond. Please try again.');
         } else if (err.message.includes('validation') || err.message.includes('required')) {
           setError(`Validation error: ${err.message}`);
+        } else if (err.message.includes('already exists')) {
+          setError('Verification number already exists. Please try creating the verification again.');
+        } else if (err.message.includes('account') && err.message.toLowerCase().includes('not found')) {
+          setError('Account validation failed. Please ensure all account numbers exist in the system.');
+        } else if (err.message.includes('account') && err.message.toLowerCase().includes('invalid')) {
+          setError('Invalid account number found. Please verify all account numbers are correct.');
         } else {
           setError(`Error creating verification: ${err.message}`);
         }

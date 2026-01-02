@@ -1301,10 +1301,26 @@ export const VerificationsList: React.FC = () => {
                             {verification.has_gallery && (
                               <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
-                                  setCurrentVerification(verification);
-                                  setShowGalleryPanel(true);
+                                  try {
+                                    // Fetch full verification details with images
+                                    const fullVerification = await VerificationService.getVerificationById(verification.id!);
+                                    if (fullVerification.success) {
+                                      setCurrentVerification(fullVerification.data);
+                                      setShowGalleryPanel(true);
+                                    } else {
+                                      console.error('Failed to fetch verification details:', fullVerification.message);
+                                      // Fallback to the verification data we already have
+                                      setCurrentVerification(verification);
+                                      setShowGalleryPanel(true);
+                                    }
+                                  } catch (error) {
+                                    console.error('Error fetching verification details:', error);
+                                    // Fallback to the verification data we already have
+                                    setCurrentVerification(verification);
+                                    setShowGalleryPanel(true);
+                                  }
                                 }}
                                 className="p-1 text-gray-600 hover:text-[#5c6f2b] transition-colors"
                                 title="View gallery"
@@ -2073,7 +2089,7 @@ export const VerificationsList: React.FC = () => {
           <div className="absolute right-0 top-0 h-full w-96 bg-white shadow-xl transform transition-transform duration-300 ease-in-out translate-x-0">
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-[#9bbb48]/20">
-                <h3 className="text-lg font-semibold text-gray-800">Choose picture</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Linked Images</h3>
                 <button
                   type="button"
                   onClick={() => setShowGalleryPanel(false)}
@@ -2084,30 +2100,37 @@ export const VerificationsList: React.FC = () => {
               </div>
 
               <div className="flex-1 p-4 overflow-y-auto">
-                <p className="text-gray-600 mb-6">There are no available documents to attach.</p>
-
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-12H16m8 8h8m-8 0V8m0 0h8m-8 0a4 4 0 01-4-4z" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <p className="mt-2 text-sm text-gray-600">
-                    Drag and drop a document here or click
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#5c6f2b] hover:bg-[#4a5a25] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5c6f2b]"
-                  >
-                    Upload
-                  </button>
-                </div>
-
-                <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-                  <p className="mb-2">Once the document has been uploaded, it is saved and archived, and you may discard the original.</p>
-                  <p>From July 1 2024, digital storage of documents will be sufficient.</p>
-                </div>
+                {currentVerification && currentVerification.images && currentVerification.images.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentVerification.images.map((image: any, index: number) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                        <div className="text-sm text-gray-700 mb-2 truncate" title={image.image_name || `Image ${index + 1}`}>
+                          {image.image_name || `Image ${index + 1}`}
+                        </div>
+                        <div className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
+                          {image.image_url ? (
+                            <img 
+                              src={image.image_url} 
+                              alt={image.image_name || `Verification image ${index + 1}`}
+                              className="object-contain max-h-32"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null; // prevents infinite loop
+                                target.src = '/placeholder-image.svg'; // fallback image
+                              }}
+                            />
+                          ) : (
+                            <div className="text-gray-400 text-xs text-center p-2">Image preview not available</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No images available for this verification.</p>
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-gray-200 p-4 bg-gray-50">
