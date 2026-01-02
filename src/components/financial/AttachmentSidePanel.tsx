@@ -17,6 +17,7 @@ import {
     ChevronRight,
     Paperclip
 } from 'lucide-react';
+import { VerificationService } from '../../services/verificationService';
 
 export interface AttachedFile {
     id: string;
@@ -31,9 +32,11 @@ interface AttachmentSidePanelProps {
     onToggle: () => void;
     onClose: () => void;
     onLink?: (files: AttachedFile[]) => void;
+    verificationId?: string; // Optional verification ID for attaching images directly to a verification
+    onAttachToVerification?: (success: boolean, message?: string) => void; // Callback for when images are attached to a verification
 }
 
-export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen, onToggle, onClose, onLink }) => {
+export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen, onToggle, onClose, onLink, verificationId, onAttachToVerification }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [files, setFiles] = useState<AttachedFile[]>([]);
     const [selectedFileIndex, setSelectedFileIndex] = useState<number>(0);
@@ -126,6 +129,42 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
     };
 
     const currentFile = files[selectedFileIndex];
+
+    // Function to attach images to a specific verification
+    const attachToVerification = async () => {
+        if (!verificationId) {
+            console.error('No verification ID provided for attachment');
+            return;
+        }
+
+        if (files.length === 0) {
+            console.warn('No files to attach');
+            return;
+        }
+
+        for (const file of files) {
+            try {
+                const result = await VerificationService.attachImageToVerification(verificationId, file.file);
+                if (result.success) {
+                    console.log('✅ Image attached successfully:', result.data);
+                } else {
+                    console.error('❌ Failed to attach image:', result.message);
+                }
+            } catch (error) {
+                console.error('❌ Error attaching image to verification:', error);
+            }
+        }
+
+        // Clear the files after successful attachment
+        setFiles([]);
+        setIsLinked(false);
+        if (onLink) onLink([]);
+        
+        // Call the callback to notify parent component
+        if (onAttachToVerification) {
+            onAttachToVerification(true, `Successfully attached ${files.length} image(s) to verification`);
+        }
+    };
 
     const moveOptions = [
         "Asset register",
@@ -323,20 +362,33 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                 {/* 7. Bottom Action Buttons (Sticky at bottom of drawer) */}
                 {files.length > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-4 py-4 z-20 flex items-center justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                        {/* Only show Delete if NOT linked */}
-                        {!isLinked ? (
+                        {/* Show Attach to Verification button if verificationId is provided */}
+                        {verificationId && (
+                            <button
+                                onClick={attachToVerification}
+                                className="px-5 py-2 bg-[#4285F4] text-white text-[14px] font-medium rounded-full hover:bg-[#3367D6] transition-colors flex items-center gap-2"
+                            >
+                                <LinkIcon size={16} />
+                                Attach to Verification
+                            </button>
+                        )}
+                        {/* Only show Delete if NOT linked and no verificationId */}
+                        {!isLinked && !verificationId && (
                             <button
                                 onClick={handleDelete}
                                 className="px-5 py-2 bg-[#BDBDBD] text-white text-[14px] font-medium rounded-full hover:bg-[#A0A0A0] transition-colors"
                             >
                                 Delete
                             </button>
-                        ) : <div></div>} {/* Spacer to keep right alignment */}
+                        )}
+                        {/* Spacer to keep right alignment when no left button */}
+                        {!verificationId && isLinked && <div></div>}
+                        {!verificationId && !isLinked && <div></div>} {/* Spacer when no verificationId and not linked */}
 
                         <div className="flex items-center gap-3">
                             <div className="relative">
-                                {/* Only show Move if NOT linked */}
-                                {!isLinked && (
+                                {/* Only show Move if NOT linked and no verificationId */}
+                                {!isLinked && !verificationId && (
                                     <>
                                         {isMoveMenuOpen && (
                                             <div className="absolute bottom-full mb-2 left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-30">
@@ -371,12 +423,15 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                                         Cancel
                                     </button>
                                 )}
-                                <button
-                                    onClick={handleLink}
-                                    className="px-6 py-2 bg-[#0F9D58] text-white text-[14px] font-semibold rounded-full hover:bg-[#0B8548] transition-colors shadow-sm"
-                                >
-                                    {isLinked ? 'Linked' : 'Link'}
-                                </button>
+                                {/* Only show Link button if no verificationId */}
+                                {!verificationId && (
+                                    <button
+                                        onClick={handleLink}
+                                        className="px-6 py-2 bg-[#0F9D58] text-white text-[14px] font-semibold rounded-full hover:bg-[#0B8548] transition-colors shadow-sm"
+                                    >
+                                        {isLinked ? 'Linked' : 'Link'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

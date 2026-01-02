@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { supabase } from '../config/database';
 import { JWTRequest } from '../middleware/jwtAuth';
 import { VerificationModel, CreateVerificationData, UpdateVerificationData, VerificationFilters } from '../models/Verification';
 import { createError, asyncHandler } from '../middleware/errorHandler';
@@ -364,16 +365,46 @@ export class VerificationController {
     }
 
     try {
-      // This would typically handle file upload to a storage service (AWS S3, Google Cloud Storage, etc.)
-      // For now, we'll return a mock response with proper file information
-      const mockImageUrl = `https://storage.example.com/verifications/${foundationId}/${Date.now()}-${req.file.originalname}`;
+      // Generate unique file name
+      const fileName = `${Date.now()}-${req.file.originalname}`;
+      const filePath = `verifications/${foundationId}/${fileName}`;
 
-      console.log('✅ Image upload processed successfully');
+      console.log('📤 Uploading image to Supabase Storage:', {
+        fileName,
+        filePath,
+        contentType: req.file.mimetype,
+        size: req.file.size
+      });
+
+      // Upload file to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('verification-images')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Image upload failed:', uploadError);
+        throw createError(`Image upload failed: ${uploadError.message}`, 500);
+      }
+
+      // Get public URL for the uploaded image
+      const { data: publicUrlData } = supabase.storage
+        .from('verification-images')
+        .getPublicUrl(filePath);
+      
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error('❌ Public URL not generated properly');
+        throw createError('Failed to generate public URL for the uploaded image', 500);
+      }
+
+      console.log('✅ Image uploaded successfully to:', filePath);
 
       res.status(200).json({
         success: true,
         data: {
-          image_url: mockImageUrl,
+          image_url: publicUrlData.publicUrl,
           image_name: req.file.originalname,
           image_size: req.file.size,
           mime_type: req.file.mimetype,
@@ -525,6 +556,116 @@ export class VerificationController {
     } catch (error) {
       console.error('❌ Error getting unique descriptions:', error);
       res.status(500).json(createError(`Failed to fetch descriptions: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  static attachImageToVerification = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const foundationId = req.user?.foundation_id;
+    const userId = req.user?.user_id;
+    const verificationId = req.params.id;
+
+    if (!foundationId || !userId || !verificationId) {
+      res.status(400).json(createError('Foundation ID, User ID, and Verification ID are required'));
+      return;
+    }
+
+    // Verify that the file is present
+    if (!req.file) {
+      res.status(400).json(createError('Image file is required'));
+      return;
+    }
+
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (req.file.size > maxSize) {
+      console.error('❌ File too large:', req.file.size);
+      res.status(400).json(createError('File size exceeds 10MB limit'));
+      return;
+    }
+
+    try {
+      // Verify that the verification exists and belongs to the foundation
+      const verification = await VerificationModel.getById(verificationId);
+      if (verification.foundation_id !== foundationId) {
+        res.status(403).json(createError('Access denied: Verification does not belong to your foundation'));
+        return;
+      }
+
+      // Generate unique file name
+      const fileName = `${Date.now()}-${req.file.originalname}`;
+      const filePath = `verifications/${foundationId}/${verificationId}/${fileName}`;
+
+      console.log('📤 Attaching image to verification:', {
+        fileName,
+        filePath,
+        contentType: req.file.mimetype,
+        size: req.file.size,
+        verificationId
+      });
+
+      // Upload file to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('verification-images')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('❌ Image upload failed:', uploadError);
+        throw createError(`Image upload failed: ${uploadError.message}`, 500);
+      }
+
+      // Get public URL for the uploaded image
+      const { data: publicUrlData } = supabase.storage
+        .from('verification-images')
+        .getPublicUrl(filePath);
+      
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error('❌ Public URL not generated properly');
+        throw createError('Failed to generate public URL for the uploaded image', 500);
+      }
+
+      // Insert record into verification_images table
+      const { data: imageRecord, error: imageError } = await supabase
+        .from('verification_images')
+        .insert([{
+          verification_id: verificationId,
+          image_url: publicUrlData.publicUrl,
+          image_name: req.file.originalname,
+          image_size: req.file.size,
+          mime_type: req.file.mimetype,
+          uploaded_by: userId
+        }])
+        .select()
+        .single();
+
+      if (imageError) {
+        console.error('❌ Failed to create image record:', imageError);
+        throw createError(`Failed to create image record: ${imageError.message}`, 500);
+      }
+
+      // Update the has_gallery field in the verifications table
+      const { error: updateGalleryError } = await supabase
+        .from('verifications')
+        .update({ has_gallery: true })
+        .eq('id', verificationId);
+
+      if (updateGalleryError) {
+        console.error('❌ Failed to update has_gallery field:', updateGalleryError);
+        // Don't throw error here as the image was successfully attached
+      }
+
+      console.log('✅ Image attached successfully to verification:', verificationId);
+
+      res.status(200).json({
+        success: true,
+        data: imageRecord,
+        message: 'Image attached to verification successfully'
+      });
+    } catch (error) {
+      console.error('❌ Error attaching image to verification:', error);
+      res.status(500).json(createError(`Failed to attach image to verification: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   });
 

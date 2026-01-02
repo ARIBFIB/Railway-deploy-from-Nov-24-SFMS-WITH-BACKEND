@@ -144,7 +144,7 @@ export class VerificationModel {
         status: verificationData.status || 'draft',
         has_person: verificationData.has_person || false,
         has_comment: verificationData.has_comment || false,
-        has_gallery: verificationData.has_gallery || false,
+        has_gallery: (verificationData.images && verificationData.images.length > 0) || verificationData.has_gallery || false,
         created_by: userId,
         updated_by: userId
       };
@@ -350,11 +350,45 @@ export class VerificationModel {
         throw new Error(`Failed to get verifications: ${error.message}`);
       }
 
+      // Get verification IDs to check for images
+      const verificationIds = verifications?.map(v => v.id) || [];
+      
+      // Fetch image counts for each verification
+      let imagesData: { verification_id: string }[] = [];
+      if (verificationIds.length > 0) {
+        const { data: verificationImages, error: imagesError } = await supabase
+          .from('verification_images')
+          .select('verification_id')
+          .in('verification_id', verificationIds);
+          
+        if (imagesError) {
+          console.error('❌ Error fetching verification images:', imagesError);
+          // Continue without image data
+          imagesData = [];
+        } else {
+          imagesData = verificationImages || [];
+        }
+      }
+      
+      // Create a map of verification IDs to image existence
+      const hasImageMap: { [key: string]: boolean } = {};
+      imagesData.forEach(image => {
+        if (image.verification_id) {
+          hasImageMap[image.verification_id] = true;
+        }
+      });
+      
+      // Update verifications with correct has_gallery value
+      const updatedVerifications = (verifications || []).map(verification => ({
+        ...verification,
+        has_gallery: Boolean(hasImageMap[verification.id || ''])
+      }));
+      
       const total = count || 0;
       const pages = Math.ceil(total / limit);
 
       console.log('✅ Query executed successfully:', {
-        verificationsCount: verifications?.length || 0,
+        verificationsCount: updatedVerifications?.length || 0,
         total,
         pages,
         page,
@@ -363,7 +397,7 @@ export class VerificationModel {
 
       return {
         success: true,
-        data: verifications || [],
+        data: updatedVerifications,
         pagination: {
           page,
           limit,
@@ -395,14 +429,48 @@ export class VerificationModel {
         throw new Error(`Failed to fetch verifications: ${error.message}`);
       }
 
+      // Get verification IDs to check for images
+      const verificationIds = verifications?.map(v => v.id) || [];
+      
+      // Fetch image counts for each verification
+      let imagesData: { verification_id: string }[] = [];
+      if (verificationIds.length > 0) {
+        const { data: verificationImages, error: imagesError } = await supabase
+          .from('verification_images')
+          .select('verification_id')
+          .in('verification_id', verificationIds);
+          
+        if (imagesError) {
+          console.error('❌ Error fetching verification images:', imagesError);
+          // Continue without image data
+          imagesData = [];
+        } else {
+          imagesData = verificationImages || [];
+        }
+      }
+      
+      // Create a map of verification IDs to image existence
+      const hasImageMap: { [key: string]: boolean } = {};
+      imagesData.forEach(image => {
+        if (image.verification_id) {
+          hasImageMap[image.verification_id] = true;
+        }
+      });
+      
+      // Update verifications with correct has_gallery value
+      const updatedVerifications = (verifications || []).map(verification => ({
+        ...verification,
+        has_gallery: Boolean(hasImageMap[verification.id || ''])
+      }));
+      
       console.log('✅ Successfully fetched all verifications:', {
-        count: verifications?.length || 0,
-        verificationNumbers: verifications?.map(v => v.verification_number) || []
+        count: updatedVerifications?.length || 0,
+        verificationNumbers: updatedVerifications?.map(v => v.verification_number) || []
       });
 
       return {
         success: true,
-        data: verifications || []
+        data: updatedVerifications
       };
     } catch (error) {
       console.error('❌ Error in VerificationModel.getAllByFoundation:', error);
@@ -426,14 +494,48 @@ export class VerificationModel {
         throw new Error(`Failed to fetch verifications: ${error.message}`);
       }
 
+      // Get verification IDs to check for images
+      const verificationIds = verifications?.map(v => v.id) || [];
+      
+      // Fetch image counts for each verification
+      let imagesData: { verification_id: string }[] = [];
+      if (verificationIds.length > 0) {
+        const { data: verificationImages, error: imagesError } = await supabase
+          .from('verification_images')
+          .select('verification_id')
+          .in('verification_id', verificationIds);
+          
+        if (imagesError) {
+          console.error('❌ Error fetching verification images:', imagesError);
+          // Continue without image data
+          imagesData = [];
+        } else {
+          imagesData = verificationImages || [];
+        }
+      }
+      
+      // Create a map of verification IDs to image existence
+      const hasImageMap: { [key: string]: boolean } = {};
+      imagesData.forEach(image => {
+        if (image.verification_id) {
+          hasImageMap[image.verification_id] = true;
+        }
+      });
+      
+      // Update verifications with correct has_gallery value
+      const updatedVerifications = (verifications || []).map(verification => ({
+        ...verification,
+        has_gallery: Boolean(hasImageMap[verification.id || ''])
+      }));
+      
       console.log('✅ Successfully fetched all verifications (Admin):', {
-        count: verifications?.length || 0,
-        verificationNumbers: verifications?.map(v => v.verification_number) || []
+        count: updatedVerifications?.length || 0,
+        verificationNumbers: updatedVerifications?.map(v => v.verification_number) || []
       });
 
       return {
         success: true,
-        data: verifications || []
+        data: updatedVerifications
       };
     } catch (error) {
       console.error('❌ Error in VerificationModel.getAll:', error);
@@ -500,7 +602,7 @@ export class VerificationModel {
       }
 
       // Update verification images if provided
-      if (verificationData.images) {
+      if (verificationData.images !== undefined) { // Check if images field was provided in the update
         // Delete existing images
         const { error: deleteError } = await supabase
           .from('verification_images')
@@ -530,6 +632,40 @@ export class VerificationModel {
           if (imagesError) {
             throw new Error(`Failed to create verification images: ${imagesError.message}`);
           }
+        }
+        
+        // Update has_gallery field based on whether images exist after the update
+        const hasGallery = verificationData.images.length > 0;
+        const { error: updateGalleryError } = await supabase
+          .from('verifications')
+          .update({ has_gallery: hasGallery })
+          .eq('id', id);
+          
+        if (updateGalleryError) {
+          console.error('❌ Error updating has_gallery field:', updateGalleryError);
+          throw new Error(`Failed to update has_gallery field: ${updateGalleryError.message}`);
+        }
+      } else {
+        // If images were not provided in the update, check if images exist in the database and update has_gallery accordingly
+        const { count, error: countError } = await supabase
+          .from('verification_images')
+          .select('*', { count: 'exact', head: true })
+          .eq('verification_id', id);
+          
+        if (countError) {
+          console.error('❌ Error counting verification images:', countError);
+          throw new Error(`Failed to count verification images: ${countError.message}`);
+        }
+        
+        const hasGallery = (count || 0) > 0;
+        const { error: updateGalleryError } = await supabase
+          .from('verifications')
+          .update({ has_gallery: hasGallery })
+          .eq('id', id);
+          
+        if (updateGalleryError) {
+          console.error('❌ Error updating has_gallery field:', updateGalleryError);
+          throw new Error(`Failed to update has_gallery field: ${updateGalleryError.message}`);
         }
       }
 

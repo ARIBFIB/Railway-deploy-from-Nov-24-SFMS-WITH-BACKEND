@@ -26,6 +26,12 @@ const upload = multer({
   }
 });
 
+// Image upload route
+router.post('/upload-image', upload.single('image'), VerificationController.uploadImage);
+
+// Attach image to existing verification
+router.post('/:id/attach-image', upload.single('image'), VerificationController.attachImageToVerification);
+
 // Bulk operations
 router.patch('/bulk/status', VerificationController.bulkUpdateStatus);
 router.delete('/bulk', VerificationController.bulkDelete);

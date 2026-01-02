@@ -91,6 +91,7 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [showAccountDropdown, setShowAccountDropdown] = useState<{ [key: string]: boolean }>({});
@@ -738,6 +739,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
       // Upload images if any
       const uploadedImages = [];
+      
+      // Upload selected images
       for (const image of selectedImages) {
         try {
           const uploadResult = await VerificationService.uploadImage(image);
@@ -758,6 +761,31 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           console.error('Failed to upload image:', err);
           // Continue with verification creation even if image upload fails
           console.warn(`Skipping image "${image.name}" due to upload error, continuing with verification creation`);
+        }
+      }
+      
+      // Upload linked files (from attachment panel)
+      for (const file of linkedFiles) {
+        try {
+          // Use the file object from the linked file
+          const uploadResult = await VerificationService.uploadImage(file.file);
+          if (uploadResult.success) {
+            // Format the uploaded image to exclude restricted fields for CreateVerificationData
+            const formattedImage = {
+              image_url: uploadResult.data.image_url,
+              image_name: uploadResult.data.image_name,
+              image_size: uploadResult.data.image_size,
+              mime_type: uploadResult.data.mime_type
+            };
+            uploadedImages.push(formattedImage);
+          } else {
+            console.warn('Failed to upload linked file:', file.name, uploadResult.message);
+            // Continue with verification creation even if image upload fails
+          }
+        } catch (err) {
+          console.error('Failed to upload linked file:', err);
+          // Continue with verification creation even if image upload fails
+          console.warn(`Skipping linked file "${file.name}" due to upload error, continuing with verification creation`);
         }
       }
 
@@ -820,7 +848,8 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         // Combine formatted existing images with newly uploaded images
         formattedImages = [...formattedExistingImages, ...uploadedImages];
       } else {
-        // When creating new verification, only include newly uploaded images (already formatted)
+        // When creating new verification, all images (selected and linked) have already been uploaded
+        // and are in the uploadedImages array
         formattedImages = [...uploadedImages];
       }
       
@@ -970,6 +999,40 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
       } else {
         setError('An unexpected error occurred while creating the verification. Please try again.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!initialData || !initialData.id) {
+      setError('Cannot delete verification: No verification ID provided');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this verification? This action cannot be undone.')) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await VerificationService.deleteVerification(initialData.id);
+      if (response.success) {
+        console.log('✅ Verification deleted successfully');
+        setSuccessMessage('Verification deleted successfully');
+        
+        if (onSave) onSave(null); // Pass null to indicate deletion
+        setTimeout(() => {
+          onClose();
+        }, 1500);
+      } else {
+        setError(response.message || 'Failed to delete verification');
+      }
+    } catch (err) {
+      console.error('Error deleting verification:', err);
+      setError('An unexpected error occurred while deleting the verification');
     } finally {
       setLoading(false);
     }
@@ -1392,6 +1455,14 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
               </div>
             )}
 
+            {/* Success Message Display */}
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="text-green-600 text-sm">{successMessage}</div>
+                </div>
+              </div>
+            )}
             {/* Error Display */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -1438,21 +1509,34 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-4 p-6 border-t border-gray-200">
-            <Button
-              variant="secondary"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={loading}
-              className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : (initialData ? 'Update' : 'Book')}
-            </Button>
+          <div className="flex items-center justify-between gap-4 p-6 border-t border-gray-200">
+            <div>
+              {initialData && (
+                <Button
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="secondary"
+                onClick={handleCancel}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={loading}
+                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Processing...' : (initialData ? 'Update' : 'Book')}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

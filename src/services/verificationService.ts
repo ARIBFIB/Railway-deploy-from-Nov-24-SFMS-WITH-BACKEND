@@ -450,6 +450,23 @@ export class VerificationService {
 
     return await response.json();
   }
+
+  static async attachImageToVerification(verificationId: string, file: File): Promise<{ success: boolean; data: VerificationImage; message?: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await apiFetch(`/api/verifications/${verificationId}/attach-image`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to attach image to verification');
+    }
+    
+    return await response.json();
+  }
 }
 
 

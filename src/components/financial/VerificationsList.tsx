@@ -88,6 +88,7 @@ export const VerificationsList: React.FC = () => {
   // Attachment Panel State
   const [isAttachmentOpen, setIsAttachmentOpen] = useState(false);
   const [linkedFiles, setLinkedFiles] = useState<any[]>([]);
+  const [selectedVerificationForAttachment, setSelectedVerificationForAttachment] = useState<Verification | null>(null);
 
   // Reset attachment state when changing tabs
   useEffect(() => {
@@ -741,13 +742,46 @@ export const VerificationsList: React.FC = () => {
   };
 
 
+  const handleDeleteVerification = async (verificationId: string) => {
+    if (!window.confirm('Are you sure you want to delete this verification? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await VerificationService.deleteVerification(verificationId);
+      if (response.success) {
+        setSuccessMessage('Verification deleted successfully');
+        // Remove the deleted verification from the local state
+        setVerifications(prev => prev.filter(v => v.id !== verificationId));
+        setTotalItems(prev => prev - 1);
+      } else {
+        setError(response.message || 'Failed to delete verification');
+      }
+    } catch (err) {
+      console.error('Error deleting verification:', err);
+      setError('An error occurred while deleting the verification');
+    }
+  };
+
   const handleVerificationClick = async (verification: Verification) => {
     console.log('Verification clicked:', verification);
     try {
       const fullDetails = await VerificationService.getVerificationById(verification.id!);
       if (fullDetails.success) {
-        setEditingVerification(fullDetails.data);
-        setShowVerificationForm(true);
+        // Use the complete verification data which has the correct has_gallery value
+        const completeVerification = fullDetails.data;
+        
+        // Set the selected verification for attachment panel
+        setSelectedVerificationForAttachment(completeVerification);
+        
+        // If verification has images, show gallery panel instead of edit form
+        if (completeVerification.has_gallery) {
+          setCurrentVerification(completeVerification);
+          setShowGalleryPanel(true);
+        } else {
+          setEditingVerification(completeVerification);
+          setShowVerificationForm(true);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch details for edit", err);
@@ -882,7 +916,7 @@ export const VerificationsList: React.FC = () => {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
-              Register daily cash register
+              Register daily Recipts
             </button>
             <button
               onClick={() => setActiveTab('register-receipt')}
@@ -1338,6 +1372,18 @@ export const VerificationsList: React.FC = () => {
                                 <Image className="w-4 h-4" />
                               </button>
                             )}
+                            {/* Delete icon - always show for all entries */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteVerification(verification.id!);
+                              }}
+                              className="p-1 text-gray-600 hover:text-red-600 transition-colors"
+                              title="Delete verification"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                         <td className={`px-6 whitespace-nowrap text-center ${rowDensity === 'compact' ? 'py-1.5' :
@@ -1409,7 +1455,7 @@ export const VerificationsList: React.FC = () => {
             {/* Date and Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Accounting date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Posting date</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -2157,12 +2203,35 @@ export const VerificationsList: React.FC = () => {
         </div>
       )}
       {/* Conditional Attachment Panel */}
-      {(activeTab === 'register-daily-cash' || activeTab === 'register-receipt' || showVerificationForm) && (
+      {(activeTab === 'register-daily-cash' || activeTab === 'register-receipt' || showVerificationForm || showGalleryPanel) && (
         <AttachmentSidePanel
           isOpen={isAttachmentOpen}
           onToggle={() => setIsAttachmentOpen(!isAttachmentOpen)}
           onClose={() => setIsAttachmentOpen(false)}
           onLink={(files) => setLinkedFiles(files)}
+          verificationId={selectedVerificationForAttachment?.id}
+          onAttachToVerification={(success, message) => {
+            if (success) {
+              // Refresh the current verification to show updated images
+              if (selectedVerificationForAttachment?.id) {
+                VerificationService.getVerificationById(selectedVerificationForAttachment.id)
+                  .then(response => {
+                    if (response.success) {
+                      setCurrentVerification(response.data);
+                      // Update the verification in the list as well
+                      setVerifications(prev => 
+                        prev.map(v => 
+                          v.id === response.data.id ? response.data : v
+                        )
+                      );
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Failed to refresh verification after attachment:', err);
+                  });
+              }
+            }
+          }}
         />
       )}
     </div>
