@@ -1698,7 +1698,7 @@ export const VerificationsList: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Verifications</h1>
             <div className="flex items-center gap-3">
               <Button
-                variant="outline"
+                variant="secondary"
                 className="flex items-center gap-2"
                 onClick={() => setShowExtendedSearch(true)}
               >
@@ -2064,7 +2064,6 @@ export const VerificationsList: React.FC = () => {
           console.log('Verification data saved:', data);
         }}
         onVerificationCreated={loadVerifications}
-        onSave={() => loadVerifications()}
         linkedFiles={linkedFiles}
       />
       {/* Gallery Panel - Slide out from right */}
