@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronDown, ChevronRight, Plus, Trash2, Edit, Copy, FileText, CreditCard, MessageSquare, ArrowLeft, Menu, Eye, Search, Mail, Printer, MoreHorizontal } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 
 interface AddSupplierVoiceProps {
@@ -40,6 +41,59 @@ export default function AddSupplierVoice({ onBack }: AddSupplierVoiceProps) {
     shipping: '0,00',
     earSmoothing: '0,00'
   });
+
+  const handleSaveInvoice = () => {
+    const toastId = toast.loading('Saving supplier invoice...');
+    
+    try {
+      // Validate required fields
+      if (!formData.invoiceDate || !formData.dueDate) {
+        toast.error('Please fill in required fields', { id: toastId });
+        return;
+      }
+      
+      // Load existing invoices from localStorage
+      const storedInvoices = localStorage.getItem('demoSupplierInvoices');
+      const existingInvoices = storedInvoices ? JSON.parse(storedInvoices) : [];
+      
+      // Create new invoice object
+      const newInvoice = {
+        id: `invoice-${Date.now()}`,
+        invoice_number: `INV-${existingInvoices.length + 1}`.padStart(3, '0'),
+        supplier_invoice_number: `SINV-${existingInvoices.length + 1}`.padStart(3, '0'),
+        supplier_name: 'New Supplier', // This would come from the supplier field in a real implementation
+        invoice_date: formData.invoiceDate,
+        due_date: formData.dueDate,
+        total_amount: parseFloat(formData.total.replace(',', '.')) || 0,
+        currency: 'SEK', // Default to SEK
+        status: 'received',
+        received_by: 'Demo User',
+        document_path: '/documents/demo.pdf',
+        approval_workflow: [
+          { id: `step-${Date.now()}-1`, step_order: 1, approver_name: 'Manager', status: 'pending' },
+          { id: `step-${Date.now()}-2`, step_order: 2, approver_name: 'Finance', status: 'pending' }
+        ],
+        line_items: [
+          { id: `li-${Date.now()}`, description: 'Demo Item', quantity: 1, unit_price: parseFloat(formData.total.replace(',', '.')) || 0, line_total: parseFloat(formData.total.replace(',', '.')) || 0 }
+        ]
+      };
+      
+      // Add new invoice to existing invoices
+      const updatedInvoices = [...existingInvoices, newInvoice];
+      
+      // Save back to localStorage
+      localStorage.setItem('demoSupplierInvoices', JSON.stringify(updatedInvoices));
+      
+      // Show success message
+      toast.success('Supplier invoice saved successfully!', { id: toastId });
+      
+      // Optionally reset the form or navigate back
+      // onBack(); // Uncomment this if you want to go back after saving
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      toast.error('Failed to save supplier invoice. Please try again.', { id: toastId });
+    }
+  };
 
   const handleDateChange = (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -1179,10 +1233,10 @@ export default function AddSupplierVoice({ onBack }: AddSupplierVoiceProps) {
           <Button variant="secondary" onClick={onBack}>
             Cancel
           </Button>
-          <Button>
+          <Button onClick={handleSaveInvoice}>
             Save
           </Button>
-          <Button>
+          <Button onClick={handleSaveInvoice}>
             Book
           </Button>
           </div>

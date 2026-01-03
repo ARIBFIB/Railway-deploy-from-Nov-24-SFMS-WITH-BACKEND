@@ -5,7 +5,30 @@ import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
 import { ListManager } from '../ListManager';
-import { InvoiceService, type Invoice, type CreateInvoiceData } from '../../services/invoiceService';
+// import { InvoiceService, type Invoice, type CreateInvoiceData } from '../../services/invoiceService'; // Commented out for demo mode
+
+// Define Invoice type for demo
+interface Invoice {
+  id: string;
+  invoice_number: string;
+  customer_supplier_name: string;
+  invoice_type: 'sales' | 'purchase';
+  invoice_date: string;
+  due_date: string;
+  payment_terms: string;
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  currency: string;
+  line_items: {
+    id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total?: number;
+  }[];
+}
 
 export const InvoicingModule: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -24,11 +47,137 @@ export const InvoicingModule: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { invoices: data } = await InvoiceService.getInvoices({
-        status: statusFilter,
-        invoice_type: typeFilter
-      });
-      setInvoices(data);
+      // Load dummy data from localStorage or create initial data
+      const storedInvoices = localStorage.getItem('demoInvoices');
+      let invoicesData: Invoice[];
+      
+      if (storedInvoices) {
+        invoicesData = JSON.parse(storedInvoices);
+      } else {
+        // Create initial dummy data
+        invoicesData = [
+          {
+            id: '1',
+            invoice_number: 'INV-001',
+            customer_supplier_name: 'ABC Company',
+            invoice_type: 'sales',
+            invoice_date: '2025-01-15',
+            due_date: '2025-02-15',
+            payment_terms: 'Net 30',
+            status: 'paid',
+            subtotal: 10000,
+            tax_amount: 2500,
+            total_amount: 12500,
+            currency: 'SEK',
+            line_items: [
+              {
+                id: '1-1',
+                description: 'Web Development Services',
+                quantity: 1,
+                unit_price: 10000,
+                line_total: 10000
+              }
+            ]
+          },
+          {
+            id: '2',
+            invoice_number: 'INV-002',
+            customer_supplier_name: 'XYZ Corporation',
+            invoice_type: 'sales',
+            invoice_date: '2025-01-20',
+            due_date: '2025-02-20',
+            payment_terms: 'Net 30',
+            status: 'sent',
+            subtotal: 15000,
+            tax_amount: 3750,
+            total_amount: 18750,
+            currency: 'SEK',
+            line_items: [
+              {
+                id: '2-1',
+                description: 'Consulting Services',
+                quantity: 1,
+                unit_price: 15000,
+                line_total: 15000
+              }
+            ]
+          },
+          {
+            id: '3',
+            invoice_number: 'INV-003',
+            customer_supplier_name: 'Tech Solutions Ltd',
+            invoice_type: 'purchase',
+            invoice_date: '2025-01-22',
+            due_date: '2025-02-22',
+            payment_terms: 'Net 30',
+            status: 'overdue',
+            subtotal: 8000,
+            tax_amount: 2000,
+            total_amount: 10000,
+            currency: 'SEK',
+            line_items: [
+              {
+                id: '3-1',
+                description: 'Software License',
+                quantity: 2,
+                unit_price: 4000,
+                line_total: 8000
+              }
+            ]
+          },
+          {
+            id: '4',
+            invoice_number: 'INV-004',
+            customer_supplier_name: 'Global Services Inc',
+            invoice_type: 'sales',
+            invoice_date: '2025-01-25',
+            due_date: '2025-02-25',
+            payment_terms: 'Net 30',
+            status: 'draft',
+            subtotal: 5000,
+            tax_amount: 1250,
+            total_amount: 6250,
+            currency: 'SEK',
+            line_items: [
+              {
+                id: '4-1',
+                description: 'Design Services',
+                quantity: 1,
+                unit_price: 5000,
+                line_total: 5000
+              }
+            ]
+          },
+          {
+            id: '5',
+            invoice_number: 'INV-005',
+            customer_supplier_name: 'Local Business Co',
+            invoice_type: 'purchase',
+            invoice_date: '2025-01-28',
+            due_date: '2025-02-28',
+            payment_terms: 'Net 30',
+            status: 'paid',
+            subtotal: 12000,
+            tax_amount: 3000,
+            total_amount: 15000,
+            currency: 'SEK',
+            line_items: [
+              {
+                id: '5-1',
+                description: 'Office Equipment',
+                quantity: 1,
+                unit_price: 12000,
+                line_total: 12000
+              }
+            ]
+          }
+        ];
+        
+        // Save to localStorage
+        localStorage.setItem('demoInvoices', JSON.stringify(invoicesData));
+      }
+      
+      setInvoices(invoicesData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch invoices');
     } finally {
@@ -317,7 +466,7 @@ export const InvoicingModule: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
+            
                 <div className="flex items-center space-x-2">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
                     {invoice.status}
@@ -394,14 +543,44 @@ const InvoiceForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({
     setLoading(true);
     setError(null);
     try {
-      await InvoiceService.createInvoice({
-        invoice_type: formData.invoice_type,
+      // Load existing invoices from localStorage
+      const storedInvoices = localStorage.getItem('demoInvoices');
+      const existingInvoices: Invoice[] = storedInvoices ? JSON.parse(storedInvoices) : [];
+      
+      // Calculate subtotal, tax, and total
+      const subtotal = formData.line_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const taxAmount = subtotal * 0.25; // Assuming 25% tax
+      const totalAmount = subtotal + taxAmount;
+      
+      // Create new invoice object
+      const newInvoice: Invoice = {
+        id: `inv-${Date.now()}`,
+        invoice_number: `INV-${existingInvoices.length + 1}`.padStart(3, '0'),
         customer_supplier_name: formData.customer_supplier_name,
+        invoice_type: formData.invoice_type as 'sales' | 'purchase',
         invoice_date: formData.invoice_date,
         due_date: formData.due_date,
         payment_terms: formData.payment_terms,
-        items: formData.line_items.map(l => ({ ...l, tax_rate: l.tax_rate }))
-      });
+        status: 'draft',
+        subtotal,
+        tax_amount: taxAmount,
+        total_amount: totalAmount,
+        currency: 'SEK',
+        line_items: formData.line_items.map((item, index) => ({
+          id: `${Date.now()}-${index}`,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.quantity * item.unit_price
+        }))
+      };
+      
+      // Add new invoice to existing invoices
+      const updatedInvoices = [...existingInvoices, newInvoice];
+      
+      // Save back to localStorage
+      localStorage.setItem('demoInvoices', JSON.stringify(updatedInvoices));
+      
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create invoice');

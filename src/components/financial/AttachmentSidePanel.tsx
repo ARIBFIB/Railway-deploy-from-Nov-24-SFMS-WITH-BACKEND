@@ -17,7 +17,27 @@ import {
     ChevronRight,
     Paperclip
 } from 'lucide-react';
-import { VerificationService } from '../../services/verificationService';
+// import { VerificationService } from '../../services/verificationService'; // Commented out for demo mode
+import { toast } from 'react-hot-toast';
+
+type VerificationImage = {
+    id: string;
+    image_name: string;
+    image_url: string;
+    mime_type: string;
+    verification_id?: string;
+    uploaded_at: string;
+    is_linked?: boolean;
+};
+
+type UnlinkedImage = {
+    id: string;
+    image_name: string;
+    image_url: string;
+    mime_type: string;
+    uploaded_at: string;
+    is_linked: boolean;
+};
 
 export interface AttachedFile {
     id: string;
@@ -59,43 +79,81 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
-    // Load images when panel opens
+    // Initialize demo data and load images when panel opens
     useEffect(() => {
         if (isOpen) {
             const loadImages = async () => {
                 try {
                     setLoading(true);
                         
-                    // Fetch both linked and unlinked images
-                    let allImages: any[] = [];
+                    // Initialize demo data if localStorage is empty
+                    const storedUnlinkedImages = localStorage.getItem('unlinkedImages');
+                    if (!storedUnlinkedImages || JSON.parse(storedUnlinkedImages).length === 0) {
+                        // Create initial demo images
+                        const initialImages: UnlinkedImage[] = [
+                            {
+                                id: 'demo-1',
+                                image_name: 'invoice-sample.pdf',
+                                image_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjVGNUY1Ii8+Cjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM2NjYiPlBURiBGSUxFPC90ZXh0Pgo8L3N2Zz4K',
+                                mime_type: 'application/pdf',
+                                uploaded_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+                                is_linked: false
+                            },
+                            {
+                                id: 'demo-2',
+                                image_name: 'receipt-2025.jpg',
+                                image_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRTlFQUVCIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM2NjYiPlJFQ0VJUFQ8L3RleHQ+Cjwvc3ZnPgo=',
+                                mime_type: 'image/jpeg',
+                                uploaded_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+                                is_linked: false
+                            },
+                            {
+                                id: 'demo-3',
+                                image_name: 'contract.png',
+                                image_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRDlFNEZGIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIGZpbGw9IiM2NjYiPlBPRENBTEw8L3RleHQ+Cjwvc3ZnPgo=',
+                                mime_type: 'image/png',
+                                uploaded_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+                                is_linked: false
+                            }
+                        ];
+                        localStorage.setItem('unlinkedImages', JSON.stringify(initialImages));
+                    }
+                        
+                    // Fetch both linked and unlinked images from localStorage
+                    let allImages: (VerificationImage | UnlinkedImage)[] = [];
                         
                     // Fetch linked images for the verification
                     if (verificationId) {
                         console.log('🔍 AttachmentSidePanel - Loading linked images for verification:', verificationId);
-                        const linkedResponse = await VerificationService.getVerificationImages(verificationId);
-                        console.log('📥 AttachmentSidePanel - getVerificationImages response:', linkedResponse);
-                        if (linkedResponse.success && linkedResponse.data) {
-                            console.log('📊 AttachmentSidePanel - Found', linkedResponse.data.length, 'linked images');
-                            allImages = [...linkedResponse.data];
-                        }
+                        
+                        // Load from localStorage
+                        const storedVerificationImages = localStorage.getItem('verificationImages');
+                        const verificationImages: VerificationImage[] = storedVerificationImages ? JSON.parse(storedVerificationImages) : [];
+                        
+                        // Filter images linked to this specific verification
+                        const linkedImages = verificationImages.filter(img => img.verification_id === verificationId);
+                        console.log('📊 AttachmentSidePanel - Found', linkedImages.length, 'linked images for verification', verificationId);
+                        
+                        allImages = [...allImages, ...linkedImages];
                     }
                         
                     // Fetch unlinked images
                     console.log('🔍 AttachmentSidePanel - Loading unlinked images...');
-                    const unlinkedResponse = await VerificationService.getUnlinkedImages();
-                    console.log('📥 AttachmentSidePanel - getUnlinkedImages response:', unlinkedResponse);
-                    if (unlinkedResponse.success && unlinkedResponse.data) {
-                        console.log('📊 AttachmentSidePanel - Found', unlinkedResponse.data.length, 'unlinked images');
-                        allImages = [...allImages, ...unlinkedResponse.data];
-                    }
+                    
+                    // Load unlinked images from localStorage
+                    const updatedStoredUnlinkedImages = localStorage.getItem('unlinkedImages');
+                    const unlinkedImages: UnlinkedImage[] = updatedStoredUnlinkedImages ? JSON.parse(updatedStoredUnlinkedImages) : [];
+                    
+                    console.log('📊 AttachmentSidePanel - Found', unlinkedImages.length, 'unlinked images');
+                    allImages = [...allImages, ...unlinkedImages];
                         
                     // Convert images to AttachedFile format
-                    const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
+                    const attachedFiles: AttachedFile[] = allImages.map(img => ({
                         id: img.id,
-                        name: img.image_name || img.name,
-                        url: img.image_url || img.url,
-                        file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file
-                        date: new Date(img.uploaded_at || img.date || Date.now()),
+                        name: img.image_name,
+                        url: img.image_url,
+                        file: new File([], img.image_name, { type: img.mime_type }), // Placeholder file
+                        date: new Date(img.uploaded_at),
                         isPersistent: true,
                     }));
                         
@@ -144,75 +202,88 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                     try {
                         console.log('📤 AttachmentSidePanel - Uploading file:', file.name, 'size:', file.size, 'type:', file.type);
                         
-                        // Upload to persistent gallery
-                        const result = await VerificationService.uploadImage(file);
-                        console.log('💾 AttachmentSidePanel - Upload result:', result);
+                        // Create object URL for the file
+                        const objectUrl = URL.createObjectURL(file);
                         
-                        if (result.success) {
-                            console.log('✅ AttachmentSidePanel - Upload successful, refreshing unlinked images...');
+                        // Create image object
+                        const imageId = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                        const newImage: UnlinkedImage = {
+                            id: imageId,
+                            image_name: file.name,
+                            image_url: objectUrl,
+                            mime_type: file.type,
+                            uploaded_at: new Date().toISOString(),
+                            is_linked: false
+                        };
+                        
+                        // Load existing unlinked images from localStorage
+                        const storedUnlinkedImages = localStorage.getItem('unlinkedImages');
+                        const unlinkedImages: UnlinkedImage[] = storedUnlinkedImages ? JSON.parse(storedUnlinkedImages) : [];
+                        
+                        // Add new image to the list
+                        unlinkedImages.push(newImage);
+                        
+                        // Save back to localStorage
+                        localStorage.setItem('unlinkedImages', JSON.stringify(unlinkedImages));
+                        
+                        // Show success toast
+                        toast.success('Image uploaded successfully!');
+                        
+                        console.log('✅ AttachmentSidePanel - Upload successful, refreshing images...');
+                        
+                        // Refresh the list of all images (both linked and unlinked)
+                        let allImages: (VerificationImage | UnlinkedImage)[] = [];
+                        
+                        // Fetch linked images for the verification
+                        if (verificationId) {
+                            const storedVerificationImages = localStorage.getItem('verificationImages');
+                            const verificationImages: VerificationImage[] = storedVerificationImages ? JSON.parse(storedVerificationImages) : [];
                             
-                            // Small delay to ensure the image is saved before fetching
-                            await new Promise(resolve => setTimeout(resolve, 500));
+                            // Filter images linked to this specific verification
+                            const linkedImages = verificationImages.filter(img => img.verification_id === verificationId);
+                            allImages = [...allImages, ...linkedImages];
+                        }
+                        
+                        // Fetch unlinked images
+                        const updatedUnlinkedImages = localStorage.getItem('unlinkedImages');
+                        const finalUnlinkedImages: UnlinkedImage[] = updatedUnlinkedImages ? JSON.parse(updatedUnlinkedImages) : [];
+                        allImages = [...allImages, ...finalUnlinkedImages];
+                        
+                        if (allImages.length > 0) {
+                            console.log('📊 AttachmentSidePanel - After upload, found', allImages.length, 'images');
                             
-                            // Refresh the list of all images (both linked and unlinked)
-                            let allImages: any[] = [];
+                            // Convert images to AttachedFile format
+                            const attachedFiles: AttachedFile[] = allImages.map(img => ({
+                                id: img.id,
+                                name: img.image_name,
+                                url: img.image_url,
+                                file: new File([], img.image_name, { type: img.mime_type }), // Placeholder file with correct type
+                                date: new Date(img.uploaded_at),
+                                isPersistent: true,
+                            }));
                             
-                            // Fetch linked images for the verification
+                            console.log('📁 AttachmentSidePanel - Set files to:', attachedFiles);
+                            setFiles(attachedFiles);
+                            
+                            // Find the index of the newly uploaded image and set it as selected
+                            const newImageIndex = attachedFiles.findIndex(f => f.name === file.name);
+                            console.log('🔍 AttachmentSidePanel - Looking for new image:', file.name, 'Found at index:', newImageIndex);
+                            
+                            if (newImageIndex !== -1) {
+                                setSelectedFileIndex(newImageIndex);
+                                console.log('✅ AttachmentSidePanel - Set selected file index to:', newImageIndex);
+                            } else if (attachedFiles.length > 0) {
+                                // Fallback to the last item if the specific image isn't found
+                                setSelectedFileIndex(attachedFiles.length - 1);
+                                console.log('🔄 AttachmentSidePanel - Set selected file index to last item:', attachedFiles.length - 1);
+                            }
+                            
+                            // Update linked state if we're in a verification context
                             if (verificationId) {
-                                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
-                                console.log('📥 AttachmentSidePanel - Refresh verification images response:', linkedResponse);
-                                if (linkedResponse.success && linkedResponse.data) {
-                                    allImages = [...linkedResponse.data];
-                                }
-                            }
-                            
-                            // Fetch unlinked images
-                            const unlinkedResponse = await VerificationService.getUnlinkedImages();
-                            console.log('📥 AttachmentSidePanel - Refresh unlinked images response:', unlinkedResponse);
-                            if (unlinkedResponse.success && unlinkedResponse.data) {
-                                allImages = [...allImages, ...unlinkedResponse.data];
-                            }
-                            
-                            if (allImages.length > 0) {
-                                console.log('📊 AttachmentSidePanel - After upload, found', allImages.length, 'images');
-                                
-                                // Convert images to AttachedFile format
-                                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
-                                    id: img.id,
-                                    name: img.image_name || img.name,
-                                    url: img.image_url || img.url,
-                                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
-                                    date: new Date(img.uploaded_at || img.date || Date.now()),
-                                    isPersistent: true,
-                                }));
-                                
-                                console.log('📁 AttachmentSidePanel - Set files to:', attachedFiles);
-                                setFiles(attachedFiles);
-                                
-                                // Find the index of the newly uploaded image and set it as selected
-                                const newImageIndex = attachedFiles.findIndex(f => f.name === result.data.image_name);
-                                console.log('🔍 AttachmentSidePanel - Looking for new image:', result.data.image_name, 'Found at index:', newImageIndex);
-                                
-                                if (newImageIndex !== -1) {
-                                    setSelectedFileIndex(newImageIndex);
-                                    console.log('✅ AttachmentSidePanel - Set selected file index to:', newImageIndex);
-                                } else if (attachedFiles.length > 0) {
-                                    // Fallback to the last item if the specific image isn't found
-                                    setSelectedFileIndex(attachedFiles.length - 1);
-                                    console.log('🔄 AttachmentSidePanel - Set selected file index to last item:', attachedFiles.length - 1);
-                                }
-                                
-                                // Update linked state if we're in a verification context
-                                if (verificationId) {
-                                    setIsLinked(true);
-                                }
-                            } else {
-                                console.log('❌ AttachmentSidePanel - Failed to refresh images after upload');
+                                setIsLinked(true);
                             }
                         } else {
-                            // If upload failed, show error
-                            console.log('❌ AttachmentSidePanel - Upload failed:', result.message);
-                            setError(result.message || 'Failed to upload image');
+                            console.log('❌ AttachmentSidePanel - Failed to refresh images after upload');
                         }
                     } catch (error) {
                         console.error('Error uploading file:', error);
@@ -232,33 +303,56 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         
         try {
             setLoading(true);
-            await VerificationService.deleteUnlinkedImage(selectedFile.id);
+            
+            // Load existing unlinked images from localStorage
+            const storedUnlinkedImages = localStorage.getItem('unlinkedImages');
+            let unlinkedImages: UnlinkedImage[] = storedUnlinkedImages ? JSON.parse(storedUnlinkedImages) : [];
+            
+            // Remove the selected image from unlinked images
+            unlinkedImages = unlinkedImages.filter(img => img.id !== selectedFile.id);
+            
+            // Save back to localStorage
+            localStorage.setItem('unlinkedImages', JSON.stringify(unlinkedImages));
+            
+            // Also remove from verification images if it's linked
+            const storedVerificationImages = localStorage.getItem('verificationImages');
+            let verificationImages: VerificationImage[] = storedVerificationImages ? JSON.parse(storedVerificationImages) : [];
+            
+            // Remove the selected image from verification images
+            verificationImages = verificationImages.filter(img => img.id !== selectedFile.id);
+            
+            // Save back to localStorage
+            localStorage.setItem('verificationImages', JSON.stringify(verificationImages));
+            
+            // Show success toast
+            toast.success('Image deleted successfully!');
             
             // Refresh the list of all images (both linked and unlinked)
-            let allImages: any[] = [];
+            let allImages: (VerificationImage | UnlinkedImage)[] = [];
             
             // Fetch linked images for the verification
             if (verificationId) {
-                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
-                if (linkedResponse.success && linkedResponse.data) {
-                    allImages = [...linkedResponse.data];
-                }
+                const updatedStoredVerificationImages = localStorage.getItem('verificationImages');
+                const updatedVerificationImages: VerificationImage[] = updatedStoredVerificationImages ? JSON.parse(updatedStoredVerificationImages) : [];
+                
+                // Filter images linked to this specific verification
+                const linkedImages = updatedVerificationImages.filter(img => img.verification_id === verificationId);
+                allImages = [...allImages, ...linkedImages];
             }
             
             // Fetch unlinked images
-            const unlinkedResponse = await VerificationService.getUnlinkedImages();
-            if (unlinkedResponse.success && unlinkedResponse.data) {
-                allImages = [...allImages, ...unlinkedResponse.data];
-            }
+            const updatedStoredUnlinkedImages = localStorage.getItem('unlinkedImages');
+            const updatedUnlinkedImages: UnlinkedImage[] = updatedStoredUnlinkedImages ? JSON.parse(updatedStoredUnlinkedImages) : [];
+            allImages = [...allImages, ...updatedUnlinkedImages];
             
             if (allImages.length > 0) {
                 // Convert images to AttachedFile format
-                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
+                const attachedFiles: AttachedFile[] = allImages.map(img => ({
                     id: img.id,
-                    name: img.image_name || img.name,
-                    url: img.image_url || img.url,
-                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
-                    date: new Date(img.uploaded_at || img.date || Date.now()),
+                    name: img.image_name,
+                    url: img.image_url,
+                    file: new File([], img.image_name, { type: img.mime_type }), // Placeholder file with correct type
+                    date: new Date(img.uploaded_at),
                     isPersistent: true,
                 }));
                 setFiles(attachedFiles);
@@ -298,36 +392,74 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         
         try {
             setLoading(true);
-            await VerificationService.linkImageToVerification(selectedFile.id, verificationId);
+            
+            // Load existing verification images from localStorage
+            const storedVerificationImages = localStorage.getItem('verificationImages');
+            let verificationImages: VerificationImage[] = storedVerificationImages ? JSON.parse(storedVerificationImages) : [];
+            
+            // Check if this image is already linked to this verification
+            const existingIndex = verificationImages.findIndex(img => img.id === selectedFile.id && img.verification_id === verificationId);
+            
+            if (existingIndex === -1) {
+                // Create a new verification image object
+                const verificationImage: VerificationImage = {
+                    id: selectedFile.id,
+                    image_name: selectedFile.name,
+                    image_url: selectedFile.url,
+                    mime_type: selectedFile.file.type,
+                    verification_id: verificationId,
+                    uploaded_at: new Date().toISOString(),
+                    is_linked: true
+                };
+                
+                // Add to verification images
+                verificationImages.push(verificationImage);
+                
+                // Save back to localStorage
+                localStorage.setItem('verificationImages', JSON.stringify(verificationImages));
+            }
+            
+            // Also remove from unlinked images since it's now linked
+            const storedUnlinkedImages = localStorage.getItem('unlinkedImages');
+            let unlinkedImages: UnlinkedImage[] = storedUnlinkedImages ? JSON.parse(storedUnlinkedImages) : [];
+            
+            // Remove the image from unlinked images
+            unlinkedImages = unlinkedImages.filter(img => img.id !== selectedFile.id);
+            
+            // Save back to localStorage
+            localStorage.setItem('unlinkedImages', JSON.stringify(unlinkedImages));
+            
+            // Show success toast
+            toast.success('Image linked successfully!');
+            
             setIsLinked(true);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
             
             // Refresh the list of all images (both linked and unlinked)
-            let allImages: any[] = [];
+            let allImages: (VerificationImage | UnlinkedImage)[] = [];
             
             // Fetch linked images for the verification
             if (verificationId) {
-                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
-                if (linkedResponse.success && linkedResponse.data) {
-                    allImages = [...linkedResponse.data];
-                }
+                const updatedStoredVerificationImages = localStorage.getItem('verificationImages');
+                const updatedVerificationImages: VerificationImage[] = updatedStoredVerificationImages ? JSON.parse(updatedStoredVerificationImages) : [];
+                
+                // Filter images linked to this specific verification
+                const linkedImages = updatedVerificationImages.filter(img => img.verification_id === verificationId);
+                allImages = [...allImages, ...linkedImages];
             }
             
             // Fetch unlinked images
-            const unlinkedResponse = await VerificationService.getUnlinkedImages();
-            if (unlinkedResponse.success && unlinkedResponse.data) {
-                allImages = [...allImages, ...unlinkedResponse.data];
-            }
+            const updatedStoredUnlinkedImages = localStorage.getItem('unlinkedImages');
+            const updatedUnlinkedImages: UnlinkedImage[] = updatedStoredUnlinkedImages ? JSON.parse(updatedStoredUnlinkedImages) : [];
+            allImages = [...allImages, ...updatedUnlinkedImages];
             
             if (allImages.length > 0) {
                 // Convert images to AttachedFile format
-                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
+                const attachedFiles: AttachedFile[] = allImages.map(img => ({
                     id: img.id,
-                    name: img.image_name || img.name,
-                    url: img.image_url || img.url,
-                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
-                    date: new Date(img.uploaded_at || img.date || Date.now()),
+                    name: img.image_name,
+                    url: img.image_url,
+                    file: new File([], img.image_name, { type: img.mime_type }), // Placeholder file with correct type
+                    date: new Date(img.uploaded_at),
                     isPersistent: true,
                 }));
                 setFiles(attachedFiles);
@@ -384,52 +516,86 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
             // Link the selected file to the verification
             const selectedFile = files[selectedFileIndex];
             if (selectedFile) {
-                const result = await VerificationService.linkImageToVerification(selectedFile.id, verificationId);
-                if (result.success) {
-                    console.log('✅ Image linked successfully:', result.data);
+                // Load existing verification images from localStorage
+                const storedVerificationImages = localStorage.getItem('verificationImages');
+                let verificationImages: VerificationImage[] = storedVerificationImages ? JSON.parse(storedVerificationImages) : [];
+                
+                // Check if this image is already linked to this verification
+                const existingIndex = verificationImages.findIndex(img => img.id === selectedFile.id && img.verification_id === verificationId);
+                
+                if (existingIndex === -1) {
+                    // Create a new verification image object
+                    const verificationImage: VerificationImage = {
+                        id: selectedFile.id,
+                        image_name: selectedFile.name,
+                        image_url: selectedFile.url,
+                        mime_type: selectedFile.file.type,
+                        verification_id: verificationId,
+                        uploaded_at: new Date().toISOString(),
+                        is_linked: true
+                    };
                     
-                    // Refresh the list of all images (both linked and unlinked)
-                    let allImages: any[] = [];
-                                        
-                    // Fetch linked images for the verification
-                    if (verificationId) {
-                        const linkedResponse = await VerificationService.getVerificationImages(verificationId);
-                        if (linkedResponse.success && linkedResponse.data) {
-                            allImages = [...linkedResponse.data];
-                        }
-                    }
-                                        
-                    // Fetch unlinked images
-                    const unlinkedResponse = await VerificationService.getUnlinkedImages();
-                    if (unlinkedResponse.success && unlinkedResponse.data) {
-                        allImages = [...allImages, ...unlinkedResponse.data];
-                    }
-                                        
-                    if (allImages.length > 0) {
-                        // Convert images to AttachedFile format
-                        const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
-                            id: img.id,
-                            name: img.image_name || img.name,
-                            url: img.image_url || img.url,
-                            file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file
-                            date: new Date(img.uploaded_at || img.date || Date.now()),
-                            isPersistent: true,
-                        }));
-                        setFiles(attachedFiles);
-                                            
-                        // Set the first image as selected
-                        if (attachedFiles.length > 0) {
-                            setSelectedFileIndex(0);
-                        }
-                    }
+                    // Add to verification images
+                    verificationImages.push(verificationImage);
                     
-                    // Call the callback to notify parent component
-                    if (onAttachToVerification) {
-                        onAttachToVerification(true, `Successfully attached image to verification`);
+                    // Save back to localStorage
+                    localStorage.setItem('verificationImages', JSON.stringify(verificationImages));
+                }
+                
+                // Also remove from unlinked images since it's now linked
+                const storedUnlinkedImages = localStorage.getItem('unlinkedImages');
+                let unlinkedImages: UnlinkedImage[] = storedUnlinkedImages ? JSON.parse(storedUnlinkedImages) : [];
+                
+                // Remove the image from unlinked images
+                unlinkedImages = unlinkedImages.filter(img => img.id !== selectedFile.id);
+                
+                // Save back to localStorage
+                localStorage.setItem('unlinkedImages', JSON.stringify(unlinkedImages));
+                
+                // Show success toast
+                toast.success('Image attached to verification successfully!');
+                
+                console.log('✅ Image linked successfully to verification:', verificationId);
+                
+                // Refresh the list of all images (both linked and unlinked)
+                let allImages: (VerificationImage | UnlinkedImage)[] = [];
+                                    
+                // Fetch linked images for the verification
+                if (verificationId) {
+                    const updatedStoredVerificationImages = localStorage.getItem('verificationImages');
+                    const updatedVerificationImages: VerificationImage[] = updatedStoredVerificationImages ? JSON.parse(updatedStoredVerificationImages) : [];
+                    
+                    // Filter images linked to this specific verification
+                    const linkedImages = updatedVerificationImages.filter(img => img.verification_id === verificationId);
+                    allImages = [...allImages, ...linkedImages];
+                }
+                                    
+                // Fetch unlinked images
+                const updatedStoredUnlinkedImages = localStorage.getItem('unlinkedImages');
+                const updatedUnlinkedImages: UnlinkedImage[] = updatedStoredUnlinkedImages ? JSON.parse(updatedStoredUnlinkedImages) : [];
+                allImages = [...allImages, ...updatedUnlinkedImages];
+                                    
+                if (allImages.length > 0) {
+                    // Convert images to AttachedFile format
+                    const attachedFiles: AttachedFile[] = allImages.map(img => ({
+                        id: img.id,
+                        name: img.image_name,
+                        url: img.image_url,
+                        file: new File([], img.image_name, { type: img.mime_type }), // Placeholder file
+                        date: new Date(img.uploaded_at),
+                        isPersistent: true,
+                    }));
+                    setFiles(attachedFiles);
+                                        
+                    // Set the first image as selected
+                    if (attachedFiles.length > 0) {
+                        setSelectedFileIndex(0);
                     }
-                } else {
-                    console.error('❌ Failed to link image:', result.message);
-                    setError(result.message || 'Failed to link image');
+                }
+                
+                // Call the callback to notify parent component
+                if (onAttachToVerification) {
+                    onAttachToVerification(true, `Successfully attached image to verification`);
                 }
             }
         } catch (error) {

@@ -5,7 +5,36 @@ import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
 import AddSupplierVoice from './AddSupplierVoice';
-import { SupplierInvoiceService, type SupplierInvoice } from '../../services/supplierInvoiceService';
+// import { SupplierInvoiceService, type SupplierInvoice } from '../../services/supplierInvoiceService'; // Commented out for demo mode
+
+// Define SupplierInvoice type for demo
+interface SupplierInvoice {
+  id: string;
+  invoice_number: string;
+  supplier_invoice_number: string;
+  supplier_name: string;
+  invoice_date: string;
+  due_date: string;
+  total_amount: number;
+  currency: string;
+  status: 'received' | 'under_review' | 'approved' | 'rejected' | 'paid';
+  received_by: string;
+  notes?: string;
+  document_path?: string;
+  approval_workflow?: Array<{
+    id: string;
+    step_order: number;
+    approver_name: string;
+    status: 'pending' | 'approved' | 'rejected';
+  }>;
+  line_items: Array<{
+    id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total?: number;
+  }>;
+}
 
 export const SupplierInvoiceApproval: React.FC = () => {
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoice[]>([]);
@@ -24,8 +53,128 @@ export const SupplierInvoiceApproval: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const invoices = await SupplierInvoiceService.getSupplierInvoices(statusFilter);
-      setSupplierInvoices(invoices);
+      // Load dummy data from localStorage or create initial data
+      const storedInvoices = localStorage.getItem('demoSupplierInvoices');
+      let invoicesData: SupplierInvoice[];
+      
+      if (storedInvoices) {
+        invoicesData = JSON.parse(storedInvoices);
+      } else {
+        // Create initial dummy data
+        invoicesData = [
+          {
+            id: '1',
+            invoice_number: 'INV-001',
+            supplier_invoice_number: 'SINV-001',
+            supplier_name: 'ABC Supplier Ltd',
+            invoice_date: '2025-01-10',
+            due_date: '2025-02-10',
+            total_amount: 25000,
+            currency: 'SEK',
+            status: 'under_review',
+            received_by: 'John Doe',
+            notes: 'Urgent payment required',
+            document_path: '/documents/inv-001.pdf',
+            approval_workflow: [
+              { id: 'step-1', step_order: 1, approver_name: 'Manager', status: 'pending' },
+              { id: 'step-2', step_order: 2, approver_name: 'Finance', status: 'pending' }
+            ],
+            line_items: [
+              { id: 'li-1', description: 'Office Supplies', quantity: 10, unit_price: 2500, line_total: 25000 }
+            ]
+          },
+          {
+            id: '2',
+            invoice_number: 'INV-002',
+            supplier_invoice_number: 'SINV-002',
+            supplier_name: 'XYZ Corporation',
+            invoice_date: '2025-01-12',
+            due_date: '2025-02-12',
+            total_amount: 15000,
+            currency: 'SEK',
+            status: 'approved',
+            received_by: 'Jane Smith',
+            document_path: '/documents/inv-002.pdf',
+            approval_workflow: [
+              { id: 'step-1', step_order: 1, approver_name: 'Manager', status: 'approved' },
+              { id: 'step-2', step_order: 2, approver_name: 'Finance', status: 'approved' }
+            ],
+            line_items: [
+              { id: 'li-2', description: 'Consulting Services', quantity: 5, unit_price: 3000, line_total: 15000 }
+            ]
+          },
+          {
+            id: '3',
+            invoice_number: 'INV-003',
+            supplier_invoice_number: 'SINV-003',
+            supplier_name: 'Tech Solutions Inc',
+            invoice_date: '2025-01-15',
+            due_date: '2025-02-15',
+            total_amount: 8500,
+            currency: 'SEK',
+            status: 'rejected',
+            received_by: 'Mike Johnson',
+            notes: 'Missing required documentation',
+            approval_workflow: [
+              { id: 'step-1', step_order: 1, approver_name: 'Manager', status: 'rejected' },
+              { id: 'step-2', step_order: 2, approver_name: 'Finance', status: 'pending' }
+            ],
+            line_items: [
+              { id: 'li-3', description: 'Software License', quantity: 2, unit_price: 4250, line_total: 8500 }
+            ]
+          },
+          {
+            id: '4',
+            invoice_number: 'INV-004',
+            supplier_invoice_number: 'SINV-004',
+            supplier_name: 'Global Services Co',
+            invoice_date: '2025-01-18',
+            due_date: '2025-02-18',
+            total_amount: 32000,
+            currency: 'SEK',
+            status: 'received',
+            received_by: 'Sarah Williams',
+            document_path: '/documents/inv-004.pdf',
+            approval_workflow: [
+              { id: 'step-1', step_order: 1, approver_name: 'Manager', status: 'pending' },
+              { id: 'step-2', step_order: 2, approver_name: 'Finance', status: 'pending' }
+            ],
+            line_items: [
+              { id: 'li-4', description: 'Maintenance Services', quantity: 8, unit_price: 4000, line_total: 32000 }
+            ]
+          },
+          {
+            id: '5',
+            invoice_number: 'INV-005',
+            supplier_invoice_number: 'SINV-005',
+            supplier_name: 'Local Business Partners',
+            invoice_date: '2025-01-20',
+            due_date: '2025-02-20',
+            total_amount: 12500,
+            currency: 'SEK',
+            status: 'paid',
+            received_by: 'Robert Brown',
+            document_path: '/documents/inv-005.pdf',
+            approval_workflow: [
+              { id: 'step-1', step_order: 1, approver_name: 'Manager', status: 'approved' },
+              { id: 'step-2', step_order: 2, approver_name: 'Finance', status: 'approved' }
+            ],
+            line_items: [
+              { id: 'li-5', description: 'Equipment Rental', quantity: 5, unit_price: 2500, line_total: 12500 }
+            ]
+          }
+        ];
+        
+        // Save to localStorage
+        localStorage.setItem('demoSupplierInvoices', JSON.stringify(invoicesData));
+      }
+      
+      // Apply status filter
+      const filteredData = statusFilter === 'all' 
+        ? invoicesData 
+        : invoicesData.filter(invoice => invoice.status === statusFilter);
+      
+      setSupplierInvoices(filteredData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch invoices');
     } finally {
@@ -98,17 +247,42 @@ export const SupplierInvoiceApproval: React.FC = () => {
 
   const handleApprovalAction = async (invoiceId: string, stepId: string, action: 'approve' | 'reject', comments?: string) => {
     try {
-      if (action === 'approve') {
-        await SupplierInvoiceService.approveInvoice(invoiceId);
-      } else {
-        await SupplierInvoiceService.rejectInvoice(invoiceId, comments);
-      }
-      // Refresh list
+      // Load existing invoices from localStorage
+      const storedInvoices = localStorage.getItem('demoSupplierInvoices');
+      const existingInvoices: SupplierInvoice[] = storedInvoices ? JSON.parse(storedInvoices) : [];
+      
+      // Find and update the specific invoice
+      const updatedInvoices = existingInvoices.map(invoice => {
+        if (invoice.id === invoiceId) {
+          // Update status
+          const newStatus = action === 'approve' ? 'approved' : 'rejected';
+          
+          // Update workflow status
+          const updatedWorkflow = invoice.approval_workflow?.map(step => {
+            if (step.id === stepId) {
+              return { ...step, status: action === 'approve' ? 'approved' : 'rejected' };
+            }
+            return step;
+          });
+          
+          return {
+            ...invoice,
+            status: newStatus,
+            approval_workflow: updatedWorkflow,
+            notes: comments ? (invoice.notes ? `${invoice.notes} | ${comments}` : comments) : invoice.notes
+          };
+        }
+        return invoice;
+      });
+      
+      // Save back to localStorage
+      localStorage.setItem('demoSupplierInvoices', JSON.stringify(updatedInvoices));
+      
+      // Refresh the list
       fetchInvoices();
       setShowApprovalModal(false);
     } catch (err) {
       console.error('Failed to update invoice status:', err);
-      // Ideally show toast
       setError('Failed to update invoice status. Please try again.');
     }
   };
@@ -120,7 +294,10 @@ export const SupplierInvoiceApproval: React.FC = () => {
 
   // Show Add Supplier Voice screen if requested
   if (showAddSupplierVoice) {
-    return <AddSupplierVoice onBack={() => { setShowAddSupplierVoice(false); fetchInvoices(); }} />;
+    return <AddSupplierVoice onBack={() => { 
+      setShowAddSupplierVoice(false); 
+      fetchInvoices(); 
+    }} />;
   }
 
   return (

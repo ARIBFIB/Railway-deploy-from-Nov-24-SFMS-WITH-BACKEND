@@ -92,7 +92,7 @@ const allNavigation: NavigationItem[] = [
       // { name: 'Expenses', href: '/expenses', screen: 'expenses' },
     ]
   },
-  { name: 'Warehouse', href: '/facility-register', icon: Building2, screen: 'facility-register' },
+  { name: 'Asset Register', href: '/facility-register', icon: Building2, screen: 'facility-register' },
   { name: 'Meetings', href: '/meetings', icon: Calendar, screen: 'meetings' },
   // { name: 'Investments', href: '/investments', icon: TrendingUp, screen: 'investments' },
   // { name: 'Projects', href: '/projects', icon: FolderOpen, screen: 'projects' },

@@ -864,13 +864,94 @@ export const VerificationsList: React.FC = () => {
     }
   };
 
-  const handleBookAndPrint = () => {
-    console.log('Book and print clicked');
+  const handleBookAndPrint = async () => {
+    // Show loading state
+    const toastId = toast.loading('Saving and printing cash register...');
+    
+    try {
+      // Validate required fields
+      if (!cashRegisterData.templateId && Object.values(cashRegisterData.entryValues).every(val => !val)) {
+        toast.error('Please select a template and fill in at least one amount field', { id: toastId });
+        return;
+      }
+      
+      // Load existing cash registers from localStorage or create empty array
+      const storedCashRegisters = localStorage.getItem('demoCashRegisters');
+      const existingCashRegisters = storedCashRegisters ? JSON.parse(storedCashRegisters) : [];
+      
+      // Create new cash register object
+      const newCashRegister = {
+        id: `cashreg-${Date.now()}`,
+        templateId: cashRegisterData.templateId,
+        accountingDate: cashRegisterData.accountingDate,
+        verificationDescription: cashRegisterData.verificationDescription,
+        entryValues: cashRegisterData.entryValues,
+        comment: cashRegisterData.comment,
+        attachments: linkedFiles,
+        createdAt: new Date().toISOString(),
+        status: 'booked'
+      };
+      
+      // Add new cash register to existing cash registers
+      const updatedCashRegisters = [...existingCashRegisters, newCashRegister];
+      
+      // Save to localStorage
+      localStorage.setItem('demoCashRegisters', JSON.stringify(updatedCashRegisters));
+      
+      // Show success message
+      toast.success('Cash register saved and printed successfully!', { id: toastId });
+      
+      // Clear the form after successful save
+      handleClearForm();
+    } catch (error) {
+      console.error('Error saving and printing cash register:', error);
+      toast.error('Failed to save and print cash register. Please try again.', { id: toastId });
+    }
   };
 
-  const handleBook = () => {
-    console.log('Book clicked', { data: cashRegisterData, attachments: linkedFiles });
-    // TODO: Implement actual booking logic with attachments
+  const handleBook = async () => {
+    // Show loading state
+    const toastId = toast.loading('Saving cash register...');
+    
+    try {
+      // Validate required fields
+      if (!cashRegisterData.templateId && Object.values(cashRegisterData.entryValues).every(val => !val)) {
+        toast.error('Please select a template and fill in at least one amount field', { id: toastId });
+        return;
+      }
+      
+      // Load existing cash registers from localStorage or create empty array
+      const storedCashRegisters = localStorage.getItem('demoCashRegisters');
+      const existingCashRegisters = storedCashRegisters ? JSON.parse(storedCashRegisters) : [];
+      
+      // Create new cash register object
+      const newCashRegister = {
+        id: `cashreg-${Date.now()}`,
+        templateId: cashRegisterData.templateId,
+        accountingDate: cashRegisterData.accountingDate,
+        verificationDescription: cashRegisterData.verificationDescription,
+        entryValues: cashRegisterData.entryValues,
+        comment: cashRegisterData.comment,
+        attachments: linkedFiles,
+        createdAt: new Date().toISOString(),
+        status: 'booked'
+      };
+      
+      // Add new cash register to existing cash registers
+      const updatedCashRegisters = [...existingCashRegisters, newCashRegister];
+      
+      // Save to localStorage
+      localStorage.setItem('demoCashRegisters', JSON.stringify(updatedCashRegisters));
+      
+      // Show success message
+      toast.success('Cash register saved successfully!', { id: toastId });
+      
+      // Clear the form after successful save
+      handleClearForm();
+    } catch (error) {
+      console.error('Error saving cash register:', error);
+      toast.error('Failed to save cash register. Please try again.', { id: toastId });
+    }
   };
 
   const handleReceiptChange = (field: string, value: string) => {
@@ -903,9 +984,49 @@ export const VerificationsList: React.FC = () => {
     }
   };
 
-  const handleBookReceipt = () => {
-    console.log('Book receipt clicked', { data: receiptData, attachments: linkedFiles });
-    // TODO: Implement actual booking logic with attachments
+  const handleBookReceipt = async () => {
+    // Show loading state
+    const toastId = toast.loading('Saving receipt...');
+    
+    try {
+      // Validate required fields
+      if (!receiptData.templateId && Object.values(receiptData.entryValues).every(val => !val)) {
+        toast.error('Please select a template and fill in at least one amount field', { id: toastId });
+        return;
+      }
+      
+      // Load existing receipts from localStorage or create empty array
+      const storedReceipts = localStorage.getItem('demoReceipts');
+      const existingReceipts = storedReceipts ? JSON.parse(storedReceipts) : [];
+      
+      // Create new receipt object
+      const newReceipt = {
+        id: `receipt-${Date.now()}`,
+        templateId: receiptData.templateId,
+        accountingDate: receiptData.accountingDate,
+        verificationDescription: receiptData.verificationDescription,
+        entryValues: receiptData.entryValues,
+        comment: receiptData.comment,
+        attachments: linkedFiles,
+        createdAt: new Date().toISOString(),
+        status: 'booked'
+      };
+      
+      // Add new receipt to existing receipts
+      const updatedReceipts = [...existingReceipts, newReceipt];
+      
+      // Save to localStorage
+      localStorage.setItem('demoReceipts', JSON.stringify(updatedReceipts));
+      
+      // Show success message
+      toast.success('Receipt saved successfully!', { id: toastId });
+      
+      // Clear the form after successful save
+      handleClearReceiptForm();
+    } catch (error) {
+      console.error('Error saving receipt:', error);
+      toast.error('Failed to save receipt. Please try again.', { id: toastId });
+    }
   };
 
   // No local filtering anymore
