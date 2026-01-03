@@ -119,7 +119,7 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
     }, [isOpen, verificationId]);
 
     // Cleanup object URLs on unmount
-    useEffect(() => {
+    useEffect(() => { 
         return () => {
             files.forEach(file => {
                 // Only revoke object URLs (not regular image URLs from the server)
