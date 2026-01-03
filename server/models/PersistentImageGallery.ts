@@ -205,4 +205,36 @@ export class PersistentImageGalleryModel {
       throw error;
     }
   }
+
+  static async getUnlinkedByFoundation(foundationId: string): Promise<PersistentImageGalleriesResponse> {
+    try {
+      console.log('🚀 PersistentImageGalleryModel.getUnlinkedByFoundation - Starting');
+      console.log('📊 Input:', { foundationId });
+
+      const { data: images, error } = await supabase
+        .from('persistent_image_gallery')
+        .select('*')
+        .eq('foundation_id', foundationId)
+        .is('linked_verification_id', null)
+        .order('uploaded_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching unlinked persistent images:', error);
+        throw new Error(`Failed to fetch unlinked persistent images: ${error.message}`);
+      }
+
+      console.log('✅ Successfully fetched unlinked persistent images:', {
+        count: images?.length || 0
+      });
+
+      return {
+        success: true,
+        data: images || [],
+        message: images ? `Found ${images.length} unlinked images` : 'No unlinked images found'
+      };
+    } catch (error) {
+      console.error('Error in PersistentImageGalleryModel.getUnlinkedByFoundation:', error);
+      throw error;
+    }
+  }
 }

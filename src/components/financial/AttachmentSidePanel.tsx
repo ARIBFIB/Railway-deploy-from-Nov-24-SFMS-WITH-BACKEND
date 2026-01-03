@@ -65,37 +65,32 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
             const loadImages = async () => {
                 try {
                     setLoading(true);
-                    
-                    let images = [];
-                    
+                        
+                    // Fetch both linked and unlinked images
+                    let allImages: any[] = [];
+                        
+                    // Fetch linked images for the verification
                     if (verificationId) {
-                        // 🔥 Load linked images for the specific verification
                         console.log('🔍 AttachmentSidePanel - Loading linked images for verification:', verificationId);
-                        const response = await VerificationService.getVerificationImages(verificationId);
-                        console.log('📥 AttachmentSidePanel - getVerificationImages response:', response);
-                        if (response.success && response.data) {
-                            console.log('📊 AttachmentSidePanel - Found', response.data.length, 'linked images');
-                            images = response.data;
-                        } else {
-                            console.log('❌ AttachmentSidePanel - getVerificationImages failed or returned no data:', response);
-                            images = [];
-                        }
-                    } else {
-                        // Load unlinked images
-                        console.log('🔍 AttachmentSidePanel - Loading unlinked images...');
-                        const response = await VerificationService.getUnlinkedImages();
-                        console.log('📥 AttachmentSidePanel - getUnlinkedImages response:', response);
-                        if (response.success && response.data) {
-                            console.log('📊 AttachmentSidePanel - Found', response.data.length, 'unlinked images');
-                            images = response.data;
-                        } else {
-                            console.log('❌ AttachmentSidePanel - getUnlinkedImages failed or returned no data:', response);
-                            images = [];
+                        const linkedResponse = await VerificationService.getVerificationImages(verificationId);
+                        console.log('📥 AttachmentSidePanel - getVerificationImages response:', linkedResponse);
+                        if (linkedResponse.success && linkedResponse.data) {
+                            console.log('📊 AttachmentSidePanel - Found', linkedResponse.data.length, 'linked images');
+                            allImages = [...linkedResponse.data];
                         }
                     }
-                    
+                        
+                    // Fetch unlinked images
+                    console.log('🔍 AttachmentSidePanel - Loading unlinked images...');
+                    const unlinkedResponse = await VerificationService.getUnlinkedImages();
+                    console.log('📥 AttachmentSidePanel - getUnlinkedImages response:', unlinkedResponse);
+                    if (unlinkedResponse.success && unlinkedResponse.data) {
+                        console.log('📊 AttachmentSidePanel - Found', unlinkedResponse.data.length, 'unlinked images');
+                        allImages = [...allImages, ...unlinkedResponse.data];
+                    }
+                        
                     // Convert images to AttachedFile format
-                    const attachedFiles: AttachedFile[] = images.map((img: any) => ({
+                    const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
                         id: img.id,
                         name: img.image_name || img.name,
                         url: img.image_url || img.url,
@@ -103,12 +98,12 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                         date: new Date(img.uploaded_at || img.date || Date.now()),
                         isPersistent: true,
                     }));
-                    
+                        
                     console.log('📁 AttachmentSidePanel - Converted files:', attachedFiles);
                     setFiles(attachedFiles);
-                    
-                    // Set linked state if we're loading linked images
-                    if (verificationId) {
+                        
+                    // Set linked state if we have linked images
+                    if (verificationId && attachedFiles.length > 0) {
                         setIsLinked(true);
                     }
                 } catch (err) {
@@ -118,7 +113,7 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                     setLoading(false);
                 }
             };
-            
+                
             loadImages();
         }
     }, [isOpen, verificationId]);
@@ -159,21 +154,30 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                             // Small delay to ensure the image is saved before fetching
                             await new Promise(resolve => setTimeout(resolve, 500));
                             
-                            // Refresh the list of images based on verificationId
-                            let response;
+                            // Refresh the list of all images (both linked and unlinked)
+                            let allImages: any[] = [];
+                            
+                            // Fetch linked images for the verification
                             if (verificationId) {
-                                response = await VerificationService.getVerificationImages(verificationId);
-                                console.log('📥 AttachmentSidePanel - Refresh verification images response:', response);
-                            } else {
-                                response = await VerificationService.getUnlinkedImages();
-                                console.log('📥 AttachmentSidePanel - Refresh unlinked images response:', response);
+                                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
+                                console.log('📥 AttachmentSidePanel - Refresh verification images response:', linkedResponse);
+                                if (linkedResponse.success && linkedResponse.data) {
+                                    allImages = [...linkedResponse.data];
+                                }
                             }
                             
-                            if (response.success && response.data) {
-                                console.log('📊 AttachmentSidePanel - After upload, found', response.data.length, 'images');
+                            // Fetch unlinked images
+                            const unlinkedResponse = await VerificationService.getUnlinkedImages();
+                            console.log('📥 AttachmentSidePanel - Refresh unlinked images response:', unlinkedResponse);
+                            if (unlinkedResponse.success && unlinkedResponse.data) {
+                                allImages = [...allImages, ...unlinkedResponse.data];
+                            }
+                            
+                            if (allImages.length > 0) {
+                                console.log('📊 AttachmentSidePanel - After upload, found', allImages.length, 'images');
                                 
                                 // Convert images to AttachedFile format
-                                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
                                     id: img.id,
                                     name: img.image_name || img.name,
                                     url: img.image_url || img.url,
@@ -230,17 +234,26 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
             setLoading(true);
             await VerificationService.deleteUnlinkedImage(selectedFile.id);
             
-            // Refresh the list of images based on verificationId
-            let response;
+            // Refresh the list of all images (both linked and unlinked)
+            let allImages: any[] = [];
+            
+            // Fetch linked images for the verification
             if (verificationId) {
-                response = await VerificationService.getVerificationImages(verificationId);
-            } else {
-                response = await VerificationService.getUnlinkedImages();
+                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
+                if (linkedResponse.success && linkedResponse.data) {
+                    allImages = [...linkedResponse.data];
+                }
             }
             
-            if (response.success && response.data) {
+            // Fetch unlinked images
+            const unlinkedResponse = await VerificationService.getUnlinkedImages();
+            if (unlinkedResponse.success && unlinkedResponse.data) {
+                allImages = [...allImages, ...unlinkedResponse.data];
+            }
+            
+            if (allImages.length > 0) {
                 // Convert images to AttachedFile format
-                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
                     id: img.id,
                     name: img.image_name || img.name,
                     url: img.image_url || img.url,
@@ -250,13 +263,14 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                 }));
                 setFiles(attachedFiles);
                 
-                if (attachedFiles.length === 0) {
-                    setSelectedFileIndex(0);
-                    setIsLinked(false);
-                    if (onLink) onLink([]); // Notify parent that links are gone
-                } else if (selectedFileIndex >= attachedFiles.length) {
+                if (selectedFileIndex >= attachedFiles.length) {
                     setSelectedFileIndex(attachedFiles.length - 1);
                 }
+            } else {
+                setFiles([]);
+                setSelectedFileIndex(0);
+                setIsLinked(false);
+                if (onLink) onLink([]); // Notify parent that links are gone
             }
         } catch (error) {
             console.error('Error deleting file:', error);
@@ -289,11 +303,26 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
             
-            // Refresh the list of images for the verification
-            const response = await VerificationService.getVerificationImages(verificationId);
-            if (response.success && response.data) {
+            // Refresh the list of all images (both linked and unlinked)
+            let allImages: any[] = [];
+            
+            // Fetch linked images for the verification
+            if (verificationId) {
+                const linkedResponse = await VerificationService.getVerificationImages(verificationId);
+                if (linkedResponse.success && linkedResponse.data) {
+                    allImages = [...linkedResponse.data];
+                }
+            }
+            
+            // Fetch unlinked images
+            const unlinkedResponse = await VerificationService.getUnlinkedImages();
+            if (unlinkedResponse.success && unlinkedResponse.data) {
+                allImages = [...allImages, ...unlinkedResponse.data];
+            }
+            
+            if (allImages.length > 0) {
                 // Convert images to AttachedFile format
-                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
                     id: img.id,
                     name: img.image_name || img.name,
                     url: img.image_url || img.url,
@@ -359,11 +388,26 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                 if (result.success) {
                     console.log('✅ Image linked successfully:', result.data);
                     
-                    // Refresh the list of images for the verification
-                    const response = await VerificationService.getVerificationImages(verificationId);
-                    if (response.success && response.data) {
+                    // Refresh the list of all images (both linked and unlinked)
+                    let allImages: any[] = [];
+                                        
+                    // Fetch linked images for the verification
+                    if (verificationId) {
+                        const linkedResponse = await VerificationService.getVerificationImages(verificationId);
+                        if (linkedResponse.success && linkedResponse.data) {
+                            allImages = [...linkedResponse.data];
+                        }
+                    }
+                                        
+                    // Fetch unlinked images
+                    const unlinkedResponse = await VerificationService.getUnlinkedImages();
+                    if (unlinkedResponse.success && unlinkedResponse.data) {
+                        allImages = [...allImages, ...unlinkedResponse.data];
+                    }
+                                        
+                    if (allImages.length > 0) {
                         // Convert images to AttachedFile format
-                        const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                        const attachedFiles: AttachedFile[] = allImages.map((img: any) => ({
                             id: img.id,
                             name: img.image_name || img.name,
                             url: img.image_url || img.url,
@@ -372,7 +416,7 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                             isPersistent: true,
                         }));
                         setFiles(attachedFiles);
-                                        
+                                            
                         // Set the first image as selected
                         if (attachedFiles.length > 0) {
                             setSelectedFileIndex(0);
@@ -515,49 +559,6 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                     ) : (
                         /* SELECTED STATE */
                         <div className="flex flex-col h-full">
-                            {/* File Selector Header */}
-                            <div className="mb-3 relative">
-                                <div
-                                    onClick={() => setShowFileDropdown(!showFileDropdown)}
-                                    className="border border-[#DADCE0] rounded-md px-2.5 py-1.5 bg-white flex items-center justify-between cursor-pointer hover:border-gray-400"
-                                >
-                                    <span className="text-[13px] text-[#202124] truncate pr-2">
-                                        {currentFile?.name}
-                                    </span>
-                                    <ChevronDown size={14} className="text-[#5F6368]" />
-                                </div>
-
-                                {/* File Dropdown */}
-                                {showFileDropdown && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#DADCE0] rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
-                                        {files.map((file, index) => (
-                                            <div
-                                                key={file.id}
-                                                onClick={() => {
-                                                    setSelectedFileIndex(index);
-                                                    setShowFileDropdown(false);
-                                                }}
-                                                className={`px-3 py-2 text-[13px] hover:bg-gray-50 cursor-pointer truncate flex items-center justify-between ${index === selectedFileIndex ? 'bg-blue-50 text-blue-700' : 'text-[#202124]'}`}
-                                            >
-                                                <span className="truncate">{file.name}</span>
-                                                {index === selectedFileIndex && <Check size={12} />}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* File Count & Sort */}
-                            <div className="flex items-center justify-between mb-3 px-1">
-                                <span className="text-[12px] text-[#5F6368]">
-                                    {selectedFileIndex + 1} ( {files.length} )
-                                </span>
-                                <button className="flex items-center gap-1 text-[12px] text-[#5F6368] hover:text-[#202124]">
-                                    <ArrowUpDown size={12} />
-                                    <span>Sort by oldest first</span>
-                                </button>
-                            </div>
-
                             {/* Action Toolbar */}
                             <div className="flex items-center gap-4 mb-4 px-1 py-2 border-b border-[#F1F3F4]">
                                 <button onClick={handleDownload} className="flex items-center gap-1.5 text-[#5F6368] hover:text-[#1A73E8] transition-colors">
@@ -578,47 +579,47 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                                 </button>
                             </div>
 
-                            {/* Image Preview Area */}
+                            {/* File Count */}
+                            <div className="flex items-center justify-between mb-3 px-1">
+                                <span className="text-[12px] text-[#5F6368]">
+                                    {files.length} images
+                                </span>
+                                <button className="flex items-center gap-1 text-[12px] text-[#5F6368] hover:text-[#202124]">
+                                    <ArrowUpDown size={12} />
+                                    <span>Sort by oldest first</span>
+                                </button>
+                            </div>
+
+                            {/* Images Grid */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#F8F9FA] rounded-lg p-2 mb-4 border border-[#E5E7EB] min-h-[300px]">
-                                <div className="grid grid-cols-1 gap-2 h-full">
-                                    <div className="h-full bg-white rounded-md shadow-sm border border-gray-200 flex items-center justify-center relative overflow-hidden">
-                                        {(() => {
-                                            console.log('🖼️ AttachmentSidePanel - Current file for preview:', currentFile);
-                                            if (currentFile) {
-                                                console.log('🖼️ AttachmentSidePanel - Current file URL:', currentFile.url);
-                                                console.log('🖼️ AttachmentSidePanel - Current file name:', currentFile.name);
-                                                console.log('🖼️ AttachmentSidePanel - Current file type check - includes image:', currentFile.url.toLowerCase().includes('image'));
-                                                console.log('🖼️ AttachmentSidePanel - Current file name extension check:', currentFile.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i));
-                                                console.log('🖼️ AttachmentSidePanel - Current file blob check:', currentFile.url.startsWith('blob:'));
-                                                
-                                                return (
-                                                    currentFile.file?.type?.startsWith('image/') ||
-                                                    currentFile.url.toLowerCase().includes('image') || 
-                                                    currentFile.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i) ||
-                                                    currentFile.url.startsWith('blob:') ? (
-                                                        <img
-                                                            src={currentFile.url}
-                                                            alt={currentFile.name}
-                                                            className="max-w-full max-h-full object-contain"
-                                                        />
-                                                    ) : (
-                                                        <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                            <Image className="w-16 h-16" />
-                                                            <span className="text-[13px]">{currentFile.name}</span>
-                                                        </div>
-                                                    )
-                                                );
-                                            } else {
-                                                console.log('🖼️ AttachmentSidePanel - No current file to preview');
-                                                return (
-                                                    <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                        <Image className="w-16 h-16" />
-                                                        <span className="text-[13px]">No image selected</span>
+                                <div className="grid grid-cols-2 gap-2 h-full">
+                                    {files.map((file, index) => {
+                                        const isImage = 
+                                            file.file?.type?.startsWith('image/') ||
+                                            /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(file.name) ||
+                                            file.url.startsWith('blob:');
+                                        
+                                        return (
+                                            <div 
+                                                key={file.id}
+                                                className={`bg-white rounded-md shadow-sm border border-gray-200 flex items-center justify-center p-1 cursor-pointer transition-all ${index === selectedFileIndex ? 'ring-2 ring-blue-500' : 'hover:border-gray-400'}`}
+                                                onClick={() => setSelectedFileIndex(index)}
+                                            >
+                                                {isImage ? (
+                                                    <img 
+                                                        src={file.url} 
+                                                        alt={file.name} 
+                                                        className="max-w-full max-h-32 object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-col items-center text-gray-400 p-2">
+                                                        <Image className="w-8 h-8" />
+                                                        <span className="text-[10px] truncate text-center">{file.name}</span>
                                                     </div>
-                                                );
-                                            }
-                                        })()}
-                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

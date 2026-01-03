@@ -403,54 +403,33 @@ export class VerificationController {
 
       console.log('✅ Image uploaded successfully to:', filePath);
 
-      try {
-        // Also create record in persistent image gallery
-        const imageData: CreatePersistentImageGalleryData = {
-          foundation_id: foundationId,
+      // Create record in persistent image gallery
+      const imageData: CreatePersistentImageGalleryData = {
+        foundation_id: foundationId,
+        image_url: publicUrlData.publicUrl,
+        image_name: req.file.originalname,
+        image_size: req.file.size,
+        mime_type: req.file.mimetype,
+        file_path: filePath,
+        uploaded_by: userId
+      };
+
+      const galleryImage = await PersistentImageGalleryModel.create(imageData);
+      
+      res.status(200).json({
+        success: true,
+        data: {
           image_url: publicUrlData.publicUrl,
           image_name: req.file.originalname,
           image_size: req.file.size,
           mime_type: req.file.mimetype,
-          file_path: filePath,
+          foundation_id: foundationId,
           uploaded_by: userId,
-          is_linked: false
-        };
-
-        const galleryImage = await PersistentImageGalleryModel.create(imageData);
-        
-        res.status(200).json({
-          success: true,
-          data: {
-            image_url: publicUrlData.publicUrl,
-            image_name: req.file.originalname,
-            image_size: req.file.size,
-            mime_type: req.file.mimetype,
-            foundation_id: foundationId,
-            uploaded_by: userId,
-            uploaded_at: new Date().toISOString(),
-            gallery_id: galleryImage.id // Include gallery ID for tracking
-          },
-          message: 'Image uploaded successfully'
-        });
-      } catch (galleryError) {
-        console.error('⚠️ Gallery creation failed, but image upload succeeded:', galleryError);
-        
-        // Return success response without gallery ID if gallery creation fails
-        res.status(200).json({
-          success: true,
-          data: {
-            image_url: publicUrlData.publicUrl,
-            image_name: req.file.originalname,
-            image_size: req.file.size,
-            mime_type: req.file.mimetype,
-            foundation_id: foundationId,
-            uploaded_by: userId,
-            uploaded_at: new Date().toISOString()
-            // Note: gallery_id is omitted if gallery creation fails
-          },
-          message: 'Image uploaded successfully (gallery record creation failed)'
-        });
-      }
+          uploaded_at: new Date().toISOString(),
+          gallery_id: galleryImage.id // Include gallery ID for tracking
+        },
+        message: 'Image uploaded successfully'
+      });
     } catch (error) {
       console.error('❌ Error processing image upload:', error);
       res.status(500).json(createError(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`));
@@ -746,9 +725,7 @@ export class VerificationController {
     }
 
     try {
-      const result = await PersistentImageGalleryModel.getByFoundation(foundationId, { 
-        is_linked: false 
-      });
+      const result = await PersistentImageGalleryModel.getUnlinkedByFoundation(foundationId);
 
       res.status(200).json(result);
     } catch (error) {
@@ -789,9 +766,8 @@ export class VerificationController {
         return;
       }
 
-      // Update the image to be linked
+      // Update the image to be linked - using linked_verification_id as single source of truth
       const updatedImage = await PersistentImageGalleryModel.update(imageId, {
-        is_linked: true,
         linked_verification_id: verificationId
       });
 
@@ -856,7 +832,7 @@ export class VerificationController {
       }
 
       // Don't allow deletion of linked images
-      if (existingImage.is_linked) {
+      if (existingImage.linked_verification_id) {
         res.status(400).json(createError('Cannot delete a linked image'));
         return;
       }
