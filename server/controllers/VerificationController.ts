@@ -3,6 +3,8 @@ import { supabase } from '../config/database';
 import { JWTRequest } from '../middleware/jwtAuth';
 import { VerificationModel, CreateVerificationData, UpdateVerificationData, VerificationFilters } from '../models/Verification';
 import { createError, asyncHandler } from '../middleware/errorHandler';
+import { PersistentImageGalleryModel, CreatePersistentImageGalleryData } from '../models/PersistentImageGallery';
+import { FileService } from '../services/FileService';
 
 export class VerificationController {
   static createVerification = asyncHandler(async (req: JWTRequest, res: Response) => {
@@ -401,19 +403,54 @@ export class VerificationController {
 
       console.log('✅ Image uploaded successfully to:', filePath);
 
-      res.status(200).json({
-        success: true,
-        data: {
+      try {
+        // Also create record in persistent image gallery
+        const imageData: CreatePersistentImageGalleryData = {
+          foundation_id: foundationId,
           image_url: publicUrlData.publicUrl,
           image_name: req.file.originalname,
           image_size: req.file.size,
           mime_type: req.file.mimetype,
-          foundation_id: foundationId,
+          file_path: filePath,
           uploaded_by: userId,
-          uploaded_at: new Date().toISOString()
-        },
-        message: 'Image uploaded successfully'
-      });
+          is_linked: false
+        };
+
+        const galleryImage = await PersistentImageGalleryModel.create(imageData);
+        
+        res.status(200).json({
+          success: true,
+          data: {
+            image_url: publicUrlData.publicUrl,
+            image_name: req.file.originalname,
+            image_size: req.file.size,
+            mime_type: req.file.mimetype,
+            foundation_id: foundationId,
+            uploaded_by: userId,
+            uploaded_at: new Date().toISOString(),
+            gallery_id: galleryImage.id // Include gallery ID for tracking
+          },
+          message: 'Image uploaded successfully'
+        });
+      } catch (galleryError) {
+        console.error('⚠️ Gallery creation failed, but image upload succeeded:', galleryError);
+        
+        // Return success response without gallery ID if gallery creation fails
+        res.status(200).json({
+          success: true,
+          data: {
+            image_url: publicUrlData.publicUrl,
+            image_name: req.file.originalname,
+            image_size: req.file.size,
+            mime_type: req.file.mimetype,
+            foundation_id: foundationId,
+            uploaded_by: userId,
+            uploaded_at: new Date().toISOString()
+            // Note: gallery_id is omitted if gallery creation fails
+          },
+          message: 'Image uploaded successfully (gallery record creation failed)'
+        });
+      }
     } catch (error) {
       console.error('❌ Error processing image upload:', error);
       res.status(500).json(createError(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`));
@@ -696,6 +733,223 @@ export class VerificationController {
     } catch (error) {
       console.error('❌ Error in searchEntries controller:', error);
       res.status(500).json(createError(`Failed to search verification entries: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  // Get all unlinked images for a foundation
+  static getUnlinkedImages = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const foundationId = req.user?.foundation_id;
+
+    if (!foundationId) {
+      res.status(400).json(createError('Foundation ID is required'));
+      return;
+    }
+
+    try {
+      const result = await PersistentImageGalleryModel.getByFoundation(foundationId, { 
+        is_linked: false 
+      });
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('❌ Error getting unlinked images:', error);
+      res.status(500).json(createError(`Failed to get unlinked images: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  // Link an image to a verification
+  static linkImageToVerification = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const { imageId } = req.params;
+    const { verificationId } = req.body;
+    const foundationId = req.user?.foundation_id;
+    const userId = req.user?.user_id;
+
+    if (!foundationId || !userId) {
+      res.status(400).json(createError('Foundation ID and User ID are required'));
+      return;
+    }
+
+    if (!imageId || !verificationId) {
+      res.status(400).json(createError('Image ID and Verification ID are required'));
+      return;
+    }
+
+    try {
+      // Check if the image belongs to the user's foundation
+      const existingImage = await PersistentImageGalleryModel.getById(imageId);
+      if (!existingImage.foundation_id || existingImage.foundation_id !== foundationId) {
+        res.status(403).json(createError('Access denied to this image'));
+        return;
+      }
+
+      // Check if the verification belongs to the user's foundation
+      const existingVerification = await VerificationModel.getById(verificationId);
+      if (!existingVerification.foundation_id || existingVerification.foundation_id !== foundationId) {
+        res.status(403).json(createError('Access denied to this verification'));
+        return;
+      }
+
+      // Update the image to be linked
+      const updatedImage = await PersistentImageGalleryModel.update(imageId, {
+        is_linked: true,
+        linked_verification_id: verificationId
+      });
+
+      // Also create a record in verification_images table
+      const { data: verificationImage, error: imageError } = await supabase
+        .from('verification_images')
+        .insert({
+          verification_id: verificationId,
+          image_url: updatedImage.image_url,
+          image_name: updatedImage.image_name,
+          image_size: updatedImage.image_size,
+          mime_type: updatedImage.mime_type,
+          file_path: updatedImage.file_path,
+          uploaded_by: userId
+        })
+        .select()
+        .single();
+
+      if (imageError) {
+        console.error('⚠️ Error creating verification image record:', imageError);
+        // Don't fail the request, just log the error
+      }
+
+      // Update the has_gallery flag on the verification
+      const { error: updateError } = await supabase
+        .from('verifications')
+        .update({ has_gallery: true })
+        .eq('id', verificationId);
+
+      if (updateError) {
+        console.error('⚠️ Error updating has_gallery flag:', updateError);
+        // Don't fail the request, just log the error
+      }
+
+      res.status(200).json({
+        success: true,
+        data: updatedImage,
+        message: 'Image linked to verification successfully'
+      });
+    } catch (error) {
+      console.error('❌ Error linking image to verification:', error);
+      res.status(500).json(createError(`Failed to link image to verification: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  // Delete an unlinked image
+  static deleteUnlinkedImage = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const { imageId } = req.params;
+    const foundationId = req.user?.foundation_id;
+
+    if (!imageId || !foundationId) {
+      res.status(400).json(createError('Image ID and Foundation ID are required'));
+      return;
+    }
+
+    try {
+      // Check if the image belongs to the user's foundation
+      const existingImage = await PersistentImageGalleryModel.getById(imageId);
+      if (!existingImage.foundation_id || existingImage.foundation_id !== foundationId) {
+        res.status(403).json(createError('Access denied to this image'));
+        return;
+      }
+
+      // Don't allow deletion of linked images
+      if (existingImage.is_linked) {
+        res.status(400).json(createError('Cannot delete a linked image'));
+        return;
+      }
+
+      // Delete from persistent image gallery
+      await PersistentImageGalleryModel.delete(imageId);
+
+      // Also delete from storage if needed
+      if (existingImage.file_path) {
+        try {
+          await FileService.deleteFile('verification-images', existingImage.file_path);
+        } catch (deleteError) {
+          console.error('⚠️ Error deleting file from storage:', deleteError);
+          // Don't fail the request, just log the error
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Unlinked image deleted successfully'
+      });
+    } catch (error) {
+      console.error('❌ Error deleting unlinked image:', error);
+      res.status(500).json(createError(`Failed to delete unlinked image: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  });
+
+  static getUniqueVerificationSeries = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const foundationId = req.user?.foundation_id;
+
+    if (!foundationId) {
+      res.status(400).json(createError('Foundation ID is required'));
+      return;
+    }
+
+    try {
+      const series = await VerificationModel.getUniqueVerificationSeriesByFoundation(foundationId);
+      
+      res.status(200).json({
+        success: true,
+        data: series
+      });
+    } catch (error) {
+      console.error('❌ Error fetching unique verification series:', error);
+      res.status(500).json({
+        success: false,
+        message: `Failed to fetch unique verification series: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  });
+
+  // Get images linked to a specific verification
+  static getVerificationImages = asyncHandler(async (req: JWTRequest, res: Response) => {
+    const foundationId = req.user?.foundation_id;
+    const verificationId = req.params.id;
+
+    if (!foundationId) {
+      res.status(400).json(createError('Foundation ID is required'));
+      return;
+    }
+
+    if (!verificationId) {
+      res.status(400).json(createError('Verification ID is required'));
+      return;
+    }
+
+    try {
+      // Verify that the verification belongs to the user's foundation
+      const verification = await VerificationModel.getById(verificationId);
+      if (verification.foundation_id !== foundationId) {
+        res.status(403).json(createError('Access denied to this verification'));
+        return;
+      }
+
+      // Get images linked to this verification from the verification_images table
+      const { data: verificationImages, error: imagesError } = await supabase
+        .from('verification_images')
+        .select('*')
+        .eq('verification_id', verificationId);
+
+      if (imagesError) {
+        console.error('❌ Error fetching verification images:', imagesError);
+        throw createError(`Failed to fetch verification images: ${imagesError.message}`, 500);
+      }
+
+      res.status(200).json({
+        success: true,
+        data: verificationImages || [],
+        message: `Found ${verificationImages?.length || 0} images for verification ${verificationId}`
+      });
+    } catch (error) {
+      console.error('❌ Error getting verification images:', error);
+      res.status(500).json(createError(`Failed to get verification images: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   });
 }

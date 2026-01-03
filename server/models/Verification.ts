@@ -288,12 +288,12 @@ export class VerificationModel {
       console.log('📋 Base query created for foundation_id:', foundationId);
 
       // Apply filters
-      if (filters.search) {
-        query = query.or(`verification_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
-      }
-
+      // If specific verification_number is provided, use exact match
       if (filters.verification_number) {
         query = query.eq('verification_number', filters.verification_number);
+      } else if (filters.search) {
+        // Otherwise, use general search across multiple fields
+        query = query.or(`verification_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
       }
 
       if (filters.description) {
@@ -812,6 +812,33 @@ export class VerificationModel {
       return descriptions;
     } catch (error) {
       console.error('Error in VerificationModel.getAllUniqueDescriptions:', error);
+      throw error;
+    }
+  }
+
+  static async getUniqueVerificationSeriesByFoundation(foundationId: string): Promise<string[]> {
+    try {
+      console.log('🔍 VerificationModel.getUniqueVerificationSeriesByFoundation - Starting for foundation:', foundationId);
+
+      const { data, error } = await supabase
+        .from('verifications')
+        .select('verification_series')
+        .eq('foundation_id', foundationId)
+        .not('verification_series', 'is', null)
+        .order('verification_series', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error fetching unique verification series:', error);
+        throw new Error(`Failed to fetch unique verification series: ${error.message}`);
+      }
+
+      // Extract series and remove duplicates
+      const series = Array.from(new Set(data.map(item => item.verification_series).filter(series => series && series.trim() !== '')));
+
+      console.log('✅ Fetched unique verification series:', series.length);
+      return series;
+    } catch (error) {
+      console.error('Error in VerificationModel.getUniqueVerificationSeriesByFoundation:', error);
       throw error;
     }
   }

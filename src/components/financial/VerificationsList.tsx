@@ -90,6 +90,10 @@ export const VerificationsList: React.FC = () => {
   const [linkedFiles, setLinkedFiles] = useState<any[]>([]);
   const [selectedVerificationForAttachment, setSelectedVerificationForAttachment] = useState<Verification | null>(null);
 
+  // Copy Verification State
+  const [copyVerification, setCopyVerification] = useState<Verification | null>(null);
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+
   // Reset attachment state when changing tabs
   useEffect(() => {
     setIsAttachmentOpen(false);
@@ -124,7 +128,7 @@ export const VerificationsList: React.FC = () => {
   const [cashRegisterData, setCashRegisterData] = useState({
     templateId: '',
     accountingDate: new Date().toISOString().split('T')[0],
-    verificationDescription: '',
+    verificationDescription: 'Daily Cash Register',
     entryValues: {} as Record<string, string>,
     comment: ''
   });
@@ -133,7 +137,7 @@ export const VerificationsList: React.FC = () => {
   const [receiptData, setReceiptData] = useState({
     templateId: '',
     accountingDate: new Date().toISOString().split('T')[0],
-    verificationDescription: '',
+    verificationDescription: 'Receipt',
     entryValues: {} as Record<string, string>,
     comment: ''
   });
@@ -345,7 +349,7 @@ export const VerificationsList: React.FC = () => {
       setCashRegisterData(prev => ({
         ...prev,
         templateId,
-        verificationDescription: template.verificationDescription || prev.verificationDescription,
+        verificationDescription: template.verificationDescription || 'Daily Cash Register',
         // Initialize entry values for all sale entries in the template
         entryValues: template.saleEntries.reduce((acc, entry) => {
           acc[entry.id] = '';
@@ -362,7 +366,7 @@ export const VerificationsList: React.FC = () => {
       setReceiptData(prev => ({
         ...prev,
         templateId,
-        verificationDescription: template.verificationDescription || prev.verificationDescription,
+        verificationDescription: template.verificationDescription || 'Receipt',
         // Initialize entry values for all sale entries in the template
         entryValues: template.saleEntries.reduce((acc, entry) => {
           acc[entry.id] = '';
@@ -789,6 +793,47 @@ export const VerificationsList: React.FC = () => {
     }
   };
 
+  const handleCopyVerification = (verification: Verification) => {
+    setCopyVerification(verification);
+    setShowCopyDialog(true);
+  };
+
+  const handleConfirmCopy = async () => {
+    if (!copyVerification) return;
+    
+    setShowCopyDialog(false);
+    
+    // Create a new verification based on the original
+    const newVerificationData: Verification = {
+      ...copyVerification,
+      id: undefined, // Remove the ID so it's treated as a new record
+      verification_number: '', // Let the system generate a new number
+      created_at: undefined, // Remove timestamp
+      updated_at: undefined, // Remove timestamp
+      created_by: '', // Remove creator info for new record
+      verification_series: copyVerification.verification_series, // Keep the series
+      accounting_date: new Date().toISOString().split('T')[0], // Use today's date
+      status: 'draft', // Set as draft initially
+      entries: copyVerification.entries ? [...copyVerification.entries] : [],
+      images: copyVerification.images ? [...copyVerification.images] : [],
+      has_person: copyVerification.has_person,
+      has_comment: copyVerification.has_comment,
+      has_gallery: copyVerification.has_gallery,
+      amount: copyVerification.amount,
+      total_debit: copyVerification.total_debit,
+      total_credit: copyVerification.total_credit,
+      difference: copyVerification.difference,
+      foundation_id: copyVerification.foundation_id,
+      description: copyVerification.description,
+      comment: copyVerification.comment,
+      accounting_template: copyVerification.accounting_template,
+    };
+    
+    // Set the new verification data in the form
+    setEditingVerification(newVerificationData);
+    setShowVerificationForm(true);
+  };
+
   const handleCashRegisterChange = (field: string, value: string) => {
     setCashRegisterData(prev => ({
       ...prev,
@@ -801,7 +846,7 @@ export const VerificationsList: React.FC = () => {
       setCashRegisterData({
         templateId: selectedTemplate.id,
         accountingDate: new Date().toISOString().split('T')[0],
-        verificationDescription: selectedTemplate.verificationDescription || '',
+        verificationDescription: selectedTemplate.verificationDescription || 'Daily Cash Register',
         entryValues: selectedTemplate.saleEntries.reduce((acc, entry) => {
           acc[entry.id] = '';
           return acc;
@@ -812,7 +857,7 @@ export const VerificationsList: React.FC = () => {
       setCashRegisterData({
         templateId: '',
         accountingDate: new Date().toISOString().split('T')[0],
-        verificationDescription: '',
+        verificationDescription: 'Daily Cash Register',
         entryValues: {},
         comment: ''
       });
@@ -840,7 +885,7 @@ export const VerificationsList: React.FC = () => {
       setReceiptData({
         templateId: selectedReceiptTemplate.id,
         accountingDate: new Date().toISOString().split('T')[0],
-        verificationDescription: selectedReceiptTemplate.verificationDescription || '',
+        verificationDescription: selectedReceiptTemplate.verificationDescription || 'Receipt',
         entryValues: selectedReceiptTemplate.saleEntries.reduce((acc, entry) => {
           acc[entry.id] = '';
           return acc;
@@ -851,7 +896,7 @@ export const VerificationsList: React.FC = () => {
       setReceiptData({
         templateId: '',
         accountingDate: new Date().toISOString().split('T')[0],
-        verificationDescription: '',
+        verificationDescription: 'Receipt',
         entryValues: {},
         comment: ''
       });
@@ -1254,7 +1299,7 @@ export const VerificationsList: React.FC = () => {
                       ACTIONS
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      LINKS
+                      COPY VERIFICATION
                     </th>
                   </tr>
                 </thead>
@@ -1372,18 +1417,6 @@ export const VerificationsList: React.FC = () => {
                                 <Image className="w-4 h-4" />
                               </button>
                             )}
-                            {/* Delete icon - always show for all entries */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteVerification(verification.id!);
-                              }}
-                              className="p-1 text-gray-600 hover:text-red-600 transition-colors"
-                              title="Delete verification"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                         <td className={`px-6 whitespace-nowrap text-center ${rowDensity === 'compact' ? 'py-1.5' :
@@ -1391,15 +1424,19 @@ export const VerificationsList: React.FC = () => {
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <a
-                            href={`/financial/account-analysis?verificationId=${verification.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block hover:text-blue-600 transition-colors"
-                            title="Open Account Analysis Report"
-                          >
-                            <ExternalLink className="w-4 h-4 text-gray-600 hover:text-blue-600" />
-                          </a>
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyVerification(verification)}
+                              className="p-1 text-gray-600 hover:text-[#5c6f2b] transition-colors"
+                              title={`Copy voucher ${verification.verification_number}`}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                              Copy voucher {verification.verification_number}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -2233,6 +2270,35 @@ export const VerificationsList: React.FC = () => {
             }
           }}
         />
+      )}
+
+      {/* Copy Verification Dialog */}
+      {showCopyDialog && copyVerification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">COPY VOUCHER</h3>
+            <p className="text-gray-700 mb-6">Do you want to copy the voucher {copyVerification.verification_number}?</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCopyDialog(false);
+                  setCopyVerification(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCopy}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

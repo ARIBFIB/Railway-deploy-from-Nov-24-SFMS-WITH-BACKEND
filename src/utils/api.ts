@@ -32,15 +32,28 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
     method: init.method || 'GET'
   });
 
+  // Set Content-Type header only if body is not FormData or if we have JSON data to send
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(foundationId ? { 'X-Foundation-ID': String(foundationId) } : {})
   };
 
   const shouldAttachTenant = init.attachTenant !== false; // default true
-  const bodyJson = init.json ?? (init.body ? undefined : undefined);
+  
+  // Extract JSON data from either json property or parse body if it's not FormData
+  let bodyJson = init.json ? init.json : (init.body && !(init.body instanceof FormData) ? init.body : undefined);
+  
+  // If bodyJson is a string (already JSON), parse it first
+  if (typeof bodyJson === 'string') {
+    try {
+      bodyJson = JSON.parse(bodyJson);
+    } catch (e) {
+      console.warn('Failed to parse body as JSON, using as-is:', e);
+    }
+  }
 
+  // For JSON bodies, attach tenant info
   const finalBody = shouldAttachTenant && bodyJson && typeof bodyJson === 'object'
     ? {
       foundationId,
@@ -59,7 +72,11 @@ export async function apiFetch(input: string, init: ApiOptions = {}): Promise<Re
       'Pragma': 'no-cache',
       ...(init.headers as any)
     },
-    body: finalBody !== undefined ? JSON.stringify(finalBody) : init.body,
+    body: init.body instanceof FormData 
+      ? init.body
+      : finalBody !== undefined 
+        ? JSON.stringify(finalBody) 
+        : init.body,
     cache: 'no-store'
   };
 

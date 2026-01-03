@@ -467,6 +467,69 @@ export class VerificationService {
     
     return await response.json();
   }
+
+  static async getUnlinkedImages(): Promise<{ success: boolean; data: any[]; message?: string }> {
+    const response = await apiFetch('/api/verifications/gallery/unlinked');
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch unlinked images');
+    }
+    
+    return await response.json();
+  }
+
+  static async linkImageToVerification(imageId: string, verificationId: string): Promise<{ success: boolean; data: any; message?: string }> {
+    const response = await apiFetch(`/api/verifications/gallery/${imageId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({ verificationId }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to link image to verification');
+    }
+    
+    return await response.json();
+  }
+
+  static async deleteUnlinkedImage(imageId: string): Promise<{ success: boolean; message?: string }> {
+    const response = await apiFetch(`/api/verifications/gallery/${imageId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete unlinked image');
+    }
+    
+    return await response.json();
+  }
+
+  static async getUniqueVerificationSeries(): Promise<{ success: boolean; data: string[]; message?: string }> {
+    const response = await apiFetch('/api/verifications/unique-series');
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch unique verification series');
+    }
+    
+    return await response.json();
+  }
+
+  static async getVerificationImages(verificationId: string): Promise<{ success: boolean; data: any[]; message?: string }> {
+    const response = await apiFetch(`/api/verifications/${verificationId}/images`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch verification images');
+    }
+    
+    return await response.json();
+  }
 }
 
 

@@ -25,6 +25,7 @@ export interface AttachedFile {
     url: string;
     file: File;
     date: Date;
+    isPersistent?: boolean; // Flag to indicate if this is a persistent image
 }
 
 interface AttachmentSidePanelProps {
@@ -44,6 +45,8 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
     const [isLinked, setIsLinked] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [showFileDropdown, setShowFileDropdown] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Handle ESC key to close the panel
     useEffect(() => {
@@ -56,47 +59,210 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         return () => window.removeEventListener('keydown', handleEsc);
     }, [isOpen, onClose]);
 
+    // Load images when panel opens
+    useEffect(() => {
+        if (isOpen) {
+            const loadImages = async () => {
+                try {
+                    setLoading(true);
+                    
+                    let images = [];
+                    
+                    if (verificationId) {
+                        // 🔥 Load linked images for the specific verification
+                        console.log('🔍 AttachmentSidePanel - Loading linked images for verification:', verificationId);
+                        const response = await VerificationService.getVerificationImages(verificationId);
+                        console.log('📥 AttachmentSidePanel - getVerificationImages response:', response);
+                        if (response.success && response.data) {
+                            console.log('📊 AttachmentSidePanel - Found', response.data.length, 'linked images');
+                            images = response.data;
+                        } else {
+                            console.log('❌ AttachmentSidePanel - getVerificationImages failed or returned no data:', response);
+                            images = [];
+                        }
+                    } else {
+                        // Load unlinked images
+                        console.log('🔍 AttachmentSidePanel - Loading unlinked images...');
+                        const response = await VerificationService.getUnlinkedImages();
+                        console.log('📥 AttachmentSidePanel - getUnlinkedImages response:', response);
+                        if (response.success && response.data) {
+                            console.log('📊 AttachmentSidePanel - Found', response.data.length, 'unlinked images');
+                            images = response.data;
+                        } else {
+                            console.log('❌ AttachmentSidePanel - getUnlinkedImages failed or returned no data:', response);
+                            images = [];
+                        }
+                    }
+                    
+                    // Convert images to AttachedFile format
+                    const attachedFiles: AttachedFile[] = images.map((img: any) => ({
+                        id: img.id,
+                        name: img.image_name || img.name,
+                        url: img.image_url || img.url,
+                        file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file
+                        date: new Date(img.uploaded_at || img.date || Date.now()),
+                        isPersistent: true,
+                    }));
+                    
+                    console.log('📁 AttachmentSidePanel - Converted files:', attachedFiles);
+                    setFiles(attachedFiles);
+                    
+                    // Set linked state if we're loading linked images
+                    if (verificationId) {
+                        setIsLinked(true);
+                    }
+                } catch (err) {
+                    console.error('Error loading images:', err);
+                    setError('Failed to load images');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            loadImages();
+        }
+    }, [isOpen, verificationId]);
+
     // Cleanup object URLs on unmount
     useEffect(() => {
         return () => {
-            files.forEach(file => URL.revokeObjectURL(file.url));
+            files.forEach(file => {
+                // Only revoke object URLs (not regular image URLs from the server)
+                if (file.url.startsWith('blob:')) {
+                    console.log('🧹 AttachmentSidePanel - Revoking object URL:', file.url);
+                    URL.revokeObjectURL(file.url);
+                }
+            });
         };
-    }, []);
+    }, [files]);
 
     // Handle File Upload
     const handleUploadClick = () => {
         fileInputRef.current?.click();
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
-            const newFiles = Array.from(event.target.files).map(file => ({
-                id: Math.random().toString(36).substr(2, 9),
-                name: file.name,
-                url: URL.createObjectURL(file),
-                file: file,
-                date: new Date()
-            }));
-
-            setFiles(prev => [...prev, ...newFiles]);
-            setSelectedFileIndex(files.length);
-            setIsLinked(false);
+            setLoading(true);
+            try {
+                for (const file of Array.from(event.target.files)) {
+                    try {
+                        console.log('📤 AttachmentSidePanel - Uploading file:', file.name, 'size:', file.size, 'type:', file.type);
+                        
+                        // Upload to persistent gallery
+                        const result = await VerificationService.uploadImage(file);
+                        console.log('💾 AttachmentSidePanel - Upload result:', result);
+                        
+                        if (result.success) {
+                            console.log('✅ AttachmentSidePanel - Upload successful, refreshing unlinked images...');
+                            
+                            // Small delay to ensure the image is saved before fetching
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            
+                            // Refresh the list of images based on verificationId
+                            let response;
+                            if (verificationId) {
+                                response = await VerificationService.getVerificationImages(verificationId);
+                                console.log('📥 AttachmentSidePanel - Refresh verification images response:', response);
+                            } else {
+                                response = await VerificationService.getUnlinkedImages();
+                                console.log('📥 AttachmentSidePanel - Refresh unlinked images response:', response);
+                            }
+                            
+                            if (response.success && response.data) {
+                                console.log('📊 AttachmentSidePanel - After upload, found', response.data.length, 'images');
+                                
+                                // Convert images to AttachedFile format
+                                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                                    id: img.id,
+                                    name: img.image_name || img.name,
+                                    url: img.image_url || img.url,
+                                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
+                                    date: new Date(img.uploaded_at || img.date || Date.now()),
+                                    isPersistent: true,
+                                }));
+                                
+                                console.log('📁 AttachmentSidePanel - Set files to:', attachedFiles);
+                                setFiles(attachedFiles);
+                                
+                                // Find the index of the newly uploaded image and set it as selected
+                                const newImageIndex = attachedFiles.findIndex(f => f.name === result.data.image_name);
+                                console.log('🔍 AttachmentSidePanel - Looking for new image:', result.data.image_name, 'Found at index:', newImageIndex);
+                                
+                                if (newImageIndex !== -1) {
+                                    setSelectedFileIndex(newImageIndex);
+                                    console.log('✅ AttachmentSidePanel - Set selected file index to:', newImageIndex);
+                                } else if (attachedFiles.length > 0) {
+                                    // Fallback to the last item if the specific image isn't found
+                                    setSelectedFileIndex(attachedFiles.length - 1);
+                                    console.log('🔄 AttachmentSidePanel - Set selected file index to last item:', attachedFiles.length - 1);
+                                }
+                                
+                                // Update linked state if we're in a verification context
+                                if (verificationId) {
+                                    setIsLinked(true);
+                                }
+                            } else {
+                                console.log('❌ AttachmentSidePanel - Failed to refresh images after upload');
+                            }
+                        } else {
+                            // If upload failed, show error
+                            console.log('❌ AttachmentSidePanel - Upload failed:', result.message);
+                            setError(result.message || 'Failed to upload image');
+                        }
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        setError('Failed to upload file');
+                    }
+                }
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (files.length === 0) return;
-
-        // URL.revokeObjectURL(files[selectedFileIndex].url); // Avoid revoking if we want to restore later, but fine here
-        const newFiles = files.filter((_, index) => index !== selectedFileIndex);
-        setFiles(newFiles);
-
-        if (newFiles.length === 0) {
-            setSelectedFileIndex(0);
-            setIsLinked(false);
-            if (onLink) onLink([]); // Notify parent that links are gone
-        } else if (selectedFileIndex >= newFiles.length) {
-            setSelectedFileIndex(newFiles.length - 1);
+        
+        const selectedFile = files[selectedFileIndex];
+        
+        try {
+            setLoading(true);
+            await VerificationService.deleteUnlinkedImage(selectedFile.id);
+            
+            // Refresh the list of images based on verificationId
+            let response;
+            if (verificationId) {
+                response = await VerificationService.getVerificationImages(verificationId);
+            } else {
+                response = await VerificationService.getUnlinkedImages();
+            }
+            
+            if (response.success && response.data) {
+                // Convert images to AttachedFile format
+                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                    id: img.id,
+                    name: img.image_name || img.name,
+                    url: img.image_url || img.url,
+                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
+                    date: new Date(img.uploaded_at || img.date || Date.now()),
+                    isPersistent: true,
+                }));
+                setFiles(attachedFiles);
+                
+                if (attachedFiles.length === 0) {
+                    setSelectedFileIndex(0);
+                    setIsLinked(false);
+                    if (onLink) onLink([]); // Notify parent that links are gone
+                } else if (selectedFileIndex >= attachedFiles.length) {
+                    setSelectedFileIndex(attachedFiles.length - 1);
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            setError('Failed to delete file');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -111,12 +277,43 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         document.body.removeChild(a);
     };
 
-    const handleLink = () => {
-        if (files.length === 0) return;
-        setIsLinked(true);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-        if (onLink) onLink(files); // Pass all files or just linked? Usually all linked context.
+    const handleLink = async () => {
+        if (files.length === 0 || !verificationId) return;
+        
+        const selectedFile = files[selectedFileIndex];
+        
+        try {
+            setLoading(true);
+            await VerificationService.linkImageToVerification(selectedFile.id, verificationId);
+            setIsLinked(true);
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
+            
+            // Refresh the list of images for the verification
+            const response = await VerificationService.getVerificationImages(verificationId);
+            if (response.success && response.data) {
+                // Convert images to AttachedFile format
+                const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                    id: img.id,
+                    name: img.image_name || img.name,
+                    url: img.image_url || img.url,
+                    file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file with correct type
+                    date: new Date(img.uploaded_at || img.date || Date.now()),
+                    isPersistent: true,
+                }));
+                setFiles(attachedFiles);
+                
+                // Set the first image as selected
+                if (attachedFiles.length > 0) {
+                    setSelectedFileIndex(0);
+                }
+            }
+        } catch (error) {
+            console.error('Error linking file:', error);
+            setError('Failed to link file');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCancelLink = () => {
@@ -128,7 +325,18 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
         setIsMoveMenuOpen(!isMoveMenuOpen);
     };
 
-    const currentFile = files[selectedFileIndex];
+    const currentFile = files.length > 0 ? files[selectedFileIndex] : null;
+    
+    // Debug effect for state changes
+    useEffect(() => {
+        console.log('📋 AttachmentSidePanel - Files state changed:', files.length, 'files');
+        console.log('📋 AttachmentSidePanel - Files:', files);
+    }, [files]);
+    
+    useEffect(() => {
+        console.log('🔍 AttachmentSidePanel - Selected file index changed:', selectedFileIndex);
+        console.log('🔍 AttachmentSidePanel - Current file:', currentFile);
+    }, [selectedFileIndex, currentFile]);
 
     // Function to attach images to a specific verification
     const attachToVerification = async () => {
@@ -142,27 +350,49 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
             return;
         }
 
-        for (const file of files) {
-            try {
-                const result = await VerificationService.attachImageToVerification(verificationId, file.file);
+        try {
+            setLoading(true);
+            // Link the selected file to the verification
+            const selectedFile = files[selectedFileIndex];
+            if (selectedFile) {
+                const result = await VerificationService.linkImageToVerification(selectedFile.id, verificationId);
                 if (result.success) {
-                    console.log('✅ Image attached successfully:', result.data);
+                    console.log('✅ Image linked successfully:', result.data);
+                    
+                    // Refresh the list of images for the verification
+                    const response = await VerificationService.getVerificationImages(verificationId);
+                    if (response.success && response.data) {
+                        // Convert images to AttachedFile format
+                        const attachedFiles: AttachedFile[] = response.data.map((img: any) => ({
+                            id: img.id,
+                            name: img.image_name || img.name,
+                            url: img.image_url || img.url,
+                            file: new File([], img.image_name || img.name || 'image', { type: img.mime_type || img.type }), // Placeholder file
+                            date: new Date(img.uploaded_at || img.date || Date.now()),
+                            isPersistent: true,
+                        }));
+                        setFiles(attachedFiles);
+                                        
+                        // Set the first image as selected
+                        if (attachedFiles.length > 0) {
+                            setSelectedFileIndex(0);
+                        }
+                    }
+                    
+                    // Call the callback to notify parent component
+                    if (onAttachToVerification) {
+                        onAttachToVerification(true, `Successfully attached image to verification`);
+                    }
                 } else {
-                    console.error('❌ Failed to attach image:', result.message);
+                    console.error('❌ Failed to link image:', result.message);
+                    setError(result.message || 'Failed to link image');
                 }
-            } catch (error) {
-                console.error('❌ Error attaching image to verification:', error);
             }
-        }
-
-        // Clear the files after successful attachment
-        setFiles([]);
-        setIsLinked(false);
-        if (onLink) onLink([]);
-        
-        // Call the callback to notify parent component
-        if (onAttachToVerification) {
-            onAttachToVerification(true, `Successfully attached ${files.length} image(s) to verification`);
+        } catch (error) {
+            console.error('❌ Error linking image to verification:', error);
+            setError('Failed to attach image to verification');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -213,7 +443,7 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                 {/* 2. Header Section */}
                 <div className="h-16 px-4 border-b border-[#E5E7EB] flex items-center justify-between shrink-0 bg-white z-10">
                     <h2 className="text-[16px] font-semibold text-[#2B2B2B] tracking-[0.5px]">
-                        {isLinked ? `Linked images ${files.length}` : 'CHOOSE PICTURE'}
+                        {files.length > 0 ? `Images (${files.length})` : 'CHOOSE PICTURE'}
                     </h2>
 
                     {/* Action Icons Row */}
@@ -239,6 +469,19 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto p-4 pb-24 flex flex-col relative">
+                    {loading && (
+                        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-30">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                                <p className="mt-2 text-sm text-gray-600">Loading...</p>
+                            </div>
+                        </div>
+                    )}
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                            {error}
+                        </div>
+                    )}
 
                     {files.length === 0 ? (
                         /* EMPTY STATE */
@@ -339,18 +582,42 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#F8F9FA] rounded-lg p-2 mb-4 border border-[#E5E7EB] min-h-[300px]">
                                 <div className="grid grid-cols-1 gap-2 h-full">
                                     <div className="h-full bg-white rounded-md shadow-sm border border-gray-200 flex items-center justify-center relative overflow-hidden">
-                                        {currentFile?.file.type.startsWith('image/') ? (
-                                            <img
-                                                src={currentFile.url}
-                                                alt={currentFile.name}
-                                                className="max-w-full max-h-full object-contain"
-                                            />
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                <Image className="w-16 h-16" />
-                                                <span className="text-[13px]">{currentFile?.name}</span>
-                                            </div>
-                                        )}
+                                        {(() => {
+                                            console.log('🖼️ AttachmentSidePanel - Current file for preview:', currentFile);
+                                            if (currentFile) {
+                                                console.log('🖼️ AttachmentSidePanel - Current file URL:', currentFile.url);
+                                                console.log('🖼️ AttachmentSidePanel - Current file name:', currentFile.name);
+                                                console.log('🖼️ AttachmentSidePanel - Current file type check - includes image:', currentFile.url.toLowerCase().includes('image'));
+                                                console.log('🖼️ AttachmentSidePanel - Current file name extension check:', currentFile.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i));
+                                                console.log('🖼️ AttachmentSidePanel - Current file blob check:', currentFile.url.startsWith('blob:'));
+                                                
+                                                return (
+                                                    currentFile.file?.type?.startsWith('image/') ||
+                                                    currentFile.url.toLowerCase().includes('image') || 
+                                                    currentFile.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i) ||
+                                                    currentFile.url.startsWith('blob:') ? (
+                                                        <img
+                                                            src={currentFile.url}
+                                                            alt={currentFile.name}
+                                                            className="max-w-full max-h-full object-contain"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-2 text-gray-400">
+                                                            <Image className="w-16 h-16" />
+                                                            <span className="text-[13px]">{currentFile.name}</span>
+                                                        </div>
+                                                    )
+                                                );
+                                            } else {
+                                                console.log('🖼️ AttachmentSidePanel - No current file to preview');
+                                                return (
+                                                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                                                        <Image className="w-16 h-16" />
+                                                        <span className="text-[13px]">No image selected</span>
+                                                    </div>
+                                                );
+                                            }
+                                        })()}
                                     </div>
                                 </div>
                             </div>
@@ -362,77 +629,82 @@ export const AttachmentSidePanel: React.FC<AttachmentSidePanelProps> = ({ isOpen
                 {/* 7. Bottom Action Buttons (Sticky at bottom of drawer) */}
                 {files.length > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-4 py-4 z-20 flex items-center justify-between shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                        {/* Show Attach to Verification button if verificationId is provided */}
-                        {verificationId && (
-                            <button
-                                onClick={attachToVerification}
-                                className="px-5 py-2 bg-[#4285F4] text-white text-[14px] font-medium rounded-full hover:bg-[#3367D6] transition-colors flex items-center gap-2"
-                            >
-                                <LinkIcon size={16} />
-                                Attach to Verification
-                            </button>
-                        )}
-                        {/* Only show Delete if NOT linked and no verificationId */}
-                        {!isLinked && !verificationId && (
-                            <button
-                                onClick={handleDelete}
-                                className="px-5 py-2 bg-[#BDBDBD] text-white text-[14px] font-medium rounded-full hover:bg-[#A0A0A0] transition-colors"
-                            >
-                                Delete
-                            </button>
-                        )}
-                        {/* Spacer to keep right alignment when no left button */}
-                        {!verificationId && isLinked && <div></div>}
-                        {!verificationId && !isLinked && <div></div>} {/* Spacer when no verificationId and not linked */}
-
+                        {/* Left side buttons */}
                         <div className="flex items-center gap-3">
-                            <div className="relative">
-                                {/* Only show Move if NOT linked and no verificationId */}
-                                {!isLinked && !verificationId && (
-                                    <>
-                                        {isMoveMenuOpen && (
-                                            <div className="absolute bottom-full mb-2 left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-30">
-                                                {moveOptions.map((option) => (
-                                                    <button
-                                                        key={option}
-                                                        onClick={() => setIsMoveMenuOpen(false)}
-                                                        className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
-                                                    >
-                                                        {option}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={toggleMoveMenu}
-                                            className={`flex items-center gap-1.5 px-5 py-2 text-white text-[14px] font-medium rounded-full transition-colors ${isMoveMenuOpen ? 'bg-[#808080]' : 'bg-[#9E9E9E] hover:bg-[#808080]'}`}
-                                        >
-                                            <ArrowUp size={14} />
-                                            Move
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {isLinked && (
+                            {/* Link button - available when verificationId is provided */}
+                            {verificationId && (
+                                <button
+                                    onClick={handleLink}
+                                    disabled={loading}
+                                    className="px-5 py-2 bg-[#0F9D58] text-white text-[14px] font-medium rounded-full hover:bg-[#0B8548] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <LinkIcon size={16} />
+                                    Link
+                                </button>
+                            )}
+                            
+                            {/* Delete button - available when not linked */}
+                            {!isLinked && (
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={loading}
+                                    className="px-5 py-2 bg-[#F44336] text-white text-[14px] font-medium rounded-full hover:bg-[#D32F2F] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Trash2 size={16} />
+                                    Delete
+                                </button>
+                            )}
+                            
+                            {/* Move button */}
+                            {!isLinked && (
+                                <div className="relative">
+                                    {isMoveMenuOpen && (
+                                        <div className="absolute bottom-full mb-2 left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-30">
+                                            {moveOptions.map((option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => setIsMoveMenuOpen(false)}
+                                                    className="w-full text-left px-4 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                     <button
-                                        onClick={handleCancelLink}
-                                        className="text-[#5F6368] text-[13px] font-medium hover:text-[#202124] transition-colors"
+                                        onClick={toggleMoveMenu}
+                                        disabled={loading}
+                                        className={`flex items-center gap-1.5 px-5 py-2 text-white text-[14px] font-medium rounded-full transition-colors ${isMoveMenuOpen ? 'bg-[#808080]' : 'bg-[#9E9E9E] hover:bg-[#808080]'} disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
-                                        Cancel
+                                        <ArrowUp size={14} />
+                                        Move
                                     </button>
-                                )}
-                                {/* Only show Link button if no verificationId */}
-                                {!verificationId && (
-                                    <button
-                                        onClick={handleLink}
-                                        className="px-6 py-2 bg-[#0F9D58] text-white text-[14px] font-semibold rounded-full hover:bg-[#0B8548] transition-colors shadow-sm"
-                                    >
-                                        {isLinked ? 'Linked' : 'Link'}
-                                    </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Right side buttons */}
+                        <div className="flex items-center gap-3">
+                            {isLinked && (
+                                <button
+                                    onClick={handleCancelLink}
+                                    className="text-[#5F6368] text-[13px] font-medium hover:text-[#202124] transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            )}
+                            
+                            {/* Attach to Verification button - when verificationId is provided */}
+                            {verificationId && (
+                                <button
+                                    onClick={attachToVerification}
+                                    disabled={loading}
+                                    className="px-5 py-2 bg-[#4285F4] text-white text-[14px] font-medium rounded-full hover:bg-[#3367D6] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <LinkIcon size={16} />
+                                    Attach to Verification
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

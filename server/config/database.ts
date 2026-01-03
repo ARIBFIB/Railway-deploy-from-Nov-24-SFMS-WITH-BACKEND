@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import Environment from './environment';
 
-dotenv.config();
+const env = Environment.load();
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = env.supabaseUrl;
+const supabaseServiceKey = env.supabaseServiceKey;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase configuration. Please check your environment variables.');
@@ -22,7 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 // Create client for user operations (with anon key)
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = env.supabaseAnonKey;
 if (!supabaseAnonKey) {
   throw new Error('Missing Supabase anon key. Please check your environment variables.');
 }

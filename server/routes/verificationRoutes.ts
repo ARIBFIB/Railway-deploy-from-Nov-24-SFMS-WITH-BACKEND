@@ -32,6 +32,11 @@ router.post('/upload-image', upload.single('image'), VerificationController.uplo
 // Attach image to existing verification
 router.post('/:id/attach-image', upload.single('image'), VerificationController.attachImageToVerification);
 
+// Persistent image gallery routes
+router.get('/gallery/unlinked', VerificationController.getUnlinkedImages);
+router.post('/gallery/:imageId/link', VerificationController.linkImageToVerification);
+router.delete('/gallery/:imageId', VerificationController.deleteUnlinkedImage);
+
 // Bulk operations
 router.patch('/bulk/status', VerificationController.bulkUpdateStatus);
 router.delete('/bulk', VerificationController.bulkDelete);
@@ -42,7 +47,9 @@ router.get('/', VerificationController.getVerifications);
 router.get('/next-number', VerificationController.getNextVerificationNumber);
 router.get('/descriptions', VerificationController.getUniqueDescriptions);
 router.get('/search-entries', VerificationController.searchEntries);
+router.get('/unique-series', VerificationController.getUniqueVerificationSeries);
 router.get('/:id', VerificationController.getVerificationById);
+router.get('/:id/images', VerificationController.getVerificationImages);
 router.put('/:id', VerificationController.updateVerification);
 router.delete('/:id', VerificationController.deleteVerification);
 

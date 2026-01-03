@@ -145,20 +145,47 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
           console.error('Failed to load descriptions:', descErr);
         }
 
-        // Load verification series from settings (only selected ones)
+        // Load unique verification series from existing verifications
         try {
-          const selectedSeries = await verificationSeriesService.getSelectedSeries('accounting');
-          setVerificationSeries(selectedSeries);
+          const response = await VerificationService.getUniqueVerificationSeries();
+          if (response.success && response.data) {
+            // Convert the string array to VerificationSeriesItem format
+            const uniqueSeries = response.data.map((seriesCode, index) => ({
+              id: `series-${index}`,
+              code: seriesCode,
+              name: seriesCode.split(' - ')[1] || seriesCode,
+              manualAccounting: true,
+              position: index
+            }));
+            
+            // If there are no unique series from verifications, fallback to selected series from settings
+            if (uniqueSeries.length === 0) {
+              const selectedSeries = await verificationSeriesService.getSelectedSeries('accounting');
+              setVerificationSeries(selectedSeries);
+            } else {
+              setVerificationSeries(uniqueSeries);
+            }
+          } else {
+            // Fallback to selected series from settings if API fails
+            const selectedSeries = await verificationSeriesService.getSelectedSeries('accounting');
+            setVerificationSeries(selectedSeries);
+          }
         } catch (seriesErr) {
-          console.error('Failed to load verification series:', seriesErr);
-          // Fallback to default series if API fails
-          setVerificationSeries([
-            { id: '1', code: 'A - Accounting', name: 'Accounting', manualAccounting: true, position: 0 },
-            { id: '2', code: 'C - Cash', name: 'Cash', manualAccounting: true, position: 1 },
-            { id: '3', code: 'F - Finance', name: 'Finance', manualAccounting: true, position: 2 },
-            { id: '4', code: 'G - General', name: 'General', manualAccounting: true, position: 3 },
-            { id: '5', code: 'K - Kreditor', name: 'Kreditor', manualAccounting: true, position: 4 }
-          ]);
+          console.error('Failed to load unique verification series, falling back to selected series:', seriesErr);
+          try {
+            const selectedSeries = await verificationSeriesService.getSelectedSeries('accounting');
+            setVerificationSeries(selectedSeries);
+          } catch (fallbackErr) {
+            console.error('Failed to load selected series as fallback:', fallbackErr);
+            // Fallback to default series if API fails
+            setVerificationSeries([
+              { id: '1', code: 'A - Accounting', name: 'Accounting', manualAccounting: true, position: 0 },
+              { id: '2', code: 'C - Cash', name: 'Cash', manualAccounting: true, position: 1 },
+              { id: '3', code: 'F - Finance', name: 'Finance', manualAccounting: true, position: 2 },
+              { id: '4', code: 'G - General', name: 'General', manualAccounting: true, position: 3 },
+              { id: '5', code: 'K - Kreditor', name: 'Kreditor', manualAccounting: true, position: 4 }
+            ]);
+          }
         }
 
         // Load accounting templates
@@ -1440,7 +1467,61 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
               </div>
             </div>
 
-            {/* Linked Images Section (Replaces Old Upload) */}
+            {/* Image Upload Section */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Attach Images (Optional)</h3>
+              <div className="flex items-center gap-4 mb-4">
+                <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 text-gray-400" />
+                    <p className="text-xs text-gray-500 mt-2">Click to upload</p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-sm text-gray-600">
+                  {selectedImages.length} image(s) selected
+                </span>
+              </div>
+              
+              {selectedImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {selectedImages.map((image, index) => {
+                    const imageUrl = URL.createObjectURL(image);
+                    return (
+                      <div key={index} className="relative">
+                        <div className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                          <img 
+                            src={imageUrl} 
+                            alt={image.name}
+                            className="object-cover w-full h-full"
+                            onLoad={() => URL.revokeObjectURL(imageUrl)} // Clean up the object URL after loading
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            URL.revokeObjectURL(imageUrl); // Clean up the object URL when removing
+                            setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                        <p className="text-xs text-gray-600 mt-1 truncate">{image.name}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Linked Images Section */}
             {linkedFiles.length > 0 && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Linked Images</h3>
