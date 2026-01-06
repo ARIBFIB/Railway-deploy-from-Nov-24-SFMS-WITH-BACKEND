@@ -1,11 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Search, Send, Eye, Edit, Download, CheckCircle, Clock, AlertCircle, Filter, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Filter, Loader2, RefreshCw, Plus, Send, Eye, Edit, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Card } from '../Card';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
 import { ListManager } from '../ListManager';
 // import { InvoiceService, type Invoice, type CreateInvoiceData } from '../../services/invoiceService'; // Commented out for demo mode
+import { InvoicingList } from './InvoicingList';
+import { PaymentsIn } from './PaymentsIn';
+import { RemindersList } from './RemindersList';
+import { RecurrentList } from './RecurrentList';
+import { InvoiceServicesList } from './InvoiceServicesList';
+import { CustomerInvoiceForm } from './CustomerInvoiceForm';
 
 // Define Invoice type for demo
 interface Invoice {
@@ -262,254 +268,322 @@ export const InvoicingModule: React.FC = () => {
     setShowCreateModal(false);
   };
 
+  // New state for customer invoices view
+  const [activeTab, setActiveTab] = useState('customer invoices');
+  const [customerStatusFilter, setCustomerStatusFilter] = useState('all');
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+
+  // For customer invoices, we'll only show sales invoices
+  const customerInvoices = invoices.filter(invoice => invoice.invoice_type === 'sales');
+  const filteredCustomerInvoices = customerInvoices.filter(invoice => {
+    const matchesSearch = invoice.invoice_number.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+      invoice.customer_supplier_name.toLowerCase().includes(customerSearchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  // Calculate customer invoice totals
+  const customerInvoiceTotals = {
+    totalSEK: filteredCustomerInvoices.reduce((sum, inv) => sum + inv.total_amount, 0),
+    notPosted: filteredCustomerInvoices.filter(inv => inv.status === 'draft').length,
+    unpaid: filteredCustomerInvoices.filter(inv => inv.status === 'sent').length,
+    unpaidDue: filteredCustomerInvoices.filter(inv => {
+      const dueDate = new Date(inv.due_date);
+      const today = new Date();
+      return inv.status === 'sent' && dueDate < today;
+    }).length,
+    paidInFull: filteredCustomerInvoices.filter(inv => inv.status === 'paid').length,
+    voided: 0, // Assuming no voided invoices in demo data
+    failed: 0  // Assuming no failed invoices in demo data
+  };
+
+  // New state for payments in view
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [paidAmount, setPaidAmount] = useState('');
+  const [addedPayments, setAddedPayments] = useState<any[]>([]);
+  const [selectedPaymentCount, setSelectedPaymentCount] = useState(0);
+  const [totalPaymentAmount, setTotalPaymentAmount] = useState(0);
+  const [paymentInvoice, setPaymentInvoice] = useState<any>(null);
+
+  // Function to add a payment
+  const addPayment = () => {
+    if (!paymentInvoice || !paidAmount) {
+      return; // Don't add if no invoice or amount specified
+    }
+    
+    const newPayment = {
+      id: `payment-${Date.now()}`,
+      payment_date: paymentDate,
+      invoice_number: paymentInvoice.invoice_number,
+      customer_name: paymentInvoice.customer_supplier_name,
+      amount: parseFloat(paidAmount),
+      currency: paymentInvoice.currency,
+      status: 'pending'
+    };
+    
+    setAddedPayments([...addedPayments, newPayment]);
+    
+    // Update total
+    setTotalPaymentAmount(totalPaymentAmount + parseFloat(paidAmount));
+    
+    // Clear form
+    setInvoiceSearch('');
+    setPaidAmount('');
+    setPaymentInvoice(null);
+  };
+
+  // Function to clear the payment form
+  const clearPaymentForm = () => {
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setInvoiceSearch('');
+    setPaidAmount('');
+    setPaymentInvoice(null);
+  };
+
+  // Function to search for an invoice
+  const searchInvoice = () => {
+    // Find invoice by number or customer name
+    const foundInvoice = invoices.find(inv => 
+      inv.invoice_number.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+      inv.customer_supplier_name.toLowerCase().includes(invoiceSearch.toLowerCase())
+    );
+    
+    if (foundInvoice) {
+      setPaymentInvoice(foundInvoice);
+      setPaidAmount(foundInvoice.total_amount.toString());
+    }
+  };
+
+  // Function to remove a payment
+  const removePayment = (id: string) => {
+    const paymentToRemove = addedPayments.find(p => p.id === id);
+    if (paymentToRemove) {
+      setAddedPayments(addedPayments.filter(p => p.id !== id));
+      setTotalPaymentAmount(totalPaymentAmount - paymentToRemove.amount);
+    }
+  };
+
+  // Function to post payments
+  const postPayments = () => {
+    // In demo mode, we'll just show a success message
+    alert('Payments posted successfully!');
+    
+    // Clear added payments
+    setAddedPayments([]);
+    setTotalPaymentAmount(0);
+  };
+
+  // Update selected payment count when payments are selected/unselected
+  const handlePaymentSelection = (id: string) => {
+    const payment = addedPayments.find(p => p.id === id);
+    if (payment) {
+      if (payment.selected) {
+        setSelectedPaymentCount(selectedPaymentCount - 1);
+      } else {
+        setSelectedPaymentCount(selectedPaymentCount + 1);
+      }
+      
+      // Update the payment selection status
+      setAddedPayments(addedPayments.map(p => 
+        p.id === id ? { ...p, selected: !p.selected } : p
+      ));
+    }
+  };
+
+  // Function to unmark all payments
+  const unmarkAllPayments = () => {
+    setAddedPayments(addedPayments.map(p => ({ ...p, selected: false })));
+    setSelectedPaymentCount(0);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Invoicing</h2>
-          <p className="text-gray-600 mt-1">Create and manage sales and purchase invoices.</p>
+      {/* Top Navigation Bar */}
+      <div className="flex items-center justify-between border-b border-[#E0E0E0] bg-white px-4 py-2 h-14">
+        <div className="flex items-center space-x-6">
+          <button 
+            onClick={() => {
+              setActiveTab('customer invoices');
+              setShowCreateModal(false);
+            }} 
+            className={`text-sm font-medium ${activeTab === 'customer invoices' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
+          >
+            Customer invoices
+          </button>
+          <button 
+            onClick={() => setActiveTab('payments in')} 
+            className={`text-sm font-medium ${activeTab === 'payments in' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
+          >
+            Payments in
+          </button>
+          <button 
+            onClick={() => setActiveTab('reminders')} 
+            className={`text-sm font-medium ${activeTab === 'reminders' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
+          >
+            Reminders
+          </button>
+          <button 
+            onClick={() => setActiveTab('recurrent')} 
+            className={`text-sm font-medium ${activeTab === 'recurrent' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
+          >
+            Recurrent
+          </button>
+          <button 
+            onClick={() => setActiveTab('invoice-services')} 
+            className={`text-sm font-medium ${activeTab === 'invoice-services' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
+          >
+            Invoice services
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={fetchInvoices} icon={RefreshCw}>
-            Refresh List
-          </Button>
-          <Button icon={Plus} onClick={() => setShowCreateModal(true)}>
-            Create Invoice
-          </Button>
+        <div className="flex items-center space-x-4">
+          <button className="text-sm font-medium text-[#202124]">Reports</button>
+          <button className="text-sm font-medium text-[#202124]">Register ▼</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Send className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Outstanding</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {totalOutstanding.toLocaleString('sv-SE')} SEK
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Paid</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {totalPaid.toLocaleString('sv-SE')} SEK
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Overdue</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredInvoices.filter(inv => inv.status === 'overdue').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Draft</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {filteredInvoices.filter(inv => inv.status === 'draft').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Search invoices..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full"
+      {/* Customer Invoices Tab */}
+      {activeTab === 'customer invoices' && (
+        <>
+          {showCreateModal ? (
+            <CustomerInvoiceForm 
+              onCancel={() => {
+                setShowCreateModal(false);
+                fetchInvoices();
+              }} 
+              onSave={(invoiceData: any) => {
+                handleCreateSuccess();
+                setShowCreateModal(false);
+              }} 
             />
-          </div>
-          <div className="relative" ref={filterMenuRef}>
-            <button
-              onClick={toggleFilterMenu}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 focus:outline-none px-3 py-2 rounded-lg hover:bg-gray-100"
-            >
-              <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Filter</span>
-            </button>
-            {isFilterMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                <div className="py-2">
-                  <div className="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200">
-                    Invoice Type
-                  </div>
-                  {[
-                    { value: 'all', label: 'All Types' },
-                    { value: 'sales', label: 'Sales Invoices' },
-                    { value: 'purchase', label: 'Purchase Invoices' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleTypeFilterChange(option.value)}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${typeFilter === option.value ? 'bg-gray-100 font-medium' : ''
-                        }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                  <div className="px-4 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200 mt-2">
-                    Status
-                  </div>
-                  {[
-                    { value: 'all', label: 'All Status' },
-                    { value: 'draft', label: 'Draft' },
-                    { value: 'sent', label: 'Sent' },
-                    { value: 'paid', label: 'Paid' },
-                    { value: 'overdue', label: 'Overdue' },
-                    { value: 'cancelled', label: 'Cancelled' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleStatusFilterChange(option.value)}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${statusFilter === option.value ? 'bg-gray-100 font-medium' : ''
-                        }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
+          ) : (
+            <InvoicingList
+              invoices={invoices}
+              loading={loading}
+              error={error}
+              fetchInvoices={fetchInvoices}
+              searchTerm={customerSearchTerm}
+              setSearchTerm={setCustomerSearchTerm}
+              statusFilter={customerStatusFilter}
+              setStatusFilter={setCustomerStatusFilter}
+              showCreateModal={showCreateModal}
+              setShowCreateModal={setShowCreateModal}
+              selectedInvoice={selectedInvoice}
+              setSelectedInvoice={setSelectedInvoice}
+              getStatusIcon={getStatusIcon}
+              getStatusColor={getStatusColor}
+              totalOutstanding={totalOutstanding}
+              totalPaid={totalPaid}
+              handleCreateSuccess={handleCreateSuccess}
+              showListUI={true}
+            />
+          )}
+        </>
+      )}
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
-      ) : error ? (
-        <div className="text-center py-12 text-red-500">
-          {error}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {filteredInvoices.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
-              No invoices found matching your criteria.
-            </div>
-          ) : (filteredInvoices.map((invoice) => (
-            <Card key={invoice.id}>
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-4">
-                  {getStatusIcon(invoice.status)}
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</h3>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${invoice.invoice_type.toLowerCase() === 'sales' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                        {invoice.invoice_type.charAt(0).toUpperCase() + invoice.invoice_type.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{invoice.customer_supplier_name}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
-                      <div>
-                        <span className="font-medium">Invoice Date:</span>
-                        <br />
-                        {new Date(invoice.invoice_date).toLocaleDateString()}
-                      </div>
-                      <div>
-                        <span className="font-medium">Due Date:</span>
-                        <br />
-                        {new Date(invoice.due_date).toLocaleDateString()}
-                      </div>
-                      <div>
-                        <span className="font-medium">Payment Terms:</span>
-                        <br />
-                        {invoice.payment_terms}
-                      </div>
-                      <div>
-                        <span className="font-medium">Total Amount:</span>
-                        <br />
-                        <span className="text-lg font-semibold text-gray-900">
-                          {invoice.total_amount.toLocaleString('sv-SE')} {invoice.currency}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      {/* Payments In Tab */}
+      {activeTab === 'payments in' && (
+        <PaymentsIn invoices={invoices} />
+      )}
+
+      {/* Sticky Bottom Action Bar */}
+      {activeTab === 'payments in' && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] h-16 flex items-center px-4">
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={unmarkAllPayments}
+              disabled={selectedPaymentCount === 0}
+              className={`rounded-full px-4 py-2 text-sm ${selectedPaymentCount === 0 ? 'bg-[#E0E0E0] opacity-60' : 'bg-[#E0E0E0] hover:bg-[#D0D0D0]'}`}
+            >
+              Unmark All
+            </button>
+            <span className="text-sm text-[#5F6368]">({selectedPaymentCount} selected)</span>
+          </div>
+          
+          <div className="ml-auto flex items-center space-x-6">
+            <span className="text-base font-semibold text-[#5F6368]">Total SEK: {totalPaymentAmount.toLocaleString('sv-SE')}</span>
             
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
-                    {invoice.status}
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={Eye}
-                      onClick={() => setSelectedInvoice(invoice)}
-                    >
-                      View
-                    </Button>
-                    {/*
-                    // TODO: Implement Edit
-                    <Button variant="ghost" size="sm" icon={Edit}>
-                      Edit
-                    </Button>
-                  */}
-                    <Button variant="ghost" size="sm" icon={Download}>
-                      PDF
-                    </Button>
-                    {invoice.status === 'draft' && (
-                      <Button variant="ghost" size="sm" icon={Send}>
-                        Send
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )))}
+            <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
+              <option>Bankgiro (1930)</option>
+              <option>Plusgiro (1234)</option>
+            </select>
+            
+            <button 
+              onClick={postPayments}
+              className="bg-[#A5D6B2] hover:bg-[#0F9D58] text-white font-semibold rounded-full px-6 py-2.5 text-sm"
+            >
+              Post
+            </button>
+          </div>
         </div>
       )}
 
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create Invoice"
-        size="lg"
-      >
-        <InvoiceForm onSuccess={handleCreateSuccess} onClose={() => setShowCreateModal(false)} />
-      </Modal>
+      {/* Reminders Tab */}
+      {activeTab === 'reminders' && (
+        <RemindersList />
+      )}
+
+      {/* Recurrent Tab */}
+      {activeTab === 'recurrent' && (
+        <RecurrentList />
+      )}
+
+      {/* Invoice Services Tab */}
+      {activeTab === 'invoice-services' && (
+        <InvoiceServicesList />
+      )}
+
+      {/* Sticky Bottom Action Bar */}
+      {activeTab === 'reminders' && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] h-18 flex items-center px-4">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-[#5F6368]">(0 selected)</span>
+            
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-[#5F6368]">Change reminder date to</label>
+              <input
+                type="date"
+                className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-[#5F6368]">Printout template</label>
+              <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
+                <option>Påminnelse</option>
+                <option>Reminder</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-[#5F6368]">Language</label>
+              <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
+                <option>Swedish</option>
+                <option>English</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-[#5F6368]">Distribution method</label>
+              <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
+                <option>Default</option>
+                <option>Email</option>
+                <option>Post</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="ml-auto flex items-center space-x-3">
+            <button className="bg-[#9E9E9E] text-white font-semibold rounded-full px-5 py-2.5 text-sm">
+              Preview
+            </button>
+            <button className="bg-[#9FD3B5] hover:bg-[#0F9D58] text-white font-semibold rounded-full px-5 py-2.5 text-sm">
+              Send
+            </button>
+          </div>
+        </div>
+      )}
+
+
 
       <Modal
         isOpen={!!selectedInvoice}
@@ -523,211 +597,7 @@ export const InvoicingModule: React.FC = () => {
   );
 };
 
-const InvoiceForm: React.FC<{ onSuccess: () => void; onClose: () => void }> = ({ onSuccess, onClose }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    invoice_type: 'sales',
-    customer_supplier_name: '',
-    // TODO: Add customer_id selection logic (e.g., search/dropdown)
-    invoice_date: new Date().toISOString().split('T')[0],
-    due_date: '',
-    payment_terms: 'Net 30',
-    line_items: [
-      { description: '', quantity: 1, unit_price: 0, tax_rate: 25 }
-    ]
-  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      // Load existing invoices from localStorage
-      const storedInvoices = localStorage.getItem('demoInvoices');
-      const existingInvoices: Invoice[] = storedInvoices ? JSON.parse(storedInvoices) : [];
-      
-      // Calculate subtotal, tax, and total
-      const subtotal = formData.line_items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const taxAmount = subtotal * 0.25; // Assuming 25% tax
-      const totalAmount = subtotal + taxAmount;
-      
-      // Create new invoice object
-      const newInvoice: Invoice = {
-        id: `inv-${Date.now()}`,
-        invoice_number: `INV-${existingInvoices.length + 1}`.padStart(3, '0'),
-        customer_supplier_name: formData.customer_supplier_name,
-        invoice_type: formData.invoice_type as 'sales' | 'purchase',
-        invoice_date: formData.invoice_date,
-        due_date: formData.due_date,
-        payment_terms: formData.payment_terms,
-        status: 'draft',
-        subtotal,
-        tax_amount: taxAmount,
-        total_amount: totalAmount,
-        currency: 'SEK',
-        line_items: formData.line_items.map((item, index) => ({
-          id: `${Date.now()}-${index}`,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          line_total: item.quantity * item.unit_price
-        }))
-      };
-      
-      // Add new invoice to existing invoices
-      const updatedInvoices = [...existingInvoices, newInvoice];
-      
-      // Save back to localStorage
-      localStorage.setItem('demoInvoices', JSON.stringify(updatedInvoices));
-      
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create invoice');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addLineItem = () => {
-    setFormData(prev => ({
-      ...prev,
-      line_items: [...prev.line_items, { description: '', quantity: 1, unit_price: 0, tax_rate: 25 }]
-    }));
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Type *</label>
-          <select
-            value={formData.invoice_type}
-            onChange={(e) => setFormData(prev => ({ ...prev, invoice_type: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            required
-          >
-            <option value="sales">Sales</option>
-            <option value="purchase">Purchase</option>
-          </select>
-        </div>
-        <Input
-          label={formData.invoice_type.toLowerCase().includes('purchase') ? 'Supplier Name' : 'Customer Name'}
-          value={formData.customer_supplier_name}
-          onChange={(e) => setFormData(prev => ({ ...prev, customer_supplier_name: e.target.value }))}
-          placeholder="Enter name"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Input
-          label="Invoice Date"
-          type="date"
-          value={formData.invoice_date}
-          onChange={(e) => {
-            const date = e.target.value;
-            // Calculate default due date (30 days)
-            const dueDate = new Date(new Date(date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            setFormData(prev => ({ ...prev, invoice_date: date, due_date: dueDate }));
-          }}
-          required
-        />
-        <Input
-          label="Due Date"
-          type="date"
-          value={formData.due_date}
-          onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-          required
-        />
-        <Input
-          label="Payment Terms"
-          value={formData.payment_terms}
-          onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-          placeholder="e.g., Net 30"
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <label className="block text-sm font-medium text-gray-700">
-            Line Items
-          </label>
-          <Button type="button" size="sm" onClick={addLineItem}>
-            Add Line
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {formData.line_items.map((line, index) => (
-            <div key={index} className="grid grid-cols-12 gap-3 p-3 border rounded-lg">
-              <input
-                placeholder="Description"
-                className="col-span-12 md:col-span-5 px-3 py-2 border rounded-lg text-sm"
-                value={line.description}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].description = e.target.value;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                type="number"
-                placeholder="Qty"
-                className="col-span-3 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
-                value={line.quantity}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].quantity = parseInt(e.target.value) || 1;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                type="number"
-                placeholder="Price"
-                className="col-span-4 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
-                value={line.unit_price}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].unit_price = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <input
-                type="number"
-                placeholder="VAT %"
-                className="col-span-3 md:col-span-2 px-3 py-2 border rounded-lg text-sm"
-                value={line.tax_rate}
-                onChange={(e) => {
-                  const newLines = [...formData.line_items];
-                  newLines[index].tax_rate = parseFloat(e.target.value) || 0;
-                  setFormData(prev => ({ ...prev, line_items: newLines }));
-                }}
-              />
-              <div className="col-span-2 md:col-span-1 flex items-center justify-center">
-                {/* Trash icon can go here */}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Invoice'}
-        </Button>
-      </div>
-    </form>
-  );
-};
 
 const InvoiceDetails: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
   return (
