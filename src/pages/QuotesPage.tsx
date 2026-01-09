@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import loadingGif from "../assets/loading/200.gif";
+
 import { 
   Search, 
   Plus, 
@@ -11,7 +13,8 @@ import {
   ShieldCheck,
   Lock,
   MessageCircle,
-  ArrowRight
+  ArrowRight,
+  AlignJustify,
 } from 'lucide-react';
 
 const QuotesPage: React.FC = () => {
@@ -25,6 +28,11 @@ const QuotesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateQuoteForm, setShowCreateQuoteForm] = useState(false);
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [selectAll, setSelectAll] = useState<boolean>(false);
+  const [activeColumn, setActiveColumn] = useState<number | string | null>(null);
+  const [loadingColumn, setLoadingColumn] = useState<number | string | null>(null);
+
   
   // State for Create Quote form
   const [customer, setCustomer] = useState('');
@@ -73,6 +81,26 @@ const QuotesPage: React.FC = () => {
   
   // Validation state
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const handleColumnClick = (index: number | string) => {
+  setLoadingColumn(index);
+  setActiveColumn(null);
+
+  setTimeout(() => {
+    setLoadingColumn(null);
+    setActiveColumn(index);
+  }, 500);
+};
+
+
+const toggleRow = (rowId: number) => {
+  setSelectedRows((prev: number[]) =>
+    prev.includes(rowId)
+      ? prev.filter((r) => r !== rowId)
+      : [...prev, rowId]
+  );
+};
+
   
   // Validation function
   const validateForm = () => {
@@ -231,8 +259,12 @@ const QuotesPage: React.FC = () => {
         {isCreatingQuote && !showCreateQuoteForm ? (
           // Loading state during transition
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="w-10 h-10 border-4 border-[#E0E0E0] border-t-[#6FCF97] rounded-full animate-spin"></div>
-            <p className="mt-4 text-[#BDBDBD]">Loading new quote form...</p>
+            <img
+              src={loadingGif}
+              alt="loading"
+              className="w-10 h-10"
+            />
+            {/* <p className="mt-4 text-[#BDBDBD]">Loading new quote form...</p> */}
           </div>
         ) : showCreateQuoteForm ? (
           // Create Quote Form View
@@ -250,14 +282,26 @@ const QuotesPage: React.FC = () => {
                   </span>
                 </button>
                 <button 
-                  className="bg-[#FFC107] hover:bg-[#e6b800] text-white font-bold rounded-full h-9 px-4 text-sm"
-                  onClick={() => {
+                  className="bg-[#FFC107] hover:bg-[#E6B800] text-[#111827] font-bold rounded-full h-9 px-4 text-sm"
+                  onClick={async () => {
+                    setIsLoading(true);
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     setShowCreateQuoteForm(false);
                     setIsCreatingQuote(false);
-                  }}>
+                    setIsLoading(false);
+                  }}
+                >
                   <span className="flex items-center">
-                    <ChevronDown size={16} className="mr-2" />
-                    Show list
+                    {isLoading ? (
+                      <img
+                        src={loadingGif}
+                        alt="loading"
+                        className="w-4 h-4 mr-2"
+                      />
+                    ) : (
+                      <AlignJustify size={16} className="mr-2 text-[#111827]" />
+                    )}
+                    {isLoading ? 'Loading...' : 'Show list'}
                   </span>
                 </button>
               </div>
@@ -606,7 +650,7 @@ const QuotesPage: React.FC = () => {
             {/* Line Items Table */}
             <div className="mt-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-[#333333]">LINE ITEMS</h3>
+                {/* <h3 className="text-lg font-bold text-[#333333]">LINE ITEMS</h3> */}
               </div>
               
               <div className="border border-[#DCDCDC] rounded-lg overflow-hidden min-h-[180px] bg-white">
@@ -625,8 +669,8 @@ const QuotesPage: React.FC = () => {
                       <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]">CC</th>
                       <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]">PR</th>
                       <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]">CMR %</th>
-                      <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]">Delete</th>
-                      <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]">Drag</th>
+                      <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]"></th>
+                      <th className="h-8 px-2 py-1 text-[11px] font-semibold text-[#2E2E2E] uppercase tracking-[0.5px] text-center border-b border-[#DADADA]"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -953,8 +997,16 @@ const QuotesPage: React.FC = () => {
                   setShowCreateQuoteForm(true);
                   setIsLoading(false);
                 }}>
-                  <Plus size={16} className="mr-2" />
-                  Create quote
+                  {isLoading ? (
+                    <img
+                      src={loadingGif}
+                      alt="loading"
+                      className="w-4 h-4 mr-2"
+                    />
+                  ) : (
+                    <Plus size={16} className="mr-2" />
+                  )}
+                  {isLoading ? 'Loading...' : 'Create quote'}
                 </button>
                 <button className="text-sm text-[#4A4A4A] hover:text-[#000000] flex items-center">
                   <Printer size={18} className="mr-1" />
@@ -1065,112 +1117,59 @@ const QuotesPage: React.FC = () => {
                   
                   {/* Quote Details Section */}
                   <div className="col-span-4">
-                    <div className="flex items-center justify-between mb-4 cursor-pointer" onClick={() => setQuoteDetailsExpanded(!quoteDetailsExpanded)}>
-                      <h3 className="text-base font-semibold text-[#1F1F1F] flex items-center">
-                        {quoteDetailsExpanded ? <ChevronDown size={16} className="text-[#2E7D32] mr-2" /> : <ChevronRight size={16} className="text-[#2E7D32] mr-2" />}
-                        Quote details
-                      </h3>
-                    </div>
-                    
-                    {quoteDetailsExpanded && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Our reference</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Comment</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Labels</label>
-                          <select 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] appearance-none bg-white relative"
-                          >
-                            <option value="">Select</option>
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Date (Quote date)</label>
-                          <select 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] appearance-none bg-white relative"
-                          >
-                            <option value="">Select</option>
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Your reference</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Your reference number</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Currency</label>
-                          <select 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] appearance-none bg-white relative"
-                          >
-                            <option value="">Select</option>
-                          </select>
-                        </div>
-                        
-                        <div className="flex flex-col">
-                          <label className="block text-xs font-medium text-[#424242] mb-1">From / To date</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="date" 
-                              className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            />
-                            <input 
-                              type="date" 
-                              className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="lg:col-span-2">
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Delivery address</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                        
-                        <div className="lg:col-span-2">
-                          <label className="block text-xs font-medium text-[#424242] mb-1">Delivery address 2</label>
-                          <input 
-                            type="text" 
-                            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 py-2 text-sm text-[#212121] placeholder-[#9E9E9E] focus:outline-none focus:border-[#1976D2] focus:ring-1 focus:ring-[#1976D2]/15" 
-                            placeholder=""
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+
+  {/* Header */}
+  <button
+    type="button"
+    onClick={() => setQuoteDetailsExpanded(prev => !prev)}
+    className="w-full flex items-center justify-between mb-4 cursor-pointer focus:outline-none"
+  >
+    <h3 className="flex items-center text-base font-semibold text-[#1F1F1F]">
+
+      {/* Angle / Chevron Icon */}
+      <ChevronRight
+        size={16}
+        className={`
+          mr-2 text-[#2E7D32]
+          transition-transform duration-200 ease-in-out
+          ${quoteDetailsExpanded ? "rotate-90" : "rotate-0"}
+        `}
+      />
+
+      Quote details
+    </h3>
+  </button>
+
+  {/* Expand / Collapse Content */}
+  <div
+    className={`
+      grid overflow-hidden transition-all duration-300 ease-in-out
+      ${quoteDetailsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}
+    `}
+  >
+    <div className="min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+
+        {/* Example Field */}
+        <div>
+          <label className="block text-xs font-medium text-[#424242] mb-1">
+            Our reference
+          </label>
+          <input
+            type="text"
+            className="w-full h-9 border border-[#CFCFCF] rounded px-2.5 text-sm
+                       focus:outline-none focus:border-[#1976D2]
+                       focus:ring-1 focus:ring-[#1976D2]/15"
+          />
+        </div>
+
+        {/* (rest of your inputs stay unchanged) */}
+
+      </div>
+    </div>
+  </div>
+</div>
+
                   
                   {/* Quote Content Section */}
                   <div className="col-span-4">
@@ -1340,74 +1339,156 @@ const QuotesPage: React.FC = () => {
             </div>
 
             {/* Quotes Table */}
-            <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden">
+            <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden relative">
+              {loadingColumn !== null && (
+                <div className="absolute inset-0 bg-black bg-opacity-10 flex items-center justify-center z-10">
+                  <img
+                    src={loadingGif}
+                    alt="loading"
+                    className="w-8 h-8"
+                  />
+                </div>
+              )}
               <div className="overflow-x-auto">
-                <table className="min-w-full">
+                <table className="min-w-full border-collapse">
+
+                  {/* ================= TABLE HEADER ================= */}
                   <thead className="bg-[#FAFAFA]">
                     <tr>
-                      <th className="h-11 w-12 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider"></th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Quote No.</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Customer No.</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Name</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Quote Date</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Valid To</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Status</th>
-                      <th className="h-11 px-6 border-b-[2px] border-[#BDBDBD] text-left text-xs font-bold text-[#333333] uppercase tracking-wider">Amount</th>
+
+                      {/* MASTER CHECKBOX */}
+                      <th
+                        onClick={() => handleColumnClick('select')}
+                        className={`h-11 w-12 border-b-2 border-[#BDBDBD] text-center cursor-pointer select-none relative ${
+                          activeColumn === 'select' ? 'bg-[#B8B8B8]' : 'bg-[#FAFAFA]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          {loadingColumn === 'select' ? (
+                            <img
+                              src={loadingGif}
+                              alt="loading"
+                              className="w-4 h-4"
+                            />
+                          ) : null}
+                          <input
+                            type="checkbox"
+                            checked={selectAll}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectAll(checked);
+                              setSelectedRows(checked ? [1, 2, 3] : []);
+                            }}
+                            className="w-4 h-4"
+                          />
+                        </div>
+                      </th>
+
+                      {[
+                        "Quote No.",
+                        "Customer No.",
+                        "Name",
+                        "Quote Date",
+                        "Valid To",
+                        "Total",
+                        "Quote value",
+                        "Currency",
+                      ].map((col, index) => (
+                        <th
+                          key={col}
+                          onClick={() => handleColumnClick(index)}
+                          className={`h-11 px-6 border-b-2 border-[#BDBDBD]
+                            text-left text-xs font-bold uppercase tracking-wider
+                            cursor-pointer select-none relative
+                            ${activeColumn === index ? "bg-[#B8B8B8]" : "bg-[#FAFAFA]"}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {loadingColumn === index ? (
+                              <img
+                                src={loadingGif}
+                                alt="loading"
+                                className="w-4 h-4"
+                              />
+                            ) : null}
+                            <span>{col}</span>
+                          </div>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
+
+                  {/* ================= TABLE BODY ================= */}
                   <tbody>
-                    <tr className="border-b border-[#E0E0E0] hover:bg-[#F5F5F5]">
-                      <td className="h-14 px-4">
-                        <div className="flex items-center">
-                          <input type="checkbox" className="w-4 h-4 text-[#66BB6A] border-[#BDBDBD] rounded focus:ring-transparent" />
-                        </div>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">Q-001</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">C-1001</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">John Doe</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-06-15</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-07-15</td>
-                      <td className="h-14 px-6">
-                        <span className="px-2 py-1 text-xs font-medium text-[#2E7D32] bg-[#E8F5E9] rounded">Active</span>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A] text-right">1,250.00</td>
+
+                    {[1, 2, 3].map((row) => (
+                      <tr
+                        key={row}
+                        onClick={() => toggleRow(row)}
+                        className="border-b border-[#E0E0E0] hover:bg-[#F5F5F5] cursor-pointer"
+                      >
+
+                        {/* ROW CHECKBOX */}
+                        <td
+                          className="h-14 text-center"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(row)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleRow(row)}
+                            className="w-4 h-4"
+                          />
+                        </td>
+
+                        {/* EMPTY COLUMNS */}
+                        <td className="h-14 px-6"></td>
+                        <td className="h-14 px-6"></td>
+                        <td className="h-14 px-6"></td>
+                        <td className="h-14 px-6"></td>
+
+                        {/* VALID TO */}
+                        <td className="h-14 px-6"></td>
+
+                        {/* TOTAL */}
+                        <td
+                          className="h-14 px-6 text-right font-medium"
+                        >
+                          0,00
+                        </td>
+
+                        {/* QUOTE VALUE */}
+                        <td
+                          className="h-14 px-6 text-right font-medium"
+                        >
+                          0,00
+                        </td>
+
+                        {/* CURRENCY */}
+                        <td
+                          className="h-14 px-6"
+                        >
+                          SEK
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* ================= TOTAL ROW ================= */}
+                    <tr className="bg-[#F9FAFB] font-semibold">
+                      <td className="h-14"></td>
+                      <td colSpan={4}></td>
+
+                      <td className="h-14 px-6 text-right">Total SEK</td>
+                      <td className="h-14 px-6 text-right">0,00</td>
+                      <td className="h-14 px-6 text-right">0,00</td>
+                      <td></td>
                     </tr>
-                    <tr className="border-b border-[#E0E0E0] hover:bg-[#F5F5F5]">
-                      <td className="h-14 px-4">
-                        <div className="flex items-center">
-                          <input type="checkbox" className="w-4 h-4 text-[#66BB6A] border-[#BDBDBD] rounded focus:ring-transparent" />
-                        </div>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">Q-002</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">C-1002</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">Jane Smith</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-06-10</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-07-10</td>
-                      <td className="h-14 px-6">
-                        <span className="px-2 py-1 text-xs font-medium text-[#D32F2F] bg-[#FFEBEE] rounded">Due</span>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A] text-right">2,450.00</td>
-                    </tr>
-                    <tr className="border-b border-[#E0E0E0] hover:bg-[#F5F5F5]">
-                      <td className="h-14 px-4">
-                        <div className="flex items-center">
-                          <input type="checkbox" className="w-4 h-4 text-[#66BB6A] border-[#BDBDBD] rounded focus:ring-transparent" />
-                        </div>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">Q-003</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">C-1003</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">Company ABC</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-06-05</td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A]">2023-07-05</td>
-                      <td className="h-14 px-6">
-                        <span className="px-2 py-1 text-xs font-medium text-[#689F38] bg-[#F1F8E9] rounded">Order Created</span>
-                      </td>
-                      <td className="h-14 px-6 text-sm text-[#4A4A4A] text-right">3,650.00</td>
-                    </tr>
+
                   </tbody>
                 </table>
               </div>
             </div>
+
             
             {/* Bottom Action Bar */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] py-3 px-6 flex items-center justify-between">
@@ -1449,11 +1530,12 @@ const QuotesPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            
           </>
         )}
+        
       </div>
     </div>
   );
 };
-
 export default QuotesPage;
