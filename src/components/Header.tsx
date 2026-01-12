@@ -348,6 +348,15 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                     </button>
                     <button
                       onClick={() => {
+                        navigate('/items');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Items
+                    </button>
+                    <button
+                      onClick={() => {
                         navigate('/warehouses');
                         setRegisterDropdownOpen(false);
                       }}

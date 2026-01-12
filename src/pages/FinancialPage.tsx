@@ -4,7 +4,7 @@ import { Calculator, FileText, CreditCard, Users, Shield, Building, TrendingUp, 
 import { Card } from '../components/Card';
 import { BookkeepingModule } from '../components/financial/BookkeepingModule';
 import { InvoicingModule } from '../components/financial/InvoicingModule';
-import { SupplierInvoiceApproval } from '../components/financial/SupplierInvoiceApproval';
+import SupplierInvoicesList from '../components/supplier_invoice/SupplierInvoicesList';
 import { BankIDAuthentication } from '../components/financial/BankIDAuthentication';
 import { PayrollModule } from '../components/financial/PayrollModule';
 import { BankIntegration } from '../components/financial/BankIntegration';
@@ -26,7 +26,7 @@ export const FinancialPage: React.FC = () => {
       case 'invoicing':
         return <InvoicingModule />;
       case 'supplier-invoices':
-        return <SupplierInvoiceApproval />;
+        return <SupplierInvoicesList />;
       case 'payroll':
         return <PayrollModule />;
       case 'bank-integration':
