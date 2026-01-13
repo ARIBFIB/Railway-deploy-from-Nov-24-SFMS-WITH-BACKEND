@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronsLeft, 
-  ChevronsRight, 
-  Plus, 
-  Users, 
-  FileText, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Plus,
+  Users,
+  FileText,
   Search,
   RefreshCw,
   ChevronDown
 } from 'lucide-react';
 import EInvoiceRequests from './EInvoiceRequests';
+import { customerService } from '../../services/customerService';
+
+import loadingGif from '../../assets/loading/200.gif';
 
 interface CustomerFormData {
   customerNumber: string;
-  customerType: 'company' | 'private';
+  customerType: 'company' | 'private' | 'business';
   cinPin: string;
   active: 'yes' | 'no';
   name: string;
@@ -53,7 +56,7 @@ interface CustomerFormProps {
   onCancel: () => void;
 }
 
-const CustomerForm: React.FC<CustomerFormProps> = ({ 
+const CustomerForm: React.FC<CustomerFormProps> = ({
   initialData = {
     customerNumber: '2',
     customerType: 'company',
@@ -86,22 +89,105 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     workplaceNumber: '',
     storeId: '',
     notes: ''
-  }, 
-  onSave, 
-  onCancel 
+  },
+  onSave,
+  onCancel
 }) => {
+  // Map the form active status to the backend status
+  const getBackendStatus = (): 'active' | 'inactive' => {
+    return formData.active === 'yes' ? 'active' : 'inactive';
+  };
   const [activeTab, setActiveTab] = useState<'basic' | 'invoice'>('basic');
   const [showMoreAddressDetails, setShowMoreAddressDetails] = useState(false);
   const [showMoreCustomerDetails, setShowMoreCustomerDetails] = useState(false);
   const [showEInvoiceRequests, setShowEInvoiceRequests] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CustomerFormData>(initialData);
 
   const handleInputChange = (field: keyof CustomerFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
+  const handleSave = async () => {
+    setIsLoading(true);
+
+    try {
+      const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+      const foundationId = userData.foundationId || userData.foundation_id || '12345678-1234-1234-1234-123456789012';
+
+      // Prepare customer payload
+      const customerPayload = {
+        customer: {
+          foundation_id: foundationId,
+          customer_number: formData.customerNumber,
+          customer_type: formData.customerType === 'company' ? 'business' : formData.customerType as any,
+          corporate_personal_id: formData.cinPin,
+          name: formData.name,
+          status: getBackendStatus(),
+          industry_code: formData.industryCode,
+          workplace_number: formData.workplaceNumber,
+          store_id: formData.storeId,
+          notes: formData.notes,
+        },
+        addresses: [
+          // Invoice address
+          {
+            address_type: 'billing',
+            name: formData.name,
+            address: formData.invoiceAddress,
+            address2: formData.invoiceAddress2,
+            postal_code: formData.postcode,
+            city: formData.city,
+            country: formData.country,
+            country_code: formData.countryCode,
+            is_primary: true
+          },
+          // Delivery address
+          {
+            address_type: 'delivery',
+            name: formData.deliveryName || formData.name,
+            address: formData.deliveryAddress || formData.invoiceAddress,
+            address2: formData.deliveryAddress2 || formData.invoiceAddress2,
+            postal_code: formData.deliveryPostcode || formData.postcode,
+            city: formData.deliveryCity || formData.city,
+            country: formData.deliveryCountry || formData.country,
+            country_code: formData.deliveryCountryCode || formData.countryCode,
+            is_primary: false
+          },
+        ].filter(addr => addr.address), // Only send if address is provided
+        contacts: [
+          {
+            phone: formData.phone,
+            fax: formData.fax,
+            email: formData.email,
+            web_address: formData.webAddress,
+          },
+          // Second contact for phone2 if exists
+          ...(formData.phone2 ? [{
+            phone: formData.phone2,
+          }] : [])
+        ].filter(contact => Object.values(contact).some(v => v)),
+      };
+
+      let result;
+      // If initialData has an ID, it's an update
+      if ((initialData as any)?.id) {
+        result = await customerService.updateCustomer((initialData as any).id, customerPayload);
+      } else {
+        result = await customerService.createCustomer(customerPayload);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to save customer');
+      }
+
+      onSave(formData);
+    } catch (error: any) {
+      console.error('Error saving customer:', error);
+      alert(error.message || 'Failed to save customer. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRefreshCustomerNumber = () => {
@@ -111,17 +197,25 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   return (
-    <div className="max-w-[1320px] mx-auto px-6 py-4 bg-white">
+    <div className="max-w-[1320px] mx-auto px-6 py-4 bg-white relative">
       {showEInvoiceRequests ? (
         <EInvoiceRequests onClose={() => setShowEInvoiceRequests(false)} />
       ) : (
         <>
+          {isLoading && (
+            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+              <div className="flex flex-col items-center">
+                <img src={loadingGif} alt="Loading" className="w-12 h-12" />
+                <p className="mt-2 text-[#616161] font-medium">Creating customer...</p>
+              </div>
+            </div>
+          )}
           {/* Top Header Bar */}
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-lg font-semibold text-[#1A1A1A] tracking-[0.4px]">
-              CUSTOMER {formData.customerNumber} – CREATE NEW
+              CUSTOMER {formData.customerNumber} – {(initialData as any)?.id ? 'EDIT' : 'CREATE NEW'}
             </h1>
-            
+
             <div className="flex items-center gap-2">
               {/* Navigation Buttons */}
               <div className="flex items-center gap-1">
@@ -138,38 +232,62 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                   <ChevronsRight size={16} />
                 </button>
               </div>
-              
-              <button
-        type="button"
-        onClick={handleSave}
-        className="
-          h-9
-          px-5
-          ml-4
-          rounded-full
-          bg-[#9E9E9E]
-          text-white
-          text-sm
-          font-semibold
-          flex
-          items-center
-          gap-2
-          hover:bg-[#8E8E8E]
-          focus:outline-none
-          focus:ring-2
-          focus:ring-[#9E9E9E]
-          focus:ring-offset-2
-        "
-      >
-      <Plus size={14} />
-      <span>Create customer</span>
-    </button>
 
-              
+              {isLoading ? (
+                <button
+                  disabled
+                  className="
+                  h-9
+                  px-5
+                  ml-4
+                  rounded-full
+                  bg-[#9E9E9E]
+                  text-white
+                  text-sm
+                  font-semibold
+                  flex
+                  items-center
+                  gap-2
+                  opacity-70
+                  cursor-not-allowed
+                "
+                >
+                  <img src={loadingGif} alt="Loading" className="w-4 h-4" />
+                  <span>Creating...</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="
+                  h-9
+                  px-5
+                  ml-4
+                  rounded-full
+                  bg-[#9E9E9E]
+                  text-white
+                  text-sm
+                  font-semibold
+                  flex
+                  items-center
+                  gap-2
+                  hover:bg-[#8E8E8E]
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-[#9E9E9E]
+                  focus:ring-offset-2
+                "
+                >
+                  <Plus size={14} />
+                  <span>Create customer</span>
+                </button>
+              )}
+
+
               <button
-        type="button"
-        onClick={onCancel}
-        className="
+                type="button"
+                onClick={onCancel}
+                className="
           h-9
           px-5
           ml-2
@@ -187,10 +305,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
           focus:ring-[#FFC107]
           focus:ring-offset-2
         "
-      >
-      <span className="text-base leading-none">☰</span>
-      <span>Show list</span>
-    </button>
+              >
+                <span className="text-base leading-none">☰</span>
+                <span>Show list</span>
+              </button>
 
             </div>
           </div>
@@ -198,7 +316,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
           {/* Secondary Action Row */}
           <div className="flex justify-end mb-6">
             <div className="flex items-center gap-6">
-              <button 
+              <button
                 onClick={() => setShowEInvoiceRequests(true)}
                 className="flex items-center gap-2 text-sm text-[#616161] hover:text-black"
               >
@@ -221,11 +339,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             <div className="flex space-x-6 border-b border-[#DADADA]">
               <button
                 onClick={() => setActiveTab('basic')}
-                className={`pb-2 text-sm font-medium relative ${
-                  activeTab === 'basic'
-                    ? 'text-[#000000]'
-                    : 'text-[#616161]'
-                }`}
+                className={`pb-2 text-sm font-medium relative ${activeTab === 'basic'
+                  ? 'text-[#000000]'
+                  : 'text-[#616161]'
+                  }`}
               >
                 Basic details
                 {activeTab === 'basic' && (
@@ -234,11 +351,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               </button>
               <button
                 onClick={() => setActiveTab('invoice')}
-                className={`pb-2 text-sm font-medium relative ${
-                  activeTab === 'invoice'
-                    ? 'text-[#000000]'
-                    : 'text-[#616161]'
-                }`}
+                className={`pb-2 text-sm font-medium relative ${activeTab === 'invoice'
+                  ? 'text-[#000000]'
+                  : 'text-[#616161]'
+                  }`}
               >
                 Invoice details
                 {activeTab === 'invoice' && (
@@ -263,7 +379,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                   onChange={(e) => handleInputChange('customerNumber', e.target.value)}
                   className="w-full h-9 px-2.5 border border-[#DADADA] rounded text-sm text-[#1A1A1A] bg-white focus:outline-none focus:ring-1 focus:ring-[#2E7D32]"
                 />
-                <button 
+                <button
                   onClick={handleRefreshCustomerNumber}
                   className="ml-2 p-2 text-[#757575] hover:text-black"
                 >
@@ -279,21 +395,19 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               <div className="flex h-9 border border-[#DADADA] rounded overflow-hidden">
                 <button
                   onClick={() => handleInputChange('customerType', 'company')}
-                  className={`flex-1 text-sm ${
-                    formData.customerType === 'company'
-                      ? 'bg-white text-[#000000] font-medium'
-                      : 'bg-[#E0E0E0] text-[#616161]'
-                  }`}
+                  className={`flex-1 text-sm ${formData.customerType === 'company'
+                    ? 'bg-white text-[#000000] font-medium'
+                    : 'bg-[#E0E0E0] text-[#616161]'
+                    }`}
                 >
                   Company
                 </button>
                 <button
                   onClick={() => handleInputChange('customerType', 'private')}
-                  className={`flex-1 text-sm border-l border-[#DADADA] ${
-                    formData.customerType === 'private'
-                      ? 'bg-white text-[#000000] font-medium'
-                      : 'bg-[#E0E0E0] text-[#616161]'
-                  }`}
+                  className={`flex-1 text-sm border-l border-[#DADADA] ${formData.customerType === 'private'
+                    ? 'bg-white text-[#000000] font-medium'
+                    : 'bg-[#E0E0E0] text-[#616161]'
+                    }`}
                 >
                   Private
                 </button>
@@ -319,21 +433,19 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               <div className="flex h-9 border border-[#DADADA] rounded overflow-hidden">
                 <button
                   onClick={() => handleInputChange('active', 'yes')}
-                  className={`flex-1 text-sm ${
-                    formData.active === 'yes'
-                      ? 'bg-white text-[#000000] font-medium'
-                      : 'bg-[#E0E0E0] text-[#616161]'
-                  }`}
+                  className={`flex-1 text-sm ${formData.active === 'yes'
+                    ? 'bg-white text-[#000000] font-medium'
+                    : 'bg-[#E0E0E0] text-[#616161]'
+                    }`}
                 >
                   Yes
                 </button>
                 <button
                   onClick={() => handleInputChange('active', 'no')}
-                  className={`flex-1 text-sm border-l border-[#DADADA] ${
-                    formData.active === 'no'
-                      ? 'bg-white text-[#000000] font-medium'
-                      : 'bg-[#E0E0E0] text-[#616161]'
-                  }`}
+                  className={`flex-1 text-sm border-l border-[#DADADA] ${formData.active === 'no'
+                    ? 'bg-white text-[#000000] font-medium'
+                    : 'bg-[#E0E0E0] text-[#616161]'
+                    }`}
                 >
                   No
                 </button>
@@ -497,8 +609,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               onClick={() => setShowMoreAddressDetails(!showMoreAddressDetails)}
               className="flex items-center gap-2 text-sm font-semibold text-[#374151] mb-4"
             >
-              <ChevronDown 
-                size={14} 
+              <ChevronDown
+                size={14}
                 className={`transition-transform duration-200 ${showMoreAddressDetails ? 'rotate-180 text-[#0F9D58]' : 'text-[#0F9D58]'}`}
               />
               More address details
@@ -514,7 +626,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     <option>Delivery address</option>
                   </select>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
                   {/* Left Column - Address Fields */}
                   <div>
@@ -529,7 +641,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Delivery address
@@ -541,7 +653,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Delivery address 2
@@ -553,7 +665,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Postcode
@@ -565,7 +677,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-[120px] h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Country
@@ -578,7 +690,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                       />
                     </div>
                   </div>
-                  
+
                   {/* Right Column - Contact Fields */}
                   <div>
                     <div className="mb-3">
@@ -592,7 +704,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Phone 2
@@ -604,7 +716,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Fax
@@ -616,7 +728,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         City
@@ -628,7 +740,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className="w-full h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                       />
                     </div>
-                    
+
                     <div className="mb-3">
                       <label className="block text-xs font-medium text-[#374151] mb-1">
                         Country code
@@ -652,8 +764,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               onClick={() => setShowMoreCustomerDetails(!showMoreCustomerDetails)}
               className="flex items-center gap-2 text-sm font-semibold text-[#374151] mb-4"
             >
-              <ChevronDown 
-                size={14} 
+              <ChevronDown
+                size={14}
                 className={`transition-transform duration-200 ${showMoreCustomerDetails ? 'rotate-180 text-[#0F9D58]' : 'text-[#0F9D58]'}`}
               />
               More customer details
@@ -673,7 +785,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                       className="w-[240px] h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-[#374151] mb-1">
                       Place of work no. (CFAR)
@@ -685,7 +797,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                       className="w-[240px] h-8 px-2 py-1 border border-[#D1D5DB] rounded text-xs text-[#111827] bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-[#374151] mb-1">
                       Shop ID
@@ -698,7 +810,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-[#374151] mb-1">
                     Notes
@@ -720,18 +832,28 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
               Delete
             </button>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 className="h-8 bg-[#9CA3AF] text-white px-4 rounded-full text-xs font-medium"
                 onClick={onCancel}
               >
                 Cancel
               </button>
-              <button 
-                className="h-8 bg-[#0F9D58] text-white px-4 rounded-full text-xs font-bold hover:bg-[#0B7A43]"
-                onClick={handleSave}
-              >
-                Save
-              </button>
+              {isLoading ? (
+                <button
+                  disabled
+                  className="h-8 bg-[#0F9D58] text-white px-4 rounded-full text-xs font-bold opacity-70 cursor-not-allowed"
+                >
+                  <img src={loadingGif} alt="Loading" className="w-3 h-3 inline mr-1" />
+                  Saving...
+                </button>
+              ) : (
+                <button
+                  className="h-8 bg-[#0F9D58] text-white px-4 rounded-full text-xs font-bold hover:bg-[#0B7A43]"
+                  onClick={handleSave}
+                >
+                  {(initialData as any)?.id ? 'Update customer' : 'Create customer'}
+                </button>
+              )}
             </div>
           </div>
         </>

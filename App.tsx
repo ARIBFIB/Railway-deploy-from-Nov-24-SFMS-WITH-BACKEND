@@ -51,6 +51,8 @@ import SuppliersPage from './src/pages/SuppliersPage';
 import WageTypesPage from './src/pages/WageTypesPage';
 import PersonnelRegisterPage from './src/pages/PersonnelRegisterPage';
 import { AccountAnalysisPage } from './src/pages/AccountAnalysisPage';
+import ItemList from './src/components/Item/ItemList';
+import ItemForm from './src/components/Item/ItemForm';
 
 // Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
@@ -598,6 +600,48 @@ function App() {
                 <ProtectedRoute requiredScreen="investments" userRole={userRole}>
                   <AppLayout onLogout={handleLogout}>
                     <InvestmentsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/items"
+            element={
+              isAuthenticated ? (
+                <ProtectedRoute requiredScreen="inventory" userRole={userRole}>
+                  <AppLayout onLogout={handleLogout}>
+                    <ItemList />
+                  </AppLayout>
+                </ProtectedRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/items/create"
+            element={
+              isAuthenticated ? (
+                <ProtectedRoute requiredScreen="inventory" userRole={userRole}>
+                  <AppLayout onLogout={handleLogout}>
+                    <ItemForm />
+                  </AppLayout>
+                </ProtectedRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/items/edit/:itemId"
+            element={
+              isAuthenticated ? (
+                <ProtectedRoute requiredScreen="inventory" userRole={userRole}>
+                  <AppLayout onLogout={handleLogout}>
+                    <ItemForm />
                   </AppLayout>
                 </ProtectedRoute>
               ) : (

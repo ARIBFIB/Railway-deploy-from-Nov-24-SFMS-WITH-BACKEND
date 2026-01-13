@@ -3,8 +3,12 @@ import { body, param, query } from 'express-validator';
 import { CustomerController } from '../controllers/CustomerController';
 import { validateRequest } from '../middleware/validation';
 import { requireFoundationAccess } from '../middleware/auth';
+import { jwtAuthMiddleware } from '../middleware/jwtAuth';
 
 const router = express.Router();
+
+// Apply jwtAuthMiddleware to all customer routes
+router.use(jwtAuthMiddleware);
 
 // Get all customers for foundation
 router.get('/',

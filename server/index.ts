@@ -81,6 +81,7 @@ import billingSettingsRoutes from './routes/billingSettings';
 import salarySettingsRoutes from './routes/salarySettings';
 import supplierInvoiceRoutes from './routes/supplierInvoices';
 import payrollRoutes from './routes/payroll';
+import itemRoutes from './routes/itemRoutes';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -185,6 +186,7 @@ app.use('/api/salary-agreements', salaryAgreementsRoutes);
 app.use('/api/working-hours-schedules', workingHoursSchedulesRoutes);
 app.use('/api/account-plan', accountPlanRoutes);
 app.use('/api/stock', stockRoutes);
+app.use('/api/items', itemRoutes);
 app.use('/api/sie', sieRoutes);
 app.use('/api/bankid', bankidRoutes);
 app.use('/api/settings/facility-register', facilityRegisterSettingsRoutes);
