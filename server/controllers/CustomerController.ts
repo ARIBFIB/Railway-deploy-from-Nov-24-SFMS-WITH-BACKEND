@@ -95,6 +95,13 @@ export class CustomerController {
     }
 
     try {
+      console.log('🔍 CustomerController.createCustomer - Supabase Client State:', {
+        supabaseUrl: (supabase as any).supabaseUrl,
+        hasKey: !!(supabase as any).supabaseKey,
+        keyLength: (supabase as any).supabaseKey?.length,
+        isServiceRole: (supabase as any).supabaseKey?.includes('service_role') || (supabase as any).supabaseKey?.length > 100
+      });
+
       // Check if customer number already exists
       const { data: existing } = await supabase
         .from('customers')

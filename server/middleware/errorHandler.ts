@@ -60,7 +60,12 @@ export const errorHandler = (
   res.status(statusCode).json({
     error: statusCode >= 500 ? 'Internal Server Error' : 'Client Error',
     message,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    ...(process.env.NODE_ENV === 'development' && {
+      stack: error.stack,
+      details: (error as any).details,
+      hint: (error as any).hint,
+      code: (error as any).code
+    })
   });
 };
 
