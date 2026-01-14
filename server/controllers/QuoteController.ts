@@ -2,6 +2,14 @@ import { Response } from 'express';
 import { supabase } from '../config/database';
 import { asyncHandler, createError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const logToFile = (message: string) => {
+  const logPath = path.join(process.cwd(), 'debug_quote.log');
+  const timestamp = new Date().toISOString();
+  fs.appendFileSync(logPath, `${timestamp}: ${message}\n`);
+};
 
 export class QuoteController {
   static getQuotes = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -24,7 +32,7 @@ export class QuoteController {
           unit_price,
           line_total,
           product_id,
-          products(article_number, name)
+          items:product_id(item_number, name)
         )
       `)
       .eq('foundation_id', foundation_id)
@@ -79,7 +87,7 @@ export class QuoteController {
           vat_rate,
           vat_amount,
           product_id,
-          products(article_number, name, sell_price)
+          items:product_id(item_number, name)
         )
       `)
       .eq('id', id)
@@ -186,7 +194,7 @@ export class QuoteController {
         const lineTotal = (item.quantity || 0) * (item.unit_price || 0);
         const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
         const itemTotal = lineTotal - discountAmount;
-        
+
         return {
           quote_id: quote.id,
           line_number: index + 1,
@@ -207,6 +215,9 @@ export class QuoteController {
         };
       });
 
+      console.log('📦 Final quote items to insert:', quoteItems.length);
+      console.dir(quoteItems, { depth: null });
+
       const { error: itemsError } = await supabase
         .from('quote_items')
         .insert(quoteItems);
@@ -215,7 +226,7 @@ export class QuoteController {
         console.error('Failed to create quote items:', itemsError);
         // Delete the quote since items failed
         await supabase.from('quotes').delete().eq('id', quote.id);
-        throw createError('Failed to create quote items', 400);
+        throw createError(`Failed to create quote items: ${itemsError.message}`, 400);
       }
     }
 
@@ -229,6 +240,11 @@ export class QuoteController {
     const { id } = req.params;
     const { foundation_id } = req.query;
     const updateData = req.body;
+    console.log(`🚀 QuoteController.updateQuote - ID: ${id}, Foundation: ${foundation_id}`);
+    console.log('📦 Update Data:', JSON.stringify(updateData));
+    logToFile(`UpdateQuote - ID: ${id}, Foundation: ${foundation_id}`);
+    logToFile(`Update Data: ${JSON.stringify(updateData)}`);
+
     const { items, ...quoteUpdateData } = updateData;
 
     // Update quote
@@ -244,8 +260,10 @@ export class QuoteController {
       .single();
 
     if (quoteError) {
+      console.error('❌ database update error:', quoteError);
       throw createError('Quote not found or update failed', 404);
     }
+    console.log('✅ Update successful:', quote);
 
     // Update items if provided
     if (items !== undefined) {
@@ -261,7 +279,7 @@ export class QuoteController {
           const lineTotal = (item.quantity || 0) * (item.unit_price || 0);
           const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
           const itemTotal = lineTotal - discountAmount;
-          
+
           return {
             quote_id: id,
             line_number: index + 1,

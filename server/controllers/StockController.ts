@@ -16,10 +16,10 @@ export class StockController {
       .from('stock_levels')
       .select(`
         *,
-        products:product_id (
+        items:product_id (
           id,
           name,
-          article_number,
+          item_number,
           unit
         ),
         warehouses:warehouse_id (
@@ -48,10 +48,10 @@ export class StockController {
       .from('stock_levels')
       .select(`
         *,
-        products:product_id (
+        items:product_id (
           id,
           name,
-          article_number,
+          item_number,
           unit
         ),
         warehouses:warehouse_id (
@@ -115,7 +115,7 @@ export class StockController {
 
     if (stockLevel) {
       let newQuantity = stockLevel.quantity;
-      
+
       if (movement_type === 'in') {
         newQuantity = parseFloat(stockLevel.quantity) + parseFloat(quantity);
       } else if (movement_type === 'out') {
@@ -151,10 +151,10 @@ export class StockController {
       .from('stock_movements')
       .select(`
         *,
-        products:product_id (
+        items:product_id (
           id,
           name,
-          article_number
+          item_number
         ),
         warehouses:warehouse_id (
           id,

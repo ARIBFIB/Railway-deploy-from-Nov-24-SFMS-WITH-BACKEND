@@ -26,7 +26,7 @@ export class InvoiceController {
           vat_rate,
           vat_amount,
           product_id,
-          products(article_number, name)
+          items:product_id(item_number, name)
         )
       `)
       .eq('foundation_id', foundation_id)
@@ -87,7 +87,7 @@ export class InvoiceController {
           vat_rate,
           vat_amount,
           product_id,
-          products(article_number, name, sell_price)
+          items:product_id(item_number, name)
         ),
         payments(
           id,
@@ -193,7 +193,7 @@ export class InvoiceController {
         const lineTotal = (item.quantity || 0) * (item.unit_price || 0);
         const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
         const itemTotal = lineTotal - discountAmount;
-        
+
         return {
           invoice_id: invoice.id,
           line_number: index + 1,
@@ -265,7 +265,7 @@ export class InvoiceController {
           const lineTotal = (item.quantity || 0) * (item.unit_price || 0);
           const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
           const itemTotal = lineTotal - discountAmount;
-          
+
           return {
             invoice_id: id,
             line_number: index + 1,

@@ -3,8 +3,12 @@ import { body, param, query } from 'express-validator';
 import { QuoteController } from '../controllers/QuoteController';
 import { validateRequest } from '../middleware/validation';
 import { requireFoundationAccess } from '../middleware/auth';
+import { jwtAuthMiddleware } from '../middleware/jwtAuth';
 
 const router = express.Router();
+
+// Apply authentication to all quote routes
+router.use(jwtAuthMiddleware);
 
 // Get all quotes for foundation
 router.get('/',

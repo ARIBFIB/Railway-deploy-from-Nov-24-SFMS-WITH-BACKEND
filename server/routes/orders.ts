@@ -3,8 +3,12 @@ import { body, param, query } from 'express-validator';
 import { OrderController } from '../controllers/OrderController';
 import { validateRequest } from '../middleware/validation';
 import { requireFoundationAccess } from '../middleware/auth';
+import { jwtAuthMiddleware } from '../middleware/jwtAuth';
 
 const router = express.Router();
+
+// Apply authentication to all order routes
+router.use(jwtAuthMiddleware);
 
 // Get all orders for foundation
 router.get('/',

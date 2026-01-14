@@ -3,8 +3,12 @@ import { body, param, query } from 'express-validator';
 import { ProductController } from '../controllers/ProductController';
 import { validateRequest } from '../middleware/validation';
 import { requireFoundationAccess } from '../middleware/auth';
+import { jwtAuthMiddleware } from '../middleware/jwtAuth';
 
 const router = express.Router();
+
+// Apply authentication to all product routes
+router.use(jwtAuthMiddleware);
 
 // Product categories routes
 router.get('/categories',

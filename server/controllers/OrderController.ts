@@ -25,7 +25,7 @@ export class OrderController {
           unit_price,
           line_total,
           product_id,
-          products(article_number, name)
+          items:product_id(item_number, name)
         )
       `)
       .eq('foundation_id', foundation_id)
@@ -81,7 +81,7 @@ export class OrderController {
           vat_rate,
           vat_amount,
           product_id,
-          products(article_number, name, sell_price)
+          items:product_id(item_number, name)
         )
       `)
       .eq('id', id)
@@ -190,7 +190,7 @@ export class OrderController {
         const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
         const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
         const itemTotal = lineTotal - discountAmount;
-        
+
         return {
           order_id: order.id,
           line_number: index + 1,
@@ -266,7 +266,7 @@ export class OrderController {
           const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
           const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
           const itemTotal = lineTotal - discountAmount;
-          
+
           return {
             order_id: id,
             line_number: index + 1,
@@ -394,7 +394,7 @@ export class OrderController {
       throw createError('Failed to check delivery status', 500);
     }
 
-    const allDelivered = orderItems.every(item => 
+    const allDelivered = orderItems.every(item =>
       item.delivered_quantity >= item.ordered_quantity
     );
 
