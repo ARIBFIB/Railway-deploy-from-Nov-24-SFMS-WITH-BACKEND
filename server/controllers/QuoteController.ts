@@ -245,7 +245,16 @@ export class QuoteController {
     logToFile(`UpdateQuote - ID: ${id}, Foundation: ${foundation_id}`);
     logToFile(`Update Data: ${JSON.stringify(updateData)}`);
 
-    const { items, ...quoteUpdateData } = updateData;
+    const { items, ...rest } = updateData;
+
+    // Sanitize update data to remove keys that don't belong in the database
+    const quoteUpdateData: any = { ...rest };
+    const invalidKeys = ['foundationId', 'userId', 'roleId', 'hasToken', 'tokenLength', 'role'];
+    invalidKeys.forEach(key => delete quoteUpdateData[key]);
+
+    // Also remove any key that is not a string, number, boolean, or null (basic protection)
+    // and explicitly remove foundation_id to prevent moving quotes between foundations
+    delete quoteUpdateData.foundation_id;
 
     // Update quote
     const { data: quote, error: quoteError } = await supabase
