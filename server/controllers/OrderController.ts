@@ -113,6 +113,14 @@ export class OrderController {
       course,
       unit,
       vat_type,
+      valid_until,
+      shipping_fee,
+      invoice_fee,
+      invoice_discount,
+      order_text,
+      print_template,
+      language,
+      distribution_method,
       items = []
     } = req.body;
 
@@ -142,13 +150,19 @@ export class OrderController {
 
     if (items && items.length > 0) {
       items.forEach((item: any) => {
-        const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
+        // Frontend sends 'quantity', backend expects 'ordered_quantity'. Handle both.
+        const qty = item.ordered_quantity !== undefined ? item.ordered_quantity : (item.quantity !== undefined ? item.quantity : 0);
+        const lineTotal = qty * (item.unit_price || 0);
         const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
         const itemTotal = lineTotal - discountAmount;
         total_amount += itemTotal;
         total_vat += itemTotal * ((item.vat_rate || 0) / 100);
       });
     }
+
+    // Add charges to total amount
+    if (shipping_fee) total_amount += Number(shipping_fee);
+    if (invoice_fee) total_amount += Number(invoice_fee);
 
     // Create order
     const { data: order, error: orderError } = await supabase
@@ -159,6 +173,7 @@ export class OrderController {
         customer_id,
         order_date,
         delivery_date,
+        valid_until,
         order_type: order_type || 'order',
         payment_terms,
         our_reference,
@@ -171,6 +186,13 @@ export class OrderController {
         course: course || 1.0000,
         unit: unit || 1,
         vat_type,
+        shipping_fee: shipping_fee || 0,
+        invoice_fee: invoice_fee || 0,
+        invoice_discount: invoice_discount || 0,
+        order_text,
+        print_template,
+        language: language || 'Swedish',
+        distribution_method,
         total_amount,
         total_vat,
         status: 'draft',
@@ -187,7 +209,8 @@ export class OrderController {
     // Create order items
     if (items && items.length > 0) {
       const orderItems = items.map((item: any, index: number) => {
-        const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
+        const qty = item.ordered_quantity !== undefined ? item.ordered_quantity : (item.quantity !== undefined ? item.quantity : 0);
+        const lineTotal = qty * (item.unit_price || 0);
         const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
         const itemTotal = lineTotal - discountAmount;
 
@@ -197,7 +220,7 @@ export class OrderController {
           product_id: item.product_id,
           article_number: item.article_number,
           description: item.description,
-          ordered_quantity: item.ordered_quantity,
+          ordered_quantity: qty,
           delivered_quantity: 0,
           unit: item.unit,
           unit_price: item.unit_price,
@@ -234,7 +257,16 @@ export class OrderController {
     const { id } = req.params;
     const { foundation_id } = req.query;
     const updateData = req.body;
-    const { items, ...orderUpdateData } = updateData;
+    const { items, ...rest } = updateData;
+
+    // Sanitize update data to remove keys that don't belong in the database
+    const orderUpdateData: any = { ...rest };
+    const invalidKeys = ['foundationId', 'userId', 'roleId', 'hasToken', 'tokenLength', 'role'];
+    invalidKeys.forEach(key => delete orderUpdateData[key]);
+
+    // Also remove any key that is not a string, number, boolean, or null (basic protection)
+    // and explicitly remove foundation_id to prevent moving orders between foundations
+    delete orderUpdateData.foundation_id;
 
     // Update order
     const { data: order, error: orderError } = await supabase
@@ -263,7 +295,8 @@ export class OrderController {
       // Add new items
       if (items.length > 0) {
         const orderItems = items.map((item: any, index: number) => {
-          const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
+          const qty = item.ordered_quantity !== undefined ? item.ordered_quantity : (item.quantity !== undefined ? item.quantity : 0);
+          const lineTotal = qty * (item.unit_price || 0);
           const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
           const itemTotal = lineTotal - discountAmount;
 
@@ -273,7 +306,7 @@ export class OrderController {
             product_id: item.product_id,
             article_number: item.article_number,
             description: item.description,
-            ordered_quantity: item.ordered_quantity,
+            ordered_quantity: qty,
             delivered_quantity: item.delivered_quantity || 0,
             unit: item.unit,
             unit_price: item.unit_price,
@@ -299,13 +332,18 @@ export class OrderController {
 
       if (items.length > 0) {
         items.forEach((item: any) => {
-          const lineTotal = (item.ordered_quantity || 0) * (item.unit_price || 0);
+          const qty = item.ordered_quantity !== undefined ? item.ordered_quantity : (item.quantity !== undefined ? item.quantity : 0);
+          const lineTotal = qty * (item.unit_price || 0);
           const discountAmount = lineTotal * ((item.discount_percent || 0) / 100);
           const itemTotal = lineTotal - discountAmount;
           total_amount += itemTotal;
           total_vat += itemTotal * ((item.vat_rate || 0) / 100);
         });
       }
+
+      // Add charges from the updated order (retrieved above)
+      if (order.shipping_fee) total_amount += Number(order.shipping_fee);
+      if (order.invoice_fee) total_amount += Number(order.invoice_fee);
 
       // Update totals
       await supabase
