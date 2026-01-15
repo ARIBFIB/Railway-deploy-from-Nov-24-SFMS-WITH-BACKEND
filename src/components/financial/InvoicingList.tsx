@@ -10,7 +10,9 @@ import { ListManager } from '../ListManager';
 interface Invoice {
   id: string;
   invoice_number: string;
+  ocr_number?: string;
   customer_supplier_name: string;
+  customer_number?: string;
   invoice_type: 'sales' | 'purchase';
   invoice_date: string;
   due_date: string;
@@ -73,6 +75,10 @@ export const InvoicingList: React.FC<InvoicingListProps> = ({
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [distributionMethod, setDistributionMethod] = useState('Default');
   const [printoutTemplate, setPrintoutTemplate] = useState('Default template');
+  const [extendedSearchOpen, setExtendedSearchOpen] = useState(false);
+  const [basicDetailsExpanded, setBasicDetailsExpanded] = useState(true);
+  const [invoiceDetailsExpanded, setInvoiceDetailsExpanded] = useState(true);
+  const [invoiceContentExpanded, setInvoiceContentExpanded] = useState(true);
   // For customer invoices, we'll only show sales invoices
   const customerInvoices = invoices.filter(invoice => invoice.invoice_type === 'sales');
   const filteredInvoices = customerInvoices.filter(invoice => {
@@ -138,7 +144,273 @@ export const InvoicingList: React.FC<InvoicingListProps> = ({
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <button className="text-sm text-[#1976D2] hover:underline">Extended Search</button>
+              <button 
+                          onClick={() => setExtendedSearchOpen(!extendedSearchOpen)}
+                          className="text-sm text-[#1976D2] hover:underline flex items-center"
+                        >
+                          {extendedSearchOpen ? 'Close Extended Search' : 'Extended Search'}
+                          <svg 
+                            className={`ml-1 w-3 h-3 transition-transform duration-200 ${extendedSearchOpen ? 'rotate-180' : ''}`}
+                            fill="currentColor" 
+                            viewBox="0 0 20 20"
+                          >
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        
+                        {/* Extended Search Panel */}
+                        {extendedSearchOpen && (
+                          <div className="mt-4 p-6 bg-white border border-[#E0E0E0] rounded shadow-sm">
+                            {/* Basic Details Section */}
+                            <div className="mb-6">
+                              <div className="flex items-center justify-between mb-4 cursor-pointer" onClick={() => setBasicDetailsExpanded(!basicDetailsExpanded)}>
+                                <h3 className="text-lg font-bold text-[#333333] flex items-center">
+                                  <span className="text-[#2E7D32] mr-2">
+                                    {basicDetailsExpanded ? (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" transform="rotate(-90)" />
+                                      </svg>
+                                    )}
+                                  </span>
+                                  Basic details
+                                </h3>
+                              </div>
+                              {basicDetailsExpanded && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Invoice number</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Customer number</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Invoice type</label>
+                                    <select className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]">
+                                      <option>Select</option>
+                                      <option>Sales</option>
+                                      <option>Purchase</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Customer name</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="h-px bg-[#E6E6E6] my-6"></div>
+                            
+                            {/* Invoice Details Section */}
+                            <div className="mb-6">
+                              <div className="flex items-center justify-between mb-4 cursor-pointer" onClick={() => setInvoiceDetailsExpanded(!invoiceDetailsExpanded)}>
+                                <h3 className="text-lg font-bold text-[#333333] flex items-center">
+                                  <span className="text-[#2E7D32] mr-2">
+                                    {invoiceDetailsExpanded ? (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" transform="rotate(-90)" />
+                                      </svg>
+                                    )}
+                                  </span>
+                                  Invoice details
+                                </h3>
+                              </div>
+                              {invoiceDetailsExpanded && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Our reference</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Comment</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Your reference</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Your order number</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Currency</label>
+                                    <select className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]">
+                                      <option>Select</option>
+                                      <option>SEK</option>
+                                      <option>USD</option>
+                                      <option>EUR</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">From</label>
+                                    <input 
+                                      type="date" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">To</label>
+                                    <input 
+                                      type="date" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Delivery address</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Delivery address 2</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="h-px bg-[#E6E6E6] my-6"></div>
+                            
+                            {/* Invoice Content Section */}
+                            <div className="mb-6">
+                              <div className="flex items-center justify-between mb-4 cursor-pointer" onClick={() => setInvoiceContentExpanded(!invoiceContentExpanded)}>
+                                <h3 className="text-lg font-bold text-[#333333] flex items-center">
+                                  <span className="text-[#2E7D32] mr-2">
+                                    {invoiceContentExpanded ? (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    ) : (
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" transform="rotate(-90)" />
+                                      </svg>
+                                    )}
+                                  </span>
+                                  Invoice content
+                                </h3>
+                              </div>
+                              {invoiceContentExpanded && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Item number</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Account (From)</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Account (To)</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Amount type</label>
+                                    <select className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]">
+                                      <option>Select</option>
+                                      <option>Gross</option>
+                                      <option>Net</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Item name</label>
+                                    <input 
+                                      type="text" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Amount From</label>
+                                    <input 
+                                      type="number" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="0" 
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-[#555555] mb-1">Amount To</label>
+                                    <input 
+                                      type="number" 
+                                      className="w-full h-9 border border-[#CFCFCF] rounded px-3 text-sm text-[#333333] bg-white focus:outline-none focus:border-[#4CAF50]" 
+                                      placeholder="0" 
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex justify-end gap-2 pt-3">
+                              <button
+                                className="h-8 min-w-[80px] px-4 rounded-full bg-[#8F8F8F] text-white text-[13px] font-semibold hover:bg-[#7F7F7F]"
+                              >
+                                Clear
+                              </button>
+                              <button
+                                className="h-8 min-w-[80px] px-4 rounded-full bg-[#8F8F8F] text-white text-[13px] font-semibold hover:bg-[#7F7F7F]"
+                              >
+                                Search
+                              </button>
+                            </div>
+                          </div>
+                        )}
             </div>
           </div>
         </div>
@@ -240,9 +512,9 @@ export const InvoicingList: React.FC<InvoicingListProps> = ({
                       />
                     </td>
                     <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{invoice.invoice_number}</td>
-                    <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">-</td>
+                    <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{invoice.ocr_number || '-'}</td>
                     <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{invoice.invoice_type.charAt(0).toUpperCase() + invoice.invoice_type.slice(1)}</td>
-                    <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">-</td>
+                    <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{invoice.customer_number || '-'}</td>
                     <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{invoice.customer_supplier_name}</td>
                     <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">{new Date(invoice.invoice_date).toLocaleDateString()}</td>
                     <td className="px-4 py-2.5 text-sm text-[#2E2E2E]">-</td>

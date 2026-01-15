@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { Input } from '../Input';
 import { Modal } from '../Modal';
 import { ListManager } from '../ListManager';
-// import { InvoiceService, type Invoice, type CreateInvoiceData } from '../../services/invoiceService'; // Commented out for demo mode
+import { invoiceService } from '../../services/invoiceService';
 import { InvoicingList } from './InvoicingList';
 import { PaymentsIn } from './PaymentsIn';
 import { RemindersList } from './RemindersList';
@@ -53,138 +53,46 @@ export const InvoicingModule: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Load dummy data from localStorage or create initial data
-      const storedInvoices = localStorage.getItem('demoInvoices');
-      let invoicesData: Invoice[];
-      
-      if (storedInvoices) {
-        invoicesData = JSON.parse(storedInvoices);
-      } else {
-        // Create initial dummy data
-        invoicesData = [
-          {
-            id: '1',
-            invoice_number: 'INV-001',
-            customer_supplier_name: 'ABC Company',
-            invoice_type: 'sales',
-            invoice_date: '2025-01-15',
-            due_date: '2025-02-15',
-            payment_terms: 'Net 30',
-            status: 'paid',
-            subtotal: 10000,
-            tax_amount: 2500,
-            total_amount: 12500,
-            currency: 'SEK',
-            line_items: [
-              {
-                id: '1-1',
-                description: 'Web Development Services',
-                quantity: 1,
-                unit_price: 10000,
-                line_total: 10000
-              }
-            ]
-          },
-          {
-            id: '2',
-            invoice_number: 'INV-002',
-            customer_supplier_name: 'XYZ Corporation',
-            invoice_type: 'sales',
-            invoice_date: '2025-01-20',
-            due_date: '2025-02-20',
-            payment_terms: 'Net 30',
-            status: 'sent',
-            subtotal: 15000,
-            tax_amount: 3750,
-            total_amount: 18750,
-            currency: 'SEK',
-            line_items: [
-              {
-                id: '2-1',
-                description: 'Consulting Services',
-                quantity: 1,
-                unit_price: 15000,
-                line_total: 15000
-              }
-            ]
-          },
-          {
-            id: '3',
-            invoice_number: 'INV-003',
-            customer_supplier_name: 'Tech Solutions Ltd',
-            invoice_type: 'purchase',
-            invoice_date: '2025-01-22',
-            due_date: '2025-02-22',
-            payment_terms: 'Net 30',
-            status: 'overdue',
-            subtotal: 8000,
-            tax_amount: 2000,
-            total_amount: 10000,
-            currency: 'SEK',
-            line_items: [
-              {
-                id: '3-1',
-                description: 'Software License',
-                quantity: 2,
-                unit_price: 4000,
-                line_total: 8000
-              }
-            ]
-          },
-          {
-            id: '4',
-            invoice_number: 'INV-004',
-            customer_supplier_name: 'Global Services Inc',
-            invoice_type: 'sales',
-            invoice_date: '2025-01-25',
-            due_date: '2025-02-25',
-            payment_terms: 'Net 30',
-            status: 'draft',
-            subtotal: 5000,
-            tax_amount: 1250,
-            total_amount: 6250,
-            currency: 'SEK',
-            line_items: [
-              {
-                id: '4-1',
-                description: 'Design Services',
-                quantity: 1,
-                unit_price: 5000,
-                line_total: 5000
-              }
-            ]
-          },
-          {
-            id: '5',
-            invoice_number: 'INV-005',
-            customer_supplier_name: 'Local Business Co',
-            invoice_type: 'purchase',
-            invoice_date: '2025-01-28',
-            due_date: '2025-02-28',
-            payment_terms: 'Net 30',
-            status: 'paid',
-            subtotal: 12000,
-            tax_amount: 3000,
-            total_amount: 15000,
-            currency: 'SEK',
-            line_items: [
-              {
-                id: '5-1',
-                description: 'Office Equipment',
-                quantity: 1,
-                unit_price: 12000,
-                line_total: 12000
-              }
-            ]
-          }
-        ];
-        
-        // Save to localStorage
-        localStorage.setItem('demoInvoices', JSON.stringify(invoicesData));
+      // Get foundation ID from user data
+      const userDataRaw = localStorage.getItem('user_data') || '{}';
+      const userData = JSON.parse(userDataRaw);
+      const foundationId = userData?.foundationId || userData?.foundation_id;
+
+      if (!foundationId) {
+        throw new Error('Foundation ID not found. Please log in again.');
       }
-      
+
+      // Fetch real invoices from the backend API
+      const response = await invoiceService.getInvoices(foundationId, statusFilter !== 'all' ? statusFilter : undefined);
+
+      // Transform the response to match the Invoice interface
+      const invoicesData: Invoice[] = response.invoices.map((inv: any) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        ocr_number: inv.ocr_number || '',
+        customer_supplier_name: inv.customers?.name || 'Unknown Customer',
+        customer_number: inv.customers?.customer_number || '',
+        invoice_type: 'sales', // All customer invoices are sales type
+        invoice_date: inv.invoice_date,
+        due_date: inv.due_date,
+        payment_terms: inv.payment_terms || 'Net 30',
+        status: inv.status,
+        subtotal: inv.subtotal || 0,
+        tax_amount: inv.total_vat || 0,
+        total_amount: inv.total_amount || 0,
+        currency: inv.currency || 'SEK',
+        line_items: (inv.invoice_items || []).map((item: any) => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          line_total: item.line_total
+        }))
+      }));
+
       setInvoices(invoicesData);
     } catch (err) {
+      console.error('Failed to fetch invoices:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch invoices');
     } finally {
       setLoading(false);
@@ -310,7 +218,7 @@ export const InvoicingModule: React.FC = () => {
     if (!paymentInvoice || !paidAmount) {
       return; // Don't add if no invoice or amount specified
     }
-    
+
     const newPayment = {
       id: `payment-${Date.now()}`,
       payment_date: paymentDate,
@@ -320,12 +228,12 @@ export const InvoicingModule: React.FC = () => {
       currency: paymentInvoice.currency,
       status: 'pending'
     };
-    
+
     setAddedPayments([...addedPayments, newPayment]);
-    
+
     // Update total
     setTotalPaymentAmount(totalPaymentAmount + parseFloat(paidAmount));
-    
+
     // Clear form
     setInvoiceSearch('');
     setPaidAmount('');
@@ -343,11 +251,11 @@ export const InvoicingModule: React.FC = () => {
   // Function to search for an invoice
   const searchInvoice = () => {
     // Find invoice by number or customer name
-    const foundInvoice = invoices.find(inv => 
+    const foundInvoice = invoices.find(inv =>
       inv.invoice_number.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
       inv.customer_supplier_name.toLowerCase().includes(invoiceSearch.toLowerCase())
     );
-    
+
     if (foundInvoice) {
       setPaymentInvoice(foundInvoice);
       setPaidAmount(foundInvoice.total_amount.toString());
@@ -367,7 +275,7 @@ export const InvoicingModule: React.FC = () => {
   const postPayments = () => {
     // In demo mode, we'll just show a success message
     alert('Payments posted successfully!');
-    
+
     // Clear added payments
     setAddedPayments([]);
     setTotalPaymentAmount(0);
@@ -382,9 +290,9 @@ export const InvoicingModule: React.FC = () => {
       } else {
         setSelectedPaymentCount(selectedPaymentCount + 1);
       }
-      
+
       // Update the payment selection status
-      setAddedPayments(addedPayments.map(p => 
+      setAddedPayments(addedPayments.map(p =>
         p.id === id ? { ...p, selected: !p.selected } : p
       ));
     }
@@ -401,35 +309,35 @@ export const InvoicingModule: React.FC = () => {
       {/* Top Navigation Bar */}
       <div className="flex items-center justify-between border-b border-[#E0E0E0] bg-white px-4 py-2 h-14">
         <div className="flex items-center space-x-6">
-          <button 
+          <button
             onClick={() => {
               setActiveTab('customer invoices');
               setShowCreateModal(false);
-            }} 
+            }}
             className={`text-sm font-medium ${activeTab === 'customer invoices' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
           >
             Customer invoices
           </button>
-          <button 
-            onClick={() => setActiveTab('payments in')} 
+          <button
+            onClick={() => setActiveTab('payments in')}
             className={`text-sm font-medium ${activeTab === 'payments in' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
           >
             Payments in
           </button>
-          <button 
-            onClick={() => setActiveTab('reminders')} 
+          <button
+            onClick={() => setActiveTab('reminders')}
             className={`text-sm font-medium ${activeTab === 'reminders' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
           >
             Reminders
           </button>
-          <button 
-            onClick={() => setActiveTab('recurrent')} 
+          <button
+            onClick={() => setActiveTab('recurrent')}
             className={`text-sm font-medium ${activeTab === 'recurrent' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
           >
             Recurrent
           </button>
-          <button 
-            onClick={() => setActiveTab('invoice-services')} 
+          <button
+            onClick={() => setActiveTab('invoice-services')}
             className={`text-sm font-medium ${activeTab === 'invoice-services' ? 'text-black font-semibold border-b-[3px] border-[#0F9D58]' : 'text-[#5F6368]'}`}
           >
             Invoice services
@@ -445,15 +353,15 @@ export const InvoicingModule: React.FC = () => {
       {activeTab === 'customer invoices' && (
         <>
           {showCreateModal ? (
-            <CustomerInvoiceForm 
+            <CustomerInvoiceForm
               onCancel={() => {
                 setShowCreateModal(false);
                 fetchInvoices();
-              }} 
+              }}
               onSave={(invoiceData: any) => {
                 handleCreateSuccess();
                 setShowCreateModal(false);
-              }} 
+              }}
             />
           ) : (
             <InvoicingList
@@ -489,7 +397,7 @@ export const InvoicingModule: React.FC = () => {
       {activeTab === 'payments in' && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] h-16 flex items-center px-4">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               onClick={unmarkAllPayments}
               disabled={selectedPaymentCount === 0}
               className={`rounded-full px-4 py-2 text-sm ${selectedPaymentCount === 0 ? 'bg-[#E0E0E0] opacity-60' : 'bg-[#E0E0E0] hover:bg-[#D0D0D0]'}`}
@@ -498,16 +406,16 @@ export const InvoicingModule: React.FC = () => {
             </button>
             <span className="text-sm text-[#5F6368]">({selectedPaymentCount} selected)</span>
           </div>
-          
+
           <div className="ml-auto flex items-center space-x-6">
             <span className="text-base font-semibold text-[#5F6368]">Total SEK: {totalPaymentAmount.toLocaleString('sv-SE')}</span>
-            
+
             <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
               <option>Bankgiro (1930)</option>
               <option>Plusgiro (1234)</option>
             </select>
-            
-            <button 
+
+            <button
               onClick={postPayments}
               className="bg-[#A5D6B2] hover:bg-[#0F9D58] text-white font-semibold rounded-full px-6 py-2.5 text-sm"
             >
@@ -537,7 +445,7 @@ export const InvoicingModule: React.FC = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] h-18 flex items-center px-4">
           <div className="flex items-center space-x-4">
             <span className="text-sm text-[#5F6368]">(0 selected)</span>
-            
+
             <div className="flex items-center space-x-4">
               <label className="text-sm text-[#5F6368]">Change reminder date to</label>
               <input
@@ -545,7 +453,7 @@ export const InvoicingModule: React.FC = () => {
                 className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm"
               />
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <label className="text-sm text-[#5F6368]">Printout template</label>
               <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
@@ -553,7 +461,7 @@ export const InvoicingModule: React.FC = () => {
                 <option>Reminder</option>
               </select>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <label className="text-sm text-[#5F6368]">Language</label>
               <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
@@ -561,7 +469,7 @@ export const InvoicingModule: React.FC = () => {
                 <option>English</option>
               </select>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <label className="text-sm text-[#5F6368]">Distribution method</label>
               <select className="h-9 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm">
@@ -571,7 +479,7 @@ export const InvoicingModule: React.FC = () => {
               </select>
             </div>
           </div>
-          
+
           <div className="ml-auto flex items-center space-x-3">
             <button className="bg-[#9E9E9E] text-white font-semibold rounded-full px-5 py-2.5 text-sm">
               Preview

@@ -11,7 +11,10 @@ export class InvoiceController {
       throw createError('Foundation ID is required', 400);
     }
 
-    let query = supabase
+    // Use global supabase client like QuoteController does
+    const client = supabase;
+
+    let query = client
       .from('invoices')
       .select(`
         *,
@@ -63,7 +66,9 @@ export class InvoiceController {
     const { id } = req.params;
     const { foundation_id } = req.query;
 
-    const { data: invoice, error } = await supabase
+    const client = supabase;
+
+    const { data: invoice, error } = await client
       .from('invoices')
       .select(`
         *,
@@ -110,7 +115,8 @@ export class InvoiceController {
   });
 
   static createInvoice = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const { foundation_id } = req.query;
+    // FIX: Read foundation_id from body first (standard for POST), fallback to query
+    const foundation_id = req.body.foundation_id || req.query.foundation_id;
     const {
       customer_id,
       order_id,
@@ -119,6 +125,30 @@ export class InvoiceController {
       payment_terms,
       invoice_type,
       currency,
+      invoice_address,
+      invoice_address_2,
+      postcode,
+      city,
+      country,
+      cin,
+      your_order_number,
+      your_reference,
+      our_reference,
+      delivery_name,
+      delivery_address,
+      delivery_address_2,
+      delivery_postcode,
+      delivery_city,
+      delivery_country,
+      delivery_date,
+      delivery_method,
+      shipping_fee,
+      invoice_fee,
+      invoice_discount_percent,
+      price_list,
+      prices_incl_vat,
+      email,
+      phone,
       notes,
       items = []
     } = req.body;
@@ -131,7 +161,7 @@ export class InvoiceController {
       throw createError('Invoice date is required', 400);
     }
 
-    // Generate invoice number
+    // Generate invoice number - use global supabase client like QuoteController does
     const { data: lastInvoice, error: lastInvoiceError } = await supabase
       .from('invoices')
       .select('invoice_number')
@@ -139,6 +169,9 @@ export class InvoiceController {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // If client fails to read due to RLS, we might need global client just for reading the number sequence?
+    // But usually users can read their own invoices.
 
     const nextNumber = lastInvoice && !lastInvoiceError ? parseInt(lastInvoice.invoice_number.split('-').pop() || '0') + 1 : 1;
     const invoice_number = `I-${new Date().getFullYear()}-${nextNumber.toString().padStart(4, '0')}`;
@@ -157,21 +190,53 @@ export class InvoiceController {
       });
     }
 
-    const total_amount = subtotal + total_vat;
+    let total_amount = subtotal + total_vat;
+    if (shipping_fee) total_amount += Number(shipping_fee);
+    if (invoice_fee) total_amount += Number(invoice_fee);
+
+    // Apply invoice discount
+    if (invoice_discount_percent) {
+      total_amount = total_amount * (1 - (invoice_discount_percent / 100));
+    }
 
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .insert({
+      .insert([{
         foundation_id,
         invoice_number,
         customer_id,
         order_id,
+        user_id: req.user?.userId, // Add user_id to satisfy RLS policy
         invoice_date,
         due_date: due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
         payment_terms: payment_terms || '30 days',
         invoice_type: invoice_type || 'invoice',
         currency: currency || 'SEK',
+        invoice_address,
+        invoice_address_2,
+        postcode,
+        city,
+        country,
+        cin,
+        your_order_number,
+        your_reference,
+        our_reference,
+        delivery_name,
+        delivery_address,
+        delivery_address_2,
+        delivery_postcode,
+        delivery_city,
+        delivery_country,
+        delivery_date,
+        delivery_method,
+        shipping_fee: shipping_fee || 0,
+        invoice_fee: invoice_fee || 0,
+        invoice_discount_percent: invoice_discount_percent || 0,
+        price_list,
+        prices_incl_vat: prices_incl_vat || false,
+        email,
+        phone,
         subtotal,
         total_vat,
         total_amount,
@@ -179,11 +244,12 @@ export class InvoiceController {
         notes,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      })
-      .select()
+      }])
+      .select('id, invoice_number, status, created_at, updated_at')
       .single();
 
     if (invoiceError) {
+      console.error('Invoice creation failed:', invoiceError);
       throw createError(invoiceError.message, 400);
     }
 
@@ -235,8 +301,10 @@ export class InvoiceController {
     const updateData = req.body;
     const { items, ...invoiceUpdateData } = updateData;
 
+    const client = supabase;
+
     // Update invoice
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice, error: invoiceError } = await client
       .from('invoices')
       .update({
         ...invoiceUpdateData,
@@ -254,7 +322,7 @@ export class InvoiceController {
     // Update items if provided
     if (items !== undefined) {
       // Delete existing items
-      await supabase
+      await client
         .from('invoice_items')
         .delete()
         .eq('invoice_id', id);
@@ -283,7 +351,7 @@ export class InvoiceController {
           };
         });
 
-        await supabase
+        await client
           .from('invoice_items')
           .insert(invoiceItems);
       }
@@ -302,10 +370,21 @@ export class InvoiceController {
         });
       }
 
-      const total_amount = subtotal + total_vat;
+      let total_amount = subtotal + total_vat;
+
+      const shippingFee = invoice.shipping_fee || 0;
+      const invoiceFee = invoice.invoice_fee || 0;
+      const invoiceDiscountPercent = invoice.invoice_discount_percent || 0;
+
+      if (shippingFee) total_amount += Number(shippingFee);
+      if (invoiceFee) total_amount += Number(invoiceFee);
+
+      if (invoiceDiscountPercent) {
+        total_amount = total_amount * (1 - (invoiceDiscountPercent / 100));
+      }
 
       // Update totals
-      await supabase
+      await client
         .from('invoices')
         .update({
           subtotal,
@@ -326,8 +405,10 @@ export class InvoiceController {
     const { id } = req.params;
     const { foundation_id } = req.query;
 
+    const client = supabase;
+
     // Check if invoice exists
-    const { data: invoice, error: checkError } = await supabase
+    const { data: invoice, error: checkError } = await client
       .from('invoices')
       .select('id, status')
       .eq('id', id)
@@ -344,18 +425,18 @@ export class InvoiceController {
     }
 
     // Delete related data first
-    await supabase
+    await client
       .from('payments')
       .delete()
       .eq('invoice_id', id);
 
-    await supabase
+    await client
       .from('invoice_items')
       .delete()
       .eq('invoice_id', id);
 
     // Delete invoice
-    const { error } = await supabase
+    const { error } = await client
       .from('invoices')
       .delete()
       .eq('id', id)
@@ -375,7 +456,9 @@ export class InvoiceController {
     const { foundation_id } = req.query;
     const { payment_method, payment_date, reference } = req.body;
 
-    const { data: invoice, error: invoiceError } = await supabase
+    const client = supabase;
+
+    const { data: invoice, error: invoiceError } = await client
       .from('invoices')
       .select('id, total_amount')
       .eq('id', id)
@@ -387,7 +470,7 @@ export class InvoiceController {
     }
 
     // Update invoice status
-    const { error: updateError } = await supabase
+    const { error: updateError } = await client
       .from('invoices')
       .update({
         status: 'paid',
@@ -400,7 +483,7 @@ export class InvoiceController {
     }
 
     // Create payment record
-    const { error: paymentError } = await supabase
+    const { error: paymentError } = await client
       .from('payments')
       .insert({
         invoice_id: id,
@@ -426,7 +509,9 @@ export class InvoiceController {
     const { id } = req.params;
     const { foundation_id } = req.query;
 
-    const { data: invoice, error } = await supabase
+    const client = supabase;
+
+    const { data: invoice, error } = await client
       .from('invoices')
       .select('id, status, invoice_number')
       .eq('id', id)
@@ -434,6 +519,7 @@ export class InvoiceController {
       .single();
 
     if (error || !invoice) {
+      console.error('Invoice fetch error:', error);
       throw createError('Invoice not found', 404);
     }
 
@@ -442,17 +528,19 @@ export class InvoiceController {
     }
 
     // Update invoice status to sent
-    const { error: updateError } = await supabase
+    const { error: updateError } = await client
       .from('invoices')
       .update({
         status: 'sent',
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('foundation_id', foundation_id);
 
     if (updateError) {
-      throw createError('Failed to send invoice', 500);
+      console.error('Update invoice error:', updateError);
+      throw createError('Failed to send invoice: ' + updateError.message, 500);
     }
 
     // Here you would typically integrate with email service
@@ -471,8 +559,10 @@ export class InvoiceController {
       throw createError('Foundation ID is required', 400);
     }
 
+    const client = supabase;
+
     // Get invoice statistics
-    const { data: stats, error } = await supabase
+    const { data: stats, error } = await client
       .from('invoices')
       .select('status, total_amount')
       .eq('foundation_id', foundation_id);
@@ -496,3 +586,4 @@ export class InvoiceController {
     res.json({ stats: invoiceStats });
   });
 }
+

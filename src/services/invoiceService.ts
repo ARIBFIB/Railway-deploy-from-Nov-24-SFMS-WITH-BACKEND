@@ -5,39 +5,91 @@ export interface InvoiceLineItem {
     description: string;
     quantity: number;
     unit_price: number;
-    tax_rate: number;
+    unit?: string;
+    discount_percent?: number;
+    vat_rate?: number;
     line_total?: number;
 }
 
 export interface Invoice {
     id: string;
     invoice_number: string;
-    invoice_type: string;
-    customer_supplier_name: string; // Mapped from customers.name or directly if text
+    customer_id: string;
+    order_id?: string;
     invoice_date: string;
     due_date: string;
-    subtotal: number;
-    tax_amount: number; // API uses total_vat, checking controller... yes total_vat
-    total_amount: number;
-    currency: string;
-    status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
     payment_terms: string;
-    line_items: InvoiceLineItem[];
-    customer_id?: string;
-    order_id?: string;
+    invoice_type: string;
+    currency: string;
+    subtotal: number;
+    total_vat: number;
+    total_amount: number;
+    status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+    items: InvoiceLineItem[];
+    // New fields
+    invoice_address?: string;
+    invoice_address_2?: string;
+    postcode?: string;
+    city?: string;
+    country?: string;
+    cin?: string;
+    your_order_number?: string;
+    your_reference?: string;
+    our_reference?: string;
+    delivery_name?: string;
+    delivery_address?: string;
+    delivery_address_2?: string;
+    delivery_postcode?: string;
+    delivery_city?: string;
+    delivery_country?: string;
+    delivery_date?: string;
+    delivery_method?: string;
+    shipping_fee?: number;
+    invoice_fee?: number;
+    invoice_discount_percent?: number;
+    price_list?: string;
+    prices_incl_vat?: boolean;
+    email?: string;
+    phone?: string;
     notes?: string;
+    customer_supplier_name?: string; // For display
 }
 
 export interface CreateInvoiceData {
     invoice_type: string;
-    customer_id?: string; // For sales invoices
-    customer_supplier_name?: string; // Fallback or if no customer record
+    customer_id?: string;
     invoice_date: string;
     due_date: string;
     payment_terms: string;
     currency?: string;
     notes?: string;
     items: InvoiceLineItem[];
+    // New fields
+    customer_supplier_name?: string;
+    invoice_address?: string;
+    invoice_address_2?: string;
+    postcode?: string;
+    city?: string;
+    country?: string;
+    cin?: string;
+    your_order_number?: string;
+    your_reference?: string;
+    our_reference?: string;
+    delivery_name?: string;
+    delivery_address?: string;
+    delivery_address_2?: string;
+    delivery_postcode?: string;
+    delivery_city?: string;
+    delivery_country?: string;
+    delivery_date?: string;
+    delivery_method?: string;
+    shipping_fee?: number;
+    invoice_fee?: number;
+    invoice_discount_percent?: number;
+    price_list?: string;
+    prices_incl_vat?: boolean;
+    email?: string;
+    phone?: string;
 }
 
 export interface InvoiceFilters {
@@ -46,115 +98,81 @@ export interface InvoiceFilters {
     customer_id?: string;
 }
 
-export class InvoiceService {
-    static async getInvoices(filters: InvoiceFilters = {}): Promise<{ invoices: Invoice[], total: number }> {
-        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const foundationId = userData.foundationId || userData.foundation_id;
-
-        const queryParams = new URLSearchParams();
-        queryParams.append('foundation_id', foundationId);
-
-        if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
-        if (filters.invoice_type && filters.invoice_type !== 'all') queryParams.append('invoice_type', filters.invoice_type);
-        if (filters.customer_id) queryParams.append('customer_id', filters.customer_id);
+export const invoiceService = {
+    getInvoices: async (foundationId: string, status?: string) => {
+        let url = `/api/invoices?foundation_id=${foundationId}`;
+        if (status && status !== 'all') {
+            url += `&status=${status}`;
+        }
 
         // Add cache busting
-        queryParams.append('_t', Date.now().toString());
+        url += `&_t=${Date.now()}`;
 
-        const response = await apiFetch(`/api/invoices?${queryParams.toString()}`);
+        const response = await apiFetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch invoices');
         }
         const data = await response.json();
 
-        // Transform backend data to frontend interface matches if necessary
-        // Backend returns: invoices: [ { ..., customers: { name: ... }, total_vat: ... } ]
-        const invoices = data.invoices.map((inv: any) => ({
-            ...inv,
-            tax_amount: inv.total_vat,
-            // Map customer name if available
-            customer_supplier_name: inv.customers?.name || inv.customer_supplier_name || 'Unknown',
-            // Ensure line items are present (backend sends invoice_items usually separate or included)
-            // Controller lines 16-30 include `invoice_items`
-            line_items: (inv.invoice_items || []).map((item: any) => ({
-                id: item.id,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                tax_rate: item.vat_rate, // Backend uses vat_rate
-                line_total: item.line_total
-            }))
-        }));
+        // Transform if necessary or just return
+        return data;
+    },
 
-        return { invoices, total: data.total };
-    }
-
-    static async getInvoiceById(id: string): Promise<Invoice> {
-        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const foundationId = userData.foundationId || userData.foundation_id;
-
+    getInvoiceById: async (id: string, foundationId: string) => {
         const response = await apiFetch(`/api/invoices/${id}?foundation_id=${foundationId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch invoice');
         }
-        const data = await response.json();
-        const inv = data.invoice;
+        return await response.json();
+    },
 
-        return {
-            ...inv,
-            tax_amount: inv.total_vat,
-            customer_supplier_name: inv.customers?.name || inv.customer_supplier_name || 'Unknown',
-            line_items: (inv.invoice_items || []).map((item: any) => ({
-                id: item.id,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                tax_rate: item.vat_rate,
-                line_total: item.line_total
-            }))
-        };
-    }
-
-    static async createInvoice(data: CreateInvoiceData): Promise<Invoice> {
-        // Map frontend data to backend expectations
-        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const foundationId = userData.foundationId || userData.foundation_id;
-
-        // Map types to lowercase
-        const invoiceType = data.invoice_type.toLowerCase();
-
-        const payload = {
-            ...data,
-            invoice_type: invoiceType,
-            items: data.items.map(item => ({
-                ...item,
-                vat_rate: item.tax_rate
-            }))
-        };
-
+    createInvoice: async (foundationId: string, invoiceData: any) => {
         const response = await apiFetch(`/api/invoices?foundation_id=${foundationId}`, {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(invoiceData),
         });
 
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.message || 'Failed to create invoice');
         }
+        return await response.json();
+    },
 
-        const result = await response.json();
-        return result.invoice;
-    }
-
-    static async deleteInvoice(id: string): Promise<void> {
-        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const foundationId = userData.foundationId || userData.foundation_id;
-
+    updateInvoice: async (id: string, foundationId: string, invoiceData: any) => {
         const response = await apiFetch(`/api/invoices/${id}?foundation_id=${foundationId}`, {
-            method: 'DELETE'
+            method: 'PUT',
+            body: JSON.stringify(invoiceData),
         });
+
         if (!response.ok) {
-            throw new Error('Failed to delete invoice');
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to update invoice');
         }
+        return await response.json();
+    },
+
+    deleteInvoice: async (id: string, foundationId: string) => {
+        const response = await apiFetch(`/api/invoices/${id}?foundation_id=${foundationId}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to delete invoice');
+        }
+        return await response.json();
+    },
+
+    sendInvoice: async (id: string, foundationId: string) => {
+        const response = await apiFetch(`/api/invoices/${id}/send?foundation_id=${foundationId}`, {
+            method: 'PATCH',
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to send invoice');
+        }
+        return await response.json();
     }
-}
+};
