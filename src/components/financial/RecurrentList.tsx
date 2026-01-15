@@ -8,7 +8,7 @@ export const RecurrentList: React.FC = () => {
     setShowCreateForm(true);
   };
   
-  const handleCancel = () => {
+  const handleCancel = () => { 
     setShowCreateForm(false);
   };
   

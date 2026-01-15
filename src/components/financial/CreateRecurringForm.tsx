@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { ArrowLeft, User, Truck, FileText, ArrowUpDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, User, Truck, FileText, ArrowUpDown, X } from 'lucide-react';
+import { customerService } from '../../services/customerService';
+import { itemService } from '../../services/itemService';
+import type { Item } from '../../services/itemService';
 
 interface CreateRecurringFormProps {
   onCancel: () => void;
@@ -11,11 +14,86 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [textRows, setTextRows] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
+  const [showCustomerPopup, setShowCustomerPopup] = useState(false);
+  const [showDeliveryPopup, setShowDeliveryPopup] = useState(false);
+  const [showInvoicePopup, setShowInvoicePopup] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [recurringData, setRecurringData] = useState({
     customer: '',
     invoiceText: '',
     // Add other fields as needed
   });
+
+  // Calculate financial summary
+  const calculateSummary = () => {
+    let netTotal = 0;
+    let vatTotal = 0;
+    
+    textRows.forEach(row => {
+      const amount = parseFloat(row.amount) || 0;
+      const price = parseFloat(row.price) || 0;
+      const discount = parseFloat(row.discount) || 0;
+      const vatPercent = parseFloat(row.vat) || 0;
+      
+      // Calculate line total (amount * price * (1 - discount/100))
+      const lineTotal = amount * price * (1 - discount / 100);
+      
+      // Add to net total
+      netTotal += lineTotal;
+      
+      // Calculate VAT for this line
+      const lineVat = lineTotal * (vatPercent / 100);
+      vatTotal += lineVat;
+    });
+    
+    const toPay = netTotal + vatTotal;
+    
+    return {
+      net: netTotal,
+      vat: vatTotal,
+      toPay: toPay
+    };
+  };
+  
+  // Get calculated values
+  const summary = calculateSummary();
+
+  // Fetch customers and items on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const foundationId = userData.foundationId || userData.foundation_id;
+        
+        console.log('Fetching data for foundation:', foundationId);
+        
+        if (foundationId) {
+          // Fetch customers
+          const customerResponse = await customerService.getCustomers(foundationId);
+          console.log('Customers fetched:', customerResponse);
+          setCustomers(customerResponse);
+          
+          // Fetch items
+          const itemResponse = await itemService.getItems(foundationId);
+          console.log('Items fetched:', itemResponse);
+          console.log('Items data:', itemResponse.data);
+          if (itemResponse.data) {
+            console.log('Setting items state with', itemResponse.data.length, 'items');
+            setItems(itemResponse.data);
+          } else {
+            console.log('No items data received');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setRecurringData(prev => ({ ...prev, [field]: value }));
@@ -74,33 +152,42 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
         <div className="grid grid-cols-3 gap-4 mb-6">
           <button
             className={`h-9 min-w-[120px] flex items-center justify-center gap-1.5 px-2 rounded text-xs font-medium ${
-              activeTab === 'customer' 
-                ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
-                : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+              selectedCustomer
+                ? activeTab === 'customer' 
+                  ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
+                  : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+                : 'text-[#9E9E9E] border border-[#E0E0E0] bg-[#F5F5F5] cursor-not-allowed'
             }`}
-            onClick={() => setActiveTab('customer')}
+            onClick={() => selectedCustomer && setShowCustomerPopup(true)}
+            disabled={!selectedCustomer}
           >
             <User size={14} />
             Customer details
           </button>
           <button
             className={`h-9 min-w-[120px] flex items-center justify-center gap-1.5 px-2 rounded text-xs font-medium ${
-              activeTab === 'delivery' 
-                ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
-                : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+              selectedCustomer
+                ? activeTab === 'delivery' 
+                  ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
+                  : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+                : 'text-[#9E9E9E] border border-[#E0E0E0] bg-[#F5F5F5] cursor-not-allowed'
             }`}
-            onClick={() => setActiveTab('delivery')}
+            onClick={() => selectedCustomer && setShowDeliveryPopup(true)}
+            disabled={!selectedCustomer}
           >
             <Truck size={14} />
             Delivery info
           </button>
           <button
             className={`h-9 min-w-[120px] flex items-center justify-center gap-1.5 px-2 rounded text-xs font-medium ${
-              activeTab === 'invoice' 
-                ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
-                : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+              selectedCustomer
+                ? activeTab === 'invoice' 
+                  ? 'text-[#0A7A3B] border-[1.5px] border-[#0A7A3B] bg-white'
+                  : 'text-[#6B6B6B] border border-[#DADADA] bg-white hover:text-[#0A7A3B] hover:border-[#0A7A3B] hover:bg-[#F6F8F7]'
+                : 'text-[#9E9E9E] border border-[#E0E0E0] bg-[#F5F5F5] cursor-not-allowed'
             }`}
-            onClick={() => setActiveTab('invoice')}
+            onClick={() => selectedCustomer && setShowInvoicePopup(true)}
+            disabled={!selectedCustomer}
           >
             <FileText size={14} />
             Invoice info
@@ -124,22 +211,79 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
           <input
             type="text"
             placeholder="Customer"
-            className="w-full h-[52px] border border-[#DADADA] rounded-lg px-4 text-base text-[#0B3A2E] placeholder-[#9E9E9E] focus:outline-none focus:ring-0 focus:border-[#0A7A3B] focus:ring-[#0A7A3B] focus:ring-2 focus:ring-opacity-15"
+            className="w-full h-[52px] border border-[#DADADA] rounded-lg px-4 text-base text-[#0B3A2E] placeholder-[#9E9E9E] focus:outline-none focus:border-[#0A7A3B] focus:ring-2 focus:ring-[#0A7A3B] focus:ring-opacity-15"
             value={recurringData.customer}
             onChange={(e) => handleInputChange('customer', e.target.value)}
             onFocus={() => setDropdownOpen(true)}
-            onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+            onBlur={(e) => {
+              // Prevent closing dropdown when clicking on dropdown items
+              if (!e.relatedTarget || !e.relatedTarget.closest('.customer-dropdown-item')) {
+                setTimeout(() => setDropdownOpen(false), 200);
+              }
+            }}
           />
           
           {dropdownOpen && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-[#E0E0E0] rounded-lg shadow-lg">
-              <div className="grid grid-cols-2 gap-4 p-3 border-b border-[#E0E0E0]">
+            <div className="absolute z-10 w-full mt-1 bg-white border border-[#E0E0E0] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4 p-3 border-b border-[#E0E0E0] bg-[#F5F7F6]">
                 <div className="text-xs font-semibold text-[#0B3A2E]">Customer No</div>
                 <div className="text-xs font-semibold text-[#0B3A2E]">Customer name</div>
               </div>
-              <div className="p-3 text-sm text-[#4A4A4A]">No results...</div>
+              <div className="divide-y divide-[#E0E0E0]">
+                {customers.length > 0 ? (
+                  customers.map((customer) => (
+                    <div 
+                      key={customer.id}
+                      className="grid grid-cols-2 gap-4 p-3 hover:bg-[#F5F7F6] cursor-pointer customer-dropdown-item"
+                      onClick={() => {
+                        console.log('Customer selected:', customer);
+                        setSelectedCustomer(customer);
+                        setRecurringData(prev => ({ ...prev, customer: customer.name }));
+                        setDropdownOpen(false);
+                      }}
+                      onMouseDown={(e) => {
+                        // Prevent blur event from firing
+                        e.preventDefault();
+                      }}
+                    >
+                      <div className="text-sm text-[#0B3A2E]">{customer.customer_number}</div>
+                      <div className="text-sm text-[#0B3A2E]">{customer.name}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-sm text-[#4A4A4A] text-center">No customers found</div>
+                )}
+              </div>
             </div>
           )}
+        </div>
+
+        {/* Add initial row button for testing */}
+        <div className="mb-4">
+          <button 
+            className="h-9 px-4 bg-[#0A7A3B] text-white text-sm font-semibold rounded hover:bg-[#066630]"
+            onClick={() => {
+              const newRow = {
+                id: Date.now(),
+                articleNo: '',
+                name: '',
+                amount: 1,
+                unit: '',
+                type: 'Text',
+                price: 0,
+                discount: '',
+                total: 0,
+                vat: '',
+                account: ''
+              };
+              setTextRows([newRow]);
+            }}
+          >
+            Add Test Row
+          </button>
+          <span className="ml-4 text-sm text-[#6F6F6F]">
+            Items loaded: {items.length}
+          </span>
         </div>
 
         {/* Line Items Table - Full Width */}
@@ -177,13 +321,67 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
                     <td className="px-2 py-1 text-center">
                       <div className="cursor-grab text-[#8A8A8A] hover:text-[#4A4A4A]">⋮⋮</div>
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-2 py-1 relative">
                       <input 
                         type="text" 
                         value={row.articleNo}
-                        className="w-full bg-transparent text-[#9E9E9E] cursor-not-allowed"
-                        disabled
+                        placeholder="Search article"
+                        className="w-full h-9 px-3 py-1 text-[#0B3A2E] border border-transparent rounded focus:border-[#0A7A3B] focus:bg-white"
+                        onFocus={() => {
+                          setItemDropdownOpen(true);
+                        }}
+                        onBlur={(e) => {
+                          // Prevent closing dropdown when clicking on dropdown items
+                          if (!e.relatedTarget || !e.relatedTarget.closest('.item-dropdown-item')) {
+                            setTimeout(() => setItemDropdownOpen(false), 200);
+                          }
+                        }}
+                        onChange={(e) => {
+                          const updatedRows = [...textRows];
+                          updatedRows[index] = { ...updatedRows[index], articleNo: e.target.value };
+                          setTextRows(updatedRows);
+                        }}
                       />
+                      {itemDropdownOpen && (
+                        <div className="absolute z-20 w-full mt-1 bg-white border border-[#E0E0E0] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="grid grid-cols-2 gap-4 p-3 border-b border-[#E0E0E0] bg-[#F5F7F6]">
+                            <div className="text-xs font-semibold text-[#0B3A2E]">Article No</div>
+                            <div className="text-xs font-semibold text-[#0B3A2E]">Name</div>
+                          </div>
+                          <div className="divide-y divide-[#E0E0E0]">
+                            {items.length > 0 ? (
+                              items.map((item) => (
+                                <div 
+                                  key={item.id}
+                                  className="grid grid-cols-2 gap-4 p-3 hover:bg-[#F5F7F6] cursor-pointer item-dropdown-item"
+                                  onClick={() => {
+                                    const updatedRows = [...textRows];
+                                    updatedRows[index] = { 
+                                      ...updatedRows[index], 
+                                      articleNo: item.item_number,
+                                      name: item.name,
+                                      price: parseFloat(item.sale_account) || 0,
+                                      unit: item.unit || 'st',
+                                      vat: item.vat || '25'
+                                    };
+                                    setTextRows(updatedRows);
+                                    setItemDropdownOpen(false);
+                                  }}
+                                  onMouseDown={(e) => {
+                                    // Prevent blur event from firing
+                                    e.preventDefault();
+                                  }}
+                                >
+                                  <div className="text-sm text-[#0B3A2E]">{item.item_number}</div>
+                                  <div className="text-sm text-[#0B3A2E]">{item.name}</div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-3 text-sm text-[#4A4A4A] text-center">No items found</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-2 py-1">
                       <input 
@@ -260,7 +458,7 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
                       />
                     </td>
                     <td className="px-2 py-1 text-right font-medium text-[#0B3A2E]">
-                      {(row.amount * row.price * (1 - (row.discount || 0) / 100)).toFixed(2)}
+                      {(parseFloat(row.amount || 0) * parseFloat(row.price || 0) * (1 - (parseFloat(row.discount || 0) / 100))).toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-2 py-1 text-right">
                       <select 
@@ -353,7 +551,41 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
                           </button>
                         </div>
                         <div className="h-px bg-[#E0E0E0] my-3"></div>
-                        <div className="text-sm text-[#6F6F6F] pl-4">No results...</div>
+                        <div className="text-sm text-[#6F6F6F] pl-4">
+                          {items.length > 0 ? (
+                            <div className="divide-y divide-[#E0E0E0] max-h-40 overflow-y-auto">
+                              {items.map((item) => (
+                                <div 
+                                  key={item.id}
+                                  className="grid grid-cols-2 gap-4 p-2 hover:bg-[#F5F7F6] cursor-pointer"
+                                  onClick={() => {
+                                    // Add item as a new row
+                                    const newRow = {
+                                      id: Date.now(),
+                                      articleNo: item.item_number,
+                                      name: item.name,
+                                      amount: 1,
+                                      unit: item.unit || 'st',
+                                      type: 'Item',
+                                      price: parseFloat(item.sale_account) || 0,
+                                      discount: '',
+                                      total: parseFloat(item.sale_account) || 0,
+                                      vat: item.vat || '25',
+                                      account: ''
+                                    };
+                                    setTextRows([...textRows, newRow]);
+                                    setSearchExpanded(false);
+                                  }}
+                                >
+                                  <div className="text-sm text-[#0B3A2E]">{item.item_number}</div>
+                                  <div className="text-sm text-[#0B3A2E]">{item.name}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div>No items found</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -382,16 +614,22 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-[#4A4A4A]">Net</span>
-                  <span className="text-sm font-medium text-[#0B3A2E]">0,00</span>
+                  <span className="text-sm font-medium text-[#0B3A2E]">
+                    {summary.net.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-[#4A4A4A]">VAT</span>
-                  <span className="text-sm font-medium text-[#0B3A2E]">0,00</span>
+                  <span className="text-sm font-medium text-[#0B3A2E]">
+                    {summary.vat.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
                 <div className="border-t border-[#E0E0E0] pt-2 mt-2">
                   <div className="flex justify-between">
                     <span className="text-base font-semibold text-[#0B3A2E]">To pay</span>
-                    <span className="text-lg font-bold text-[#0A7A3B]">0,00 SEK</span>
+                    <span className="text-lg font-bold text-[#0A7A3B]">
+                      {summary.toPay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SEK
+                    </span>
                   </div>
                 </div>
               </div>
@@ -423,6 +661,96 @@ export const CreateRecurringForm: React.FC<CreateRecurringFormProps> = ({ onCanc
           </div>
         </div>
       </div>
+
+      {/* Customer Details Popup */}
+      {showCustomerPopup && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-[#0B3A2E]">Customer Details</h2>
+                <button 
+                  onClick={() => setShowCustomerPopup(false)}
+                  className="text-[#8A8A8A] hover:text-[#4A4A4A]"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#4A4A4A] mb-1">Customer Number</label>
+                    <div className="text-[#0B3A2E]">{selectedCustomer.customer_number}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#4A4A4A] mb-1">Customer Name</label>
+                    <div className="text-[#0B3A2E]">{selectedCustomer.name}</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-[#4A4A4A] mb-1">Type</label>
+                  <div className="text-[#0B3A2E] capitalize">{selectedCustomer.customer_type}</div>
+                </div>
+                
+                {selectedCustomer.corporate_personal_id && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#4A4A4A] mb-1">Corporate/Personal ID</label>
+                    <div className="text-[#0B3A2E]">{selectedCustomer.corporate_personal_id}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery Info Popup */}
+      {showDeliveryPopup && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-[#0B3A2E]">Delivery Information</h2>
+                <button 
+                  onClick={() => setShowDeliveryPopup(false)}
+                  className="text-[#8A8A8A] hover:text-[#4A4A4A]"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="text-center py-8 text-[#4A4A4A]">
+                Delivery information would be displayed here
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Info Popup */}
+      {showInvoicePopup && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-[#0B3A2E]">Invoice Information</h2>
+                <button 
+                  onClick={() => setShowInvoicePopup(false)}
+                  className="text-[#8A8A8A] hover:text-[#4A4A4A]"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="text-center py-8 text-[#4A4A4A]">
+                Invoice information would be displayed here
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
