@@ -82,6 +82,7 @@ import salarySettingsRoutes from './routes/salarySettings';
 import supplierInvoiceRoutes from './routes/supplierInvoices';
 import payrollRoutes from './routes/payroll';
 import itemRoutes from './routes/itemRoutes';
+import paymentRoutes from './routes/payments';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -174,6 +175,7 @@ app.use('/api/quotes', quoteRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/supplier-invoices', supplierInvoiceRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/articles', articlesRoutes);

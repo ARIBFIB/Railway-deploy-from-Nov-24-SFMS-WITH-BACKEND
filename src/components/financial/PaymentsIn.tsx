@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search } from 'lucide-react';
+import { paymentService } from '../../services/paymentService';
+type CreatePaymentData = {
+  invoice_id: string;
+  payment_date: string;
+  amount: number;
+  currency?: string;
+  payment_method?: string;
+  transaction_reference?: string;
+  status?: 'completed' | 'pending' | 'failed' | 'cancelled';
+  notes?: string;
+};
 
 interface Invoice {
   id: string;
   invoice_number: string;
+  ocr_number?: string;
   customer_supplier_name: string;
+  customer_number?: string;
   invoice_type: 'sales' | 'purchase';
   invoice_date: string;
   due_date: string;
@@ -28,6 +41,47 @@ interface PaymentsInProps {
 }
 
 export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
+  // Fetch existing payments when component mounts
+  useEffect(() => {
+    const fetchExistingPayments = async () => {
+      try {
+        const userDataRaw = localStorage.getItem('user_data');
+        const userData = userDataRaw ? JSON.parse(userDataRaw) : {};
+        const foundationId = userData.foundationId || userData.foundation_id;
+        
+        if (!foundationId) {
+          console.error('Foundation ID not found');
+          return;
+        }
+        
+        // Fetch all payments for this foundation
+        const response = await paymentService.getPayments(foundationId);
+        const paymentsWithInvoiceDetails = response.payments.map((payment: any) => ({
+          id: payment.id,
+          payment_date: payment.payment_date,
+          invoice_number: payment.invoices?.invoice_number || 'N/A',
+          ocr_number: payment.invoices?.invoice_number || '-',
+          customer_number: payment.invoices?.customers?.customer_number || '-',
+          customer_name: payment.invoices?.customers?.name || 'N/A',
+          due_date: payment.invoices?.due_date || 'N/A',
+          balance: payment.invoices?.total_amount || 0,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status
+        }));
+        
+        setAddedPayments(paymentsWithInvoiceDetails);
+        
+        // Calculate total amount
+        const total = paymentsWithInvoiceDetails.reduce((sum: number, payment: any) => sum + payment.amount, 0);
+        setTotalPaymentAmount(total);
+      } catch (error) {
+        console.error('Error fetching payments:', error);
+      }
+    };
+    
+    fetchExistingPayments();
+  }, []);
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
@@ -35,32 +89,69 @@ export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
   const [selectedPaymentCount, setSelectedPaymentCount] = useState(0);
   const [totalPaymentAmount, setTotalPaymentAmount] = useState(0);
   const [paymentInvoice, setPaymentInvoice] = useState<any>(null);
+  const [showInvoiceDropdown, setShowInvoiceDropdown] = useState(false);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Function to add a payment
-  const addPayment = () => {
+  const addPayment = async () => {
     if (!paymentInvoice || !paidAmount) {
       return; // Don't add if no invoice or amount specified
     }
     
-    const newPayment = {
-      id: `payment-${Date.now()}`,
-      payment_date: paymentDate,
-      invoice_number: paymentInvoice.invoice_number,
-      customer_name: paymentInvoice.customer_supplier_name,
-      amount: parseFloat(paidAmount),
-      currency: paymentInvoice.currency,
-      status: 'pending'
-    };
-    
-    setAddedPayments([...addedPayments, newPayment]);
-    
-    // Update total
-    setTotalPaymentAmount(totalPaymentAmount + parseFloat(paidAmount));
-    
-    // Clear form
-    setInvoiceSearch('');
-    setPaidAmount('');
-    setPaymentInvoice(null);
+    try {
+      // Get foundation ID from local storage
+      const userDataRaw = localStorage.getItem('user_data');
+      const userData = userDataRaw ? JSON.parse(userDataRaw) : {};
+      const foundationId = userData.foundationId || userData.foundation_id;
+      
+      if (!foundationId) {
+        alert('Foundation ID not found. Please log in again.');
+        return;
+      }
+      
+      // Prepare payment data
+      const paymentData: CreatePaymentData = {
+        invoice_id: paymentInvoice.id,
+        payment_date: paymentDate,
+        amount: parseFloat(paidAmount),
+        currency: paymentInvoice.currency || 'SEK',
+        status: 'completed'
+      };
+      
+      // Call backend API to create payment
+      const createdPayment = await paymentService.createPayment(paymentData, foundationId);
+      
+      // Add to local state
+      const newPayment = {
+        id: createdPayment.id,
+        payment_date: createdPayment.payment_date,
+        invoice_number: paymentInvoice.invoice_number,
+        ocr_number: paymentInvoice.ocr_number || '-',
+        customer_number: paymentInvoice.customer_number || '-',
+        customer_name: paymentInvoice.customer_supplier_name,
+        due_date: paymentInvoice.due_date,
+        balance: paymentInvoice.total_amount,
+        amount: parseFloat(paidAmount),
+        currency: paymentInvoice.currency,
+        status: createdPayment.status
+      };
+      
+      setAddedPayments([...addedPayments, newPayment]);
+      
+      // Update total
+      setTotalPaymentAmount(totalPaymentAmount + parseFloat(paidAmount));
+      
+      // Clear form
+      setInvoiceSearch('');
+      setPaidAmount('');
+      setPaymentInvoice(null);
+      
+      alert('Payment added successfully!');
+    } catch (error) {
+      console.error('Error creating payment:', error);
+      alert('Failed to create payment. Please try again.');
+    }
   };
 
   // Function to clear the payment form
@@ -71,6 +162,40 @@ export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
     setPaymentInvoice(null);
   };
 
+  // Function to filter invoices for the dropdown
+  const filterInvoices = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setFilteredInvoices([]);
+      return;
+    }
+    
+    const filtered = invoices.filter(inv => 
+      inv.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inv.customer_supplier_name && inv.customer_supplier_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (inv.ocr_number && inv.ocr_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (inv.customer_number && inv.customer_number.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    
+    setFilteredInvoices(filtered);
+    setShowInvoiceDropdown(true);
+  };
+  
+  // Function to handle search input change
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInvoiceSearch(value);
+    filterInvoices(value);
+  };
+  
+  // Function to handle invoice selection from dropdown
+  const handleInvoiceSelect = (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+    setInvoiceSearch(invoice.invoice_number);
+    setPaidAmount(invoice.total_amount.toString());
+    setShowInvoiceDropdown(false);
+    setFilteredInvoices([]);
+  };
+  
   // Function to search for an invoice
   const searchInvoice = () => {
     // Find invoice by number or customer name
@@ -84,24 +209,88 @@ export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
       setPaidAmount(foundInvoice.total_amount.toString());
     }
   };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowInvoiceDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Function to remove a payment
-  const removePayment = (id: string) => {
-    const paymentToRemove = addedPayments.find(p => p.id === id);
-    if (paymentToRemove) {
-      setAddedPayments(addedPayments.filter(p => p.id !== id));
-      setTotalPaymentAmount(totalPaymentAmount - paymentToRemove.amount);
+  const removePayment = async (id: string) => {
+    try {
+      const userDataRaw = localStorage.getItem('user_data');
+      const userData = userDataRaw ? JSON.parse(userDataRaw) : {};
+      const foundationId = userData.foundationId || userData.foundation_id;
+      
+      if (!foundationId) {
+        alert('Foundation ID not found. Please log in again.');
+        return;
+      }
+      
+      // Call backend API to delete payment
+      await paymentService.deletePayment(id, foundationId);
+      
+      // Update local state
+      const paymentToRemove = addedPayments.find(p => p.id === id);
+      if (paymentToRemove) {
+        setAddedPayments(addedPayments.filter(p => p.id !== id));
+        setTotalPaymentAmount(totalPaymentAmount - paymentToRemove.amount);
+      }
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      alert('Failed to delete payment. Please try again.');
     }
   };
 
   // Function to post payments
-  const postPayments = () => {
-    // In demo mode, we'll just show a success message
-    alert('Payments posted successfully!');
-    
-    // Clear added payments
-    setAddedPayments([]);
-    setTotalPaymentAmount(0);
+  const postPayments = async () => {
+    try {
+      const userDataRaw = localStorage.getItem('user_data');
+      const userData = userDataRaw ? JSON.parse(userDataRaw) : {};
+      const foundationId = userData.foundationId || userData.foundation_id;
+      
+      if (!foundationId) {
+        alert('Foundation ID not found. Please log in again.');
+        return;
+      }
+      
+      // In a real implementation, this would update all selected payments
+      alert('Payments posted successfully!');
+      
+      // Refresh the payments list
+      const response = await paymentService.getPayments(foundationId);
+      const paymentsWithInvoiceDetails = response.payments.map((payment: any) => ({
+        id: payment.id,
+        payment_date: payment.payment_date,
+        invoice_number: payment.invoices?.invoice_number || 'N/A',
+        ocr_number: payment.invoices?.invoice_number || '-',
+        customer_number: payment.invoices?.customers?.customer_number || '-',
+        customer_name: payment.invoices?.customers?.name || 'N/A',
+        due_date: payment.invoices?.due_date || 'N/A',
+        balance: payment.invoices?.total_amount || 0,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status
+      }));
+      
+      setAddedPayments(paymentsWithInvoiceDetails);
+      
+      // Calculate total amount
+      const total = paymentsWithInvoiceDetails.reduce((sum: number, payment: any) => sum + payment.amount, 0);
+      setTotalPaymentAmount(total);
+    } catch (error) {
+      console.error('Error posting payments:', error);
+      alert('Failed to post payments. Please try again.');
+    }
   };
 
   // Update selected payment count when payments are selected/unselected
@@ -169,15 +358,50 @@ export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
           
           <div className="flex flex-col">
             <label className="text-xs font-medium text-[#5F6368] mb-1">Invoice</label>
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <input
                 type="text"
                 placeholder="Invoice no., OCR, Cust. no., Name"
                 value={invoiceSearch}
-                onChange={(e) => setInvoiceSearch(e.target.value)}
+                onChange={handleSearchInputChange}
+                onFocus={() => invoiceSearch && setShowInvoiceDropdown(true)}
                 className="h-9 w-80 border border-[#DADCE0] rounded px-3 text-[#202124] text-sm"
               />
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#9E9E9E] w-4 h-4 pointer-events-none" />
+              
+              {/* Invoice Dropdown */}
+              {showInvoiceDropdown && filteredInvoices.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-[#DADCE0] rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">Invoice number</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">OCR</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">Customer no.</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">Balance</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">Currency</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-[#2E2E2E] uppercase text-left">Due date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredInvoices.map((invoice) => (
+                        <tr 
+                          key={invoice.id} 
+                          className="hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleInvoiceSelect(invoice)}
+                        >
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{invoice.invoice_number}</td>
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{invoice.ocr_number || '-'}</td>
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{invoice.customer_number || '-'}</td>
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{invoice.total_amount.toLocaleString('sv-SE')}</td>
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{invoice.currency}</td>
+                          <td className="px-3 py-2 text-sm text-[#2E2E2E]">{new Date(invoice.due_date).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
           
@@ -214,57 +438,95 @@ export const PaymentsIn: React.FC<PaymentsInProps> = ({ invoices }) => {
         </div>
       </div>
 
-      {/* Main Content Area (Empty State when no payments) */}
-      {addedPayments.length === 0 ? (
-        <div className="mx-4 mb-24 text-center py-12 text-[#9E9E9E] bg-white">
-          <p>No payments added yet. Use the form above to add payments.</p>
-        </div>
-      ) : (
-        <div className="mx-4 mb-24">
-          <div className="border border-[#E0E0E0] rounded-lg overflow-hidden">
-            <table className="min-w-full">
-              <thead>
-                <tr className="bg-[#F1F3F4]">
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-left">Checkbox</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-left">Payment Date</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-left">Invoice Number</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-left">Customer Name</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-right">Amount</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-center">Currency</th>
-                  <th className="px-4 py-2 text-xs font-semibold text-[#5F6368] uppercase text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {addedPayments.map((payment) => (
-                  <tr key={payment.id} className="border-t border-[#E0E0E0] hover:bg-gray-50">
-                    <td className="px-4 py-3 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="text-[#1A73E8]"
-                        checked={payment.selected || false}
-                        onChange={() => handlePaymentSelection(payment.id)}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-sm">{new Date(payment.payment_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm">{payment.invoice_number}</td>
-                    <td className="px-4 py-3 text-sm">{payment.customer_name}</td>
-                    <td className="px-4 py-3 text-sm text-right">{payment.amount.toLocaleString('sv-SE')}</td>
-                    <td className="px-4 py-3 text-sm text-center">{payment.currency}</td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      <button 
-                        onClick={() => removePayment(payment.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Manual Payments – Table Section */}
+      <div className="mx-4 mb-24">
+        {/* Section Header (Expandable Row) */}
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#E6E6E6]">
+          <div className="flex items-center">
+            <input 
+              type="checkbox" 
+              className="w-3.5 h-3.5 text-[#0B8F3C] border-[#9E9E9E] mr-2"
+              aria-label="Select payment"
+            />
+            <svg className="w-3.5 h-3.5 text-[#0B8F3C] mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm font-semibold text-[#1F1F1F]">
+              {new Date().toISOString().split('T')[0]} Manual payments
+            </span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm font-semibold text-[#1F1F1F]">
+              Total {addedPayments.length} payments: {totalPaymentAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SEK
+            </span>
+            <button className="w-3.5 h-3.5 text-[#9E9E9E] ml-2 hover:text-[#D32F2F] cursor-pointer">
+              🗑
+            </button>
           </div>
         </div>
-      )}
+        
+        {/* Table Container */}
+        <div className="border border-[#E0E0E0] rounded-lg mt-2 overflow-x-auto bg-white">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-white border-b-2 border-[#B8B8B8] h-10">
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">INVOICE NUMBER</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">OCR</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">CUSTOMER NO.</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">NAME</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">DUE DATE</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-left">PAYMENT DATE</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-right">BALANCE SEK</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-right">PAID SEK</th>
+                <th className="px-3 py-2 text-xs font-bold text-[#2E2E2E] uppercase text-center">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {addedPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center text-[#9E9E9E]">
+                    No payments added yet. Use the form above to add payments.
+                  </td>
+                </tr>
+              ) : (
+                addedPayments.map((payment) => (
+                  <tr key={payment.id} className="border-b border-[#EEEEEE] h-11 hover:bg-[#F9F9F9] cursor-default">
+                    <td className="px-3 py-2.5 text-sm">
+                      <span className="text-[#1E88E5] font-semibold hover:underline cursor-pointer">
+                        {payment.invoice_number}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-[#1F1F1F]">{payment.ocr_number}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#1F1F1F]">{payment.customer_number}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#1F1F1F]">{payment.customer_name}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#1F1F1F]">{new Date(payment.due_date).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 text-sm text-[#1F1F1F]">{new Date(payment.payment_date).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 text-sm font-semibold text-right text-[#1F1F1F]">{payment.balance.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-2.5 text-sm font-semibold text-right text-[#1F1F1F]">{payment.amount.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <div className="flex justify-center space-x-2">
+                        <button className="w-3.5 h-3.5 text-[#616161] hover:text-[#1E88E5] cursor-pointer" title="Bookkeeping / voucher">
+                          B
+                        </button>
+                        <button className="w-3.5 h-3.5 text-[#616161] hover:text-[#1E88E5] cursor-pointer" title="View / print">
+                          📄
+                        </button>
+                        <button 
+                          onClick={() => removePayment(payment.id)}
+                          className="w-3.5 h-3.5 text-[#616161] hover:text-[#D32F2F] cursor-pointer" 
+                          title="Delete payment"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Sticky Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] h-16 flex items-center px-4">
