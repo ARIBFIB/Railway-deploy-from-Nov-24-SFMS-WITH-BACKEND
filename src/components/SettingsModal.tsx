@@ -24367,7 +24367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {item.id === 'supplier-financial-year' && expandedSections['supplier-financial-year'] && (
                       <div className="border-b border-gray-100">
                         <div className="p-4">
-                          <FinancialYearInterface
+                          {/* <FinancialYearInterface
                             data={{
                               createFiscalYearsAutomatically:
                                 supplierFinancialYearData.createFiscalYearsAutomatically,
@@ -24396,7 +24396,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             loading={supplierFinancialYearLoading}
                             error={supplierFinancialYearError}
                             success={supplierFinancialYearSuccess}
-                          />
+                          /> */}
                         </div>
                       </div>
                     )}
@@ -24888,7 +24888,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     {item.id === 'cost-centers' && expandedSections[item.id] && (
                       <div className="border-b border-gray-100">
                         <div className="p-4">
-                          <CostCentersInterface scope="billing" />
+                          {/* <CostCentersInterface scope="billing" /> */}
                         </div>
                       </div>
                     )}
