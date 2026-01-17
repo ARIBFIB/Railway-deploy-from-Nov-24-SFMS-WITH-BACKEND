@@ -15,6 +15,90 @@ const InvoicesReceived: React.FC = () => {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [isInviteLoading, setIsInviteLoading] = useState(false);
 
+  // Dummy data for invoices received
+  const invoicesReceived = [
+    {
+      id: 1,
+      type: 'F',
+      supplierName: 'ABC Company',
+      reference: 'INV-001',
+      invoiceDate: '2026-01-15',
+      dueDate: '2026-02-15',
+      total: '15,000',
+      vat: '2,500',
+      estVat: '2,500',
+      currency: 'SEK',
+      account: '2440',
+      source: 'Email',
+      received: '2026-01-14',
+      status: 'ready-to-be-created' // Options: 'interpretation-failed', 'requires-editing', 'ready-to-be-created'
+    },
+    {
+      id: 2,
+      type: 'F',
+      supplierName: 'XYZ Services',
+      reference: 'INV-002',
+      invoiceDate: '2026-01-14',
+      dueDate: '2026-02-14',
+      total: '22,500',
+      vat: '3,750',
+      estVat: '3,750',
+      currency: 'SEK',
+      account: '2440',
+      source: 'E-invoice',
+      received: '2026-01-13',
+      status: 'requires-editing'
+    },
+    {
+      id: 3,
+      type: 'F',
+      supplierName: 'Tech Solutions Ltd',
+      reference: 'INV-003',
+      invoiceDate: '2026-01-13',
+      dueDate: '2026-02-13',
+      total: '8,750',
+      vat: '1,458',
+      estVat: '1,458',
+      currency: 'SEK',
+      account: '2440',
+      source: 'Upload',
+      received: '2026-01-12',
+      status: 'interpretation-failed'
+    },
+    {
+      id: 4,
+      type: 'F',
+      supplierName: 'Global Supplies',
+      reference: 'INV-004',
+      invoiceDate: '2026-01-12',
+      dueDate: '2026-02-12',
+      total: '31,200',
+      vat: '5,200',
+      estVat: '5,200',
+      currency: 'SEK',
+      account: '2440',
+      source: 'Email',
+      received: '2026-01-11',
+      status: 'ready-to-be-created'
+    },
+    {
+      id: 5,
+      type: 'F',
+      supplierName: 'Office Essentials',
+      reference: 'INV-005',
+      invoiceDate: '2026-01-11',
+      dueDate: '2026-02-11',
+      total: '5,400',
+      vat: '900',
+      estVat: '900',
+      currency: 'SEK',
+      account: '2440',
+      source: 'E-invoice',
+      received: '2026-01-10',
+      status: 'ready-to-be-created'
+    }
+  ];
+
   useEffect(() => {
     // Simulate loading for 0.5 seconds
     const timer = setTimeout(() => {
@@ -25,7 +109,11 @@ const InvoicesReceived: React.FC = () => {
   }, []);
 
   const handleSelectAll = () => {
-    // For empty state, select all would select an empty array
+    if (selectedInvoices.length === invoicesReceived.length) {
+      setSelectedInvoices([]);
+    } else {
+      setSelectedInvoices(invoicesReceived.map(invoice => invoice.id));
+    }
   };
 
   const handleCreateInvoices = () => {
@@ -192,11 +280,70 @@ const InvoicesReceived: React.FC = () => {
           </div>
         </div>
 
-        {/* Table Body - Empty State */}
-        <div className="bg-white min-h-[200px] flex items-center justify-center border border-[#E0E0E0] rounded-b">
-          <div className="text-center py-8">
-            <p className="text-sm text-[#757575]">No invoices received yet</p>
-          </div>
+        {/* Table Body - Invoice Records */}
+        <div className="bg-white border border-[#E0E0E0] rounded-b">
+          {invoicesReceived
+            .filter(invoice => {
+              if (activeFilter === 'all') return true;
+              return invoice.status === activeFilter;
+            })
+            .map((invoice) => (
+            <div 
+              key={invoice.id}
+              className="h-12 border-b border-[#E0E0E0] flex items-center hover:bg-[#F5F5F5]"
+            >
+              <div className="w-8 flex items-center justify-center">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded text-[#1A73E8] focus:ring-[#1A73E8]"
+                  checked={selectedInvoices.includes(invoice.id)}
+                  onChange={() => {
+                    if (selectedInvoices.includes(invoice.id)) {
+                      setSelectedInvoices(selectedInvoices.filter(id => id !== invoice.id));
+                    } else {
+                      setSelectedInvoices([...selectedInvoices, invoice.id]);
+                    }
+                  }}
+                />
+              </div>
+              <div className="w-[70px] text-xs text-center text-[#424242] px-2 bg-[#BDBDBD] rounded mx-1 py-1">
+                {invoice.type}
+              </div>
+              <div className="flex-1 text-xs text-[#424242] px-2 truncate">
+                {invoice.supplierName}
+              </div>
+              <div className="w-[180px] text-xs text-[#424242] px-2">
+                {invoice.reference}
+              </div>
+              <div className="w-[110px] text-xs text-[#424242] px-2">
+                {invoice.invoiceDate}
+              </div>
+              <div className="w-[110px] text-xs text-[#424242] px-2">
+                {invoice.dueDate}
+              </div>
+              <div className="w-[80px] text-xs text-[#424242] px-2 text-right">
+                {invoice.total}
+              </div>
+              <div className="w-[60px] text-xs text-[#424242] px-2">
+                {invoice.vat}
+              </div>
+              <div className="w-[80px] text-xs text-[#424242] px-2">
+                {invoice.estVat}
+              </div>
+              <div className="w-[80px] text-xs text-[#424242] px-2">
+                {invoice.currency}
+              </div>
+              <div className="w-[90px] text-xs text-[#424242] px-2">
+                {invoice.account}
+              </div>
+              <div className="w-[100px] text-xs text-[#424242] px-2">
+                {invoice.source}
+              </div>
+              <div className="w-[110px] text-xs text-[#424242] px-2">
+                {invoice.received}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -204,12 +351,17 @@ const InvoicesReceived: React.FC = () => {
       <div className="h-14 bg-white border-t border-[#E0E0E0] px-4 flex items-center justify-between sticky bottom-0 z-10">
         <div className="flex items-center space-x-3">
           <button 
-            disabled
-            className="h-8 px-3 bg-[#E0E0E0] text-[#9E9E9E] text-xs rounded-full cursor-not-allowed"
+            disabled={selectedInvoices.length === 0}
+            className={`h-8 px-3 text-xs rounded-full ${selectedInvoices.length > 0 ? 'bg-[#F28B82] text-white hover:bg-[#E57373]' : 'bg-[#E0E0E0] text-[#9E9E9E] cursor-not-allowed'}`}
+            onClick={() => {
+              // Handle delete action
+              console.log('Deleting invoices:', selectedInvoices);
+              setSelectedInvoices([]);
+            }}
           >
             Delete
           </button>
-          <div className="text-xs text-[#757575]">(0 selected)</div>
+          <div className="text-xs text-[#757575]">({selectedInvoices.length} selected)</div>
         </div>
         <div>
           <button 

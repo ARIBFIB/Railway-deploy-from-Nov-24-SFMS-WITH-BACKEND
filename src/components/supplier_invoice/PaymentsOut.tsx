@@ -21,9 +21,8 @@ const PaymentsOut: React.FC = () => {
   return (
     <div className="w-full flex flex-col min-h-screen bg-white">
       {/* Top Navigation Bar */}
-      <div className="h-14 bg-white border-b border-[#E0E0E0] flex items-center px-4">
+      {/* <div className="h-14 bg-white border-b border-[#E0E0E0] flex items-center px-4">
         <div className="flex items-center h-[56px]">
-          {/* Primary Tabs */}
           <div className="flex">
             <button className="h-[56px] px-4 flex items-center text-[13px] font-medium cursor-pointer relative text-[#374151] hover:text-[#111827]">
               <span>Supplier invoices</span>
@@ -44,7 +43,6 @@ const PaymentsOut: React.FC = () => {
           </div>
         </div>
         
-        {/* Right aligned items */}
         <div className="ml-auto flex items-center space-x-6">
           <div className="text-sm text-[#4F4F4F] hover:text-[#111827] cursor-pointer">Reports</div>
           <div className="text-sm text-[#4F4F4F] hover:text-[#111827] cursor-pointer relative">
@@ -52,7 +50,7 @@ const PaymentsOut: React.FC = () => {
             <ChevronDown size={14} className="absolute top-0.5 right-[-18px] text-[#4F4F4F]" />
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Page Header Section */}
       <div className="h-16 flex items-center justify-between px-6">

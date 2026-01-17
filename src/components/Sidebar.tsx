@@ -100,7 +100,20 @@ const allNavigation: NavigationItem[] = [
   // { name: 'Billing', href: '/billing', icon: CreditCard, screen: 'billing' },
   { name: 'Quotes', href: '/quotes', icon: QuoteIcon, screen: 'quotes' },
   { name: 'Order', href: '/order', icon: ShoppingCart, screen: 'order' },
-  { name: 'Salary', href: '/salary', icon: DollarSign, screen: 'salary' },
+  {
+    name: 'Salary',
+    href: '/salary',
+    icon: DollarSign,
+    screen: 'salary',
+    children: [
+      { name: 'Calendar', href: '/salary', screen: 'salary' },
+      { name: 'Payroll processing', href: '/salary?tab=payroll-processing', screen: 'salary' },
+      { name: 'Vacation calculation', href: '/salary?tab=vacation-calculation', screen: 'salary' },
+      { name: 'Statistics', href: '/salary?tab=statistics', screen: 'salary' },
+      { name: 'Fora', href: '/salary?tab=fora', screen: 'salary' },
+      { name: 'Collectum', href: '/salary?tab=collectum', screen: 'salary' }
+    ]
+  },
   // { name: 'Reports', href: '/reports', icon: BarChart3, screen: 'reports' },
   { name: 'Profile', href: '/profile', icon: User, screen: 'profile' },
   { name: 'Settings', href: '/settings', icon: Settings, screen: 'settings' },

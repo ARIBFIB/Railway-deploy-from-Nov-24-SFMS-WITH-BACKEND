@@ -4,6 +4,7 @@ import { Bell, LogOut, BarChart3, ChevronDown, X, Settings } from 'lucide-react'
 import { Button } from './Button';
 import { LanguageSwitch } from './LanguageSwitch';
 import { SettingsModal } from './SettingsModal';
+import { Reports } from './reports';
 import { mockUser } from '../data/mockData';
 
 interface HeaderProps {
@@ -12,7 +13,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
   const [registerDropdownOpen, setRegisterDropdownOpen] = useState(false);
-  const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
+  const [reportsModalOpen, setReportsModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -29,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setRegisterDropdownOpen(false);
-        setReportsDropdownOpen(false);
       }
     };
 
@@ -54,237 +54,13 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setReportsDropdownOpen(!reportsDropdownOpen)}
+                onClick={() => setReportsModalOpen(true)}
                 className="flex items-center gap-2"
               >
                 <BarChart3 className="w-4 h-4" />
                 Reports
                 <ChevronDown className="w-4 h-4" />
               </Button>
-
-              {reportsDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-green-700">Reports</h3>
-                      <button
-                        onClick={() => setReportsDropdownOpen(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      {/* Left Column */}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-green-700 mb-2">Accounting</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Balance sheet <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Deleted vouchers <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Ledger <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Opening balance <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Account analysis <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Liquidity report <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            VAT report <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Accruals <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Periodic compilation <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Profit budget <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Results report <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            12 Months Performance Report <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Advanced performance report <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            System documentation <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Checklist <span>{'>'}</span>
-                          </div>
-                        </div>
-
-                        <div className="font-semibold text-green-700 mb-2 mt-4">Intrastat</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Intrastat documents <span>{'>'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Middle Column */}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-green-700 mb-2">Supplier invoices</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Due date list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Supplier statistics <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Ledger list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Top supplier list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Currency report provider <span>{'>'}</span>
-                          </div>
-                        </div>
-
-                        <div className="font-semibold text-green-700 mb-2 mt-4">Billing</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Due date list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Ledger list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Top customer list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Customer currency report <span>{'>'}</span>
-                          </div>
-                        </div>
-
-                        <div className="font-semibold text-green-700 mb-2 mt-4">Registers and lists</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Article index <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Article statistics <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Advanced article statistics <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Account chart <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Customer register <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Customer statistics <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Stock list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Supplier register <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Quote/Order/Invoice list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Quote/Order/Invoice list summarized <span>{'>'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Column */}
-                      <div className="space-y-2">
-                        <div className="font-semibold text-green-700 mb-2">Facility register</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Depreciation <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Depreciation (New) <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Depreciation per month <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Export assets <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Sale and disposal <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Upcoming depreciation <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Asset information <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Asset list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Depreciation carried out <span>{'>'}</span>
-                          </div>
-                        </div>
-
-                        <div className="font-semibold text-green-700 mb-2 mt-4">Salary</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Gross payroll <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Salary type list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Salary survey <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Salary statistics <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Average number of employees <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Staff list <span>{'>'}</span>
-                          </div>
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Identity card <span>{'>'}</span>
-                          </div>
-                        </div>
-
-                        <div className="font-semibold text-green-700 mb-2 mt-4">Stock</div>
-                        <div className="space-y-1 pl-2">
-                          <div className="text-green-600 hover:text-green-800 cursor-pointer flex items-center justify-between">
-                            Inventory value report <span>{'>'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                      <button
-                        onClick={() => setReportsDropdownOpen(false)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="relative" ref={dropdownRef}>
@@ -496,10 +272,15 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
         </div>
       </div>
 
+      {/* Reports Modal */}
+      {reportsModalOpen && (
+        <Reports onClose={() => setReportsModalOpen(false)} />
+      )}
+      
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
+      <SettingsModal 
+        isOpen={settingsModalOpen} 
+        onClose={() => setSettingsModalOpen(false)} 
       />
     </header>
   );

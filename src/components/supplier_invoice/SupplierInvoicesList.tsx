@@ -6,8 +6,14 @@ import {
   Download, 
   Mail,
   MoreHorizontal,
-  ChevronDown
+  ChevronDown,
+  X,
+  User,
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+import SupplierInvoiceForm from './SupplierInvoiceForm';
 import PaymentsOut from './PaymentsOut';
 import InvoicesReceived from './InvoicesReceived';
 import SendForInterpretation from './SendForInterpretation';
@@ -17,20 +23,115 @@ const SupplierInvoicesList: React.FC = () => {
   const [activeTab, setActiveTab] = useState('supplier-invoices');
   const [isLoading, setIsLoading] = useState(false);
   const [gifError, setGifError] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = 10; // Example total pages
+
+  // Dummy data for supplier invoices
+  const supplierInvoices = [
+    {
+      id: 1,
+      serialNo: 1,
+      type: 'F',
+      supplierNo: '1',
+      name: 'supplier name',
+      ocr: '12',
+      invoiceNumber: '133',
+      invoiceDate: '2026-01-16',
+      dueDate: '2026-02-15',
+      total: '0,00',
+      balance: '0,00',
+      vat: '0,00',
+      currency: 'SEK',
+      status: 'paid' // Options: 'topost', 'unpaid', 'unpaiddue', 'beingpaid', 'paid', 'voided'
+    },
+    {
+      id: 2,
+      serialNo: 2,
+      type: 'F',
+      supplierNo: '2',
+      name: 'ABC Company',
+      ocr: '45',
+      invoiceNumber: '134',
+      invoiceDate: '2026-01-15',
+      dueDate: '2026-02-14',
+      total: '1500,00',
+      balance: '1500,00',
+      vat: '300,00',
+      currency: 'SEK',
+      status: 'unpaid'
+    },
+    {
+      id: 3,
+      serialNo: 3,
+      type: 'F',
+      supplierNo: '3',
+      name: 'XYZ Services',
+      ocr: '78',
+      invoiceNumber: '135',
+      invoiceDate: '2026-01-14',
+      dueDate: '2026-02-13',
+      total: '2500,00',
+      balance: '0,00',
+      vat: '500,00',
+      currency: 'SEK',
+      status: 'paid'
+    },
+    {
+      id: 4,
+      serialNo: 4,
+      type: 'F',
+      supplierNo: '4',
+      name: 'Tech Solutions',
+      ocr: '99',
+      invoiceNumber: '136',
+      invoiceDate: '2026-01-13',
+      dueDate: '2026-02-12',
+      total: '3200,00',
+      balance: '1200,00',
+      vat: '640,00',
+      currency: 'SEK',
+      status: 'beingpaid'
+    }
+  ];
+
+  // Calculate totals
+  const totalSEK = supplierInvoices.reduce((sum, inv) => sum + parseFloat(inv.total.replace(/,/g, '')), 0).toFixed(2).replace(/\.([0-9]*)$/, ',$1');
+  const totalBalance = supplierInvoices.reduce((sum, inv) => sum + parseFloat(inv.balance.replace(/,/g, '')), 0).toFixed(2).replace(/\.([0-9]*)$/, ',$1');
+  const totalVat = supplierInvoices.reduce((sum, inv) => sum + parseFloat(inv.vat.replace(/,/g, '')), 0).toFixed(2).replace(/\.([0-9]*)$/, ',$1');
+
+  // Function to get status button styles
+  const getStatusButtonStyle = (status: string) => {
+    switch(status) {
+      case 'topost':
+        return 'bg-[#EDEDED] border-[#BDBDBD] text-[#2C2C2C]'; // To handle (ACTIVE)
+      case 'unpaid':
+        return 'bg-white border-[#DADADA] text-[#4A4A4A] border-l-4 border-l-[#FFCDD2]'; // Unpaid
+      case 'unpaiddue':
+        return 'bg-white border-[#DADADA] text-[#4A4A4A] border-l-4 border-l-[#FFABAB]'; // Unpaid due
+      case 'beingpaid':
+        return 'bg-white border-[#DADADA] text-[#4A4A4A] border-l-4 border-l-[#B3E5FC]'; // Being paid
+      case 'paid':
+        return 'bg-white border-[#DADADA] text-[#4A4A4A] border-l-4 border-l-[#C8E6C9]'; // Paid in full
+      case 'voided':
+        return 'bg-white border-[#DADADA] text-[#4A4A4A] border-l-4 border-l-[#E0E0E0]'; // Voided
+      default:
+        return 'bg-white border-[#DADADA] text-[#4A4A4A]'; // Default
+    }
+  };
+
+  // State for extended search
+  const [showExtendedSearch, setShowExtendedSearch] = useState(false);
+  
+  // Function to handle status filter
+  const handleStatusFilter = (status: string) => {
+    console.log(`Filtering by status: ${status}`);
+  };
 
   return (
-    <div className="w-full flex flex-col min-h-screen bg-[#F9FAFB]">
+    <div className="w-full flex flex-col min-h-screen bg-white">
       {/* Top Navigation Bar - Sticky */}
-<div className="
-  h-12 
-  bg-white 
-  border-b border-[#E5E7EB] 
-  flex items-center 
-  sticky 
-  top-[-25px] 
-  z-40 
-  w-full
-">
+      <div className="h-12 bg-white border-b border-[#E0E0E0] flex items-center sticky top-0 z-40 w-full">
         <div className="flex items-center h-[48px]">
           {/* Primary Tabs */}
           <div className="flex">
@@ -125,20 +226,21 @@ const SupplierInvoicesList: React.FC = () => {
       </div>
 
       {/* Page Header Section - Only show for supplier invoices */}
-      {activeTab !== 'invoices-received' && activeTab !== 'send-for-interpretation' && (
+      {activeTab === 'supplier-invoices' && !showCreateForm && (
         <div className="h-16 flex items-center justify-between px-4">
           <h1 className="text-lg font-bold text-[#1F2937] tracking-[0.3px] uppercase">SUPPLIER INVOICES – LIST</h1>
-          <div className="flex items-center space-x-4">
-            <button className="bg-[#FFC107] hover:bg-[#FFB300] text-black font-semibold rounded-full h-8 px-3.5 flex items-center text-sm">
-              <Plus size={14} className="mr-2" />
-              Create supplier invoice
-            </button>
-          </div>
+          <button 
+            className="bg-[#FFC107] hover:bg-[#FFB300] text-black font-semibold rounded-full h-8 px-3.5 flex items-center text-sm"
+            onClick={() => setShowCreateForm(true)}
+          >
+            <Plus size={14} className="mr-2" />
+            Create supplier invoice
+          </button>
         </div>
       )}
 
       {/* Search and Extended Search Section - Only show for supplier invoices */}
-      {activeTab !== 'invoices-received' && activeTab !== 'send-for-interpretation' && (
+      {activeTab === 'supplier-invoices' && !showCreateForm && (
         <div className="flex items-center px-4 space-x-4">
           <div className="relative w-[320px]">
             <Search size={14} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[#9CA3AF]" />
@@ -149,34 +251,408 @@ const SupplierInvoicesList: React.FC = () => {
               className="w-full h-8 border border-[#D1D5DB] rounded pl-8 pr-3 text-sm bg-white text-[#374151] placeholder-[#9CA3AF]"
             />
           </div>
-          <button className="text-[#2563EB] text-xs hover:underline cursor-pointer">
-            Extended search
+          <button 
+            className="text-[#2563EB] text-xs hover:underline cursor-pointer"
+            onClick={() => setShowExtendedSearch(!showExtendedSearch)}
+          >
+            {showExtendedSearch ? 'Close extended search' : 'Extended search'}
           </button>
         </div>
       )}
 
-      {/* Utility Action Bar - Only show for supplier invoices */}
-      {activeTab !== 'invoices-received' && activeTab !== 'send-for-interpretation' && (
-        <div className="h-10 bg-white border-b border-[#E5E7EB] flex items-center px-4">
-          <div className="flex items-center text-xs text-[#374151]">
-            <Mail size={14} className="mr-2" />
-            Email documents: inbox.lev.1520105@arkivplats.se
+      {/* Status Filter Buttons and Pagination - Only show for supplier invoices */}
+      {activeTab === 'supplier-invoices' && !showCreateForm && (
+        <div className="flex items-center justify-between px-4 py-2">
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-1.5">
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('topost')}`}
+              onClick={() => handleStatusFilter('topost')}
+            >
+              To handle
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('all')}`}
+              onClick={() => handleStatusFilter('all')}
+            >
+              All
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('topost')}`}
+              onClick={() => handleStatusFilter('topost')}
+            >
+              Not posted
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('unpaid')}`}
+              onClick={() => handleStatusFilter('unpaid')}
+            >
+              Unpaid
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('unpaiddue')}`}
+              onClick={() => handleStatusFilter('unpaiddue')}
+            >
+              Unpaid due
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('beingpaid')}`}
+              onClick={() => handleStatusFilter('beingpaid')}
+            >
+              Being paid
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('paid')}`}
+              onClick={() => handleStatusFilter('paid')}
+            >
+              Paid in full
+            </button>
+            <button 
+              className={`h-8 px-2.5 text-xs font-medium border rounded ${getStatusButtonStyle('voided')}`}
+              onClick={() => handleStatusFilter('voided')}
+            >
+              Voided
+            </button>
           </div>
           
-          <div className="ml-auto flex items-center space-x-4">
-            <button className="flex items-center text-xs text-[#374151] hover:text-[#2563EB]">
-              <Download size={14} className="mr-1" />
-              Download linked pictures
+          {/* Pagination Controls */}
+          <div className="flex items-center gap-1.5">
+            <button className="w-7 h-7 flex items-center justify-center text-[#9E9E9E]">
+              <MoreHorizontal size={16} />
             </button>
-            <button className="flex items-center text-xs text-[#374151] hover:text-[#2563EB]">
-              <Printer size={14} className="mr-1" />
-              Print list
+            <div className="flex items-center gap-1">
+              <button 
+                className="w-7 h-7 flex items-center justify-center rounded text-xs"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button 
+                className="w-7 h-7 flex items-center justify-center rounded text-xs bg-[#0B7D2A] text-white"
+              >
+                {currentPage}
+              </button>
+              <span className="text-xs">of</span>
+              <button 
+                className="w-7 h-7 flex items-center justify-center rounded text-xs"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              >
+                {totalPages}
+              </button>
+              <button 
+                className="w-7 h-7 flex items-center justify-center rounded text-xs"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Extended Search Panel - Only show when toggled */}
+      {activeTab === 'supplier-invoices' && !showCreateForm && showExtendedSearch && (
+        <div className="px-4 py-4 bg-white border-t border-b border-[#E0E0E0]">
+          {/* Basic Details Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between h-10 py-2 border-b border-[#E0E0E0] mb-4">
+              <span className="text-sm font-semibold text-[#2C2C2C]">Basic details</span>
+              <ChevronDown size={16} className="text-[#2E7D32]" />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Serial number</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter serial number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Supplier number</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter supplier number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Supplier</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter supplier name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">OCR</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter OCR number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Invoice number</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter invoice number"
+                />
+              </div>
+              
+              {/* Toggle Groups */}
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Show payment file</label>
+                <div className="flex h-8 border border-[#DADADA] rounded overflow-hidden">
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Can be created</button>
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Has been created</button>
+                  <button className="flex-1 bg-white text-[#2C2C2C] text-xs font-medium py-2 border-l border-[#DADADA]">All</button>
+                </div>
+              </div>
+              
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Assets</label>
+                <div className="flex h-8 border border-[#DADADA] rounded overflow-hidden">
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Can be created</button>
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Has been created</button>
+                  <button className="flex-1 bg-white text-[#2C2C2C] text-xs font-medium py-2 border-l border-[#DADADA]">All</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Invoice Details Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between h-10 py-2 border-b border-[#E0E0E0] mb-4">
+              <span className="text-sm font-semibold text-[#2C2C2C]">Invoice details</span>
+              <ChevronDown size={16} className="text-[#2E7D32]" />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Our reference</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter our reference"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Supplier's reference</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter supplier's reference"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Comment</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter comment"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Date selector</label>
+                <div className="relative">
+                  <select className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] appearance-none pr-6 focus:border-[#2E7D32] focus:outline-none">
+                    <option>Invoice date</option>
+                    <option>Due date</option>
+                    <option>Payment date</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <span className="text-[#9E9E9E] text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">From</label>
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] focus:border-[#2E7D32] focus:outline-none pr-8"
+                    />
+                    <div className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[#9E9E9E] pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">To</label>
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] focus:border-[#2E7D32] focus:outline-none pr-8"
+                    />
+                    <div className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[#9E9E9E] pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Type of VAT</label>
+                <div className="flex h-8 border border-[#DADADA] rounded overflow-hidden">
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Normal</button>
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">UIF</button>
+                  <button className="flex-1 bg-[#E0E0E0] text-[#4A4A4A] text-xs py-2">Rev. Tax</button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Invoice Type</label>
+                <div className="relative">
+                  <select className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] appearance-none pr-6 focus:border-[#2E7D32] focus:outline-none">
+                    <option>All invoices</option>
+                    <option>Regular</option>
+                    <option>Credit</option>
+                    <option>Proforma</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <span className="text-[#9E9E9E] text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Currency</label>
+                <div className="relative">
+                  <select className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] appearance-none pr-6 focus:border-[#2E7D32] focus:outline-none">
+                    <option>All currencies</option>
+                    <option>SEK</option>
+                    <option>EUR</option>
+                    <option>USD</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <span className="text-[#9E9E9E] text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Invoice Content Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between h-10 py-2 border-b border-[#E0E0E0] mb-4">
+              <span className="text-sm font-semibold text-[#2C2C2C]">Invoice content</span>
+              <ChevronDown size={16} className="text-[#2E7D32]" />
+            </div>
+            
+            <div className="grid grid-cols-1 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Item number</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter item number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Item name</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter item name"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Account from</label>
+                  <input 
+                    type="text" 
+                    className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                    placeholder="From account"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Account to</label>
+                  <input 
+                    type="text" 
+                    className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                    placeholder="To account"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Transaction information</label>
+                <input 
+                  type="text" 
+                  className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                  placeholder="Enter transaction info"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-[#4A4A4A] mb-1">Amount</label>
+                <div className="relative">
+                  <select className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] appearance-none pr-6 focus:border-[#2E7D32] focus:outline-none">
+                    <option>Total</option>
+                    <option>Net</option>
+                    <option>VAT</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <span className="text-[#9E9E9E] text-xs">▼</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">From</label>
+                  <input 
+                    type="number" 
+                    className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                    placeholder="From amount"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-[#4A4A4A] mb-1">To</label>
+                  <input 
+                    type="number" 
+                    className="w-full h-9 px-2.5 py-2 border border-[#D0D0D0] rounded text-xs text-[#2C2C2C] placeholder-[#9E9E9E] focus:border-[#2E7D32] focus:outline-none"
+                    placeholder="To amount"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2">
+            <button className="h-9 px-4 bg-[#9E9E9E] text-white text-xs rounded-full font-medium">
+              Clear
             </button>
-            <button className="flex items-center text-xs text-[#374151] hover:text-[#2563EB]">
-              Process payment files
-            </button>
-            <button className="flex items-center text-xs text-[#374151] hover:text-[#2563EB]">
-              <MoreHorizontal size={14} />
+            <button className="h-9 px-4 bg-[#6F6F6F] text-white text-xs rounded-full font-semibold">
+              Search
             </button>
           </div>
         </div>
@@ -184,83 +660,194 @@ const SupplierInvoicesList: React.FC = () => {
 
       {/* Main Content Area - Conditional Rendering */}
       <div className="flex-grow max-w-[1100px] mx-auto w-full pb-12">
-        {activeTab === 'payments-out' ? (
+        {activeTab === 'supplier-invoices' ? (
           <div className="p-4">
-            <PaymentsOut />
-          </div>
-        ) : activeTab === 'invoices-received' ? (
-          <div className="p-4">
-            <InvoicesReceived />
-          </div>
-        ) : activeTab === 'send-for-interpretation' ? (
-          <div className="p-4">
-            <SendForInterpretation />
+            {showCreateForm ? (
+              <div className="bg-white rounded-lg shadow-sm">
+                <SupplierInvoiceForm onGoBackToList={() => {
+                  setShowCreateForm(false);
+                  // Optionally refresh the list after creation
+                }} />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                {/* Table Container */}
+                <div className="border border-[#E0E0E0] rounded-lg overflow-hidden">
+                  {/* Table Header */}
+                  <div className="h-10 bg-white border-b border-[#E0E0E0] flex">
+                    <div className="w-8 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      <input type="checkbox" className="w-4 h-4 border border-[#9E9E9E] rounded" />
+                    </div>
+                    <div className="w-16 flex items-center px-2 text-[11px] font-semibold text-[#FFFFFF] uppercase bg-[#BDBDBD]">
+                      SERIAL NO
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      TYPE
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      SUPPLIER NO
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      NAME
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      OCR
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      INVOICE NUMBER
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      INVOICE DATE
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      DUE DATE
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      TOTAL
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      BALANCE
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      VAT
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      CURRENCY
+                    </div>
+                    <div className="flex-1 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      PAID IN FULL
+                    </div>
+                    <div className="w-16 flex items-center px-2 text-[11px] font-semibold text-[#4A4A4A] uppercase">
+                      ACTION
+                    </div>
+                  </div>
+                  
+                  {/* Table Rows */}
+                  {supplierInvoices.map((invoice) => (
+                    <div 
+                      key={invoice.id}
+                      className="h-11 bg-white border-b border-[#E0E0E0] flex items-center"
+                    >
+                      <div className="w-8 flex items-center px-2">
+                        <input type="checkbox" className="w-4 h-4 border border-[#9E9E9E] rounded" />
+                      </div>
+                      <div className="w-16 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.serialNo}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.type}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.supplierNo}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.name}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.ocr}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.invoiceNumber}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.invoiceDate}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.dueDate}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C] text-right">
+                        {invoice.total}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C] text-right">
+                        {invoice.balance}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C] text-right">
+                        {invoice.vat}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 text-xs text-[#2C2C2C]">
+                        {invoice.currency}
+                      </div>
+                      <div className="flex-1 flex items-center px-2 justify-center">
+                        <User size={16} className="text-[#6F6F6F]" />
+                      </div>
+                      <div className="w-16 flex items-center px-2 justify-center">
+                        <FileText size={16} className="text-[#6F6F6F] hover:text-[#2E7D32] cursor-pointer" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Total Summary Row */}
+                <div className="h-10 bg-white border-t border-[#E0E0E0] flex mt-1">
+                  <div className="w-8 flex items-center px-2"></div>
+                  <div className="w-16 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A] text-right">
+                    Total SEK: {totalSEK}
+                  </div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A] text-right">
+                    {totalBalance}
+                  </div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A] text-right">
+                    {totalVat}
+                  </div>
+                  <div className="flex-1 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                  <div className="w-16 flex items-center px-2 text-xs font-semibold text-[#4A4A4A]"></div>
+                </div>
+                
+                {/* Bottom Pagination */}
+                <div className="flex justify-end mt-2">
+                  <div className="flex items-center gap-1">
+                    <button className="w-7 h-7 flex items-center justify-center rounded text-xs bg-[#0B7D2A] text-white">
+                      1
+                    </button>
+                    <button className="w-7 h-7 flex items-center justify-center rounded text-xs border border-[#E0E0E0] text-[#9E9E9E]">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="p-4">
-            <div className="flex flex-col md:flex-row items-center gap-8 p-6 bg-[#F9FAFB]">
-              {/* Illustration */}
-              <div className="flex-shrink-0">
-                <img 
-                  src="/src/assets/images/human_documents.png" 
-                  alt="Human with documents illustration" 
-                  className="w-40 h-auto object-contain"
-                />
-              </div>
-              
-              {/* Text Content */}
+            {activeTab === 'payments-out' && (
               <div>
-                <h2 className="text-xl font-bold text-[#111827] mb-2">
-                  Start your accounting journey with SFMS
-                </h2>
-                <p className="text-sm text-[#374151] leading-6 max-w-md">
-                  A good start is to create your first supplier invoice. You receive a supplier invoice when you have made a purchase from a supplier, when you post the supplier invoice in SFMS, you get a good and quick overview of your invoices quickly and easily.
-                </p>
+                <PaymentsOut />
               </div>
-            </div>
-            
-            {/* Option Cards Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              {/* Card 1 - Digital Interpretation */}
-              <div className="bg-white rounded-xl p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
-                <h3 className="text-lg font-bold text-[#111827] mb-3">
-                  Simplest & most digital way of working
-                </h3>
-                <p className="text-sm text-[#374151] leading-6 mb-5">
-                  Use SFMS Invoice Interpretation with accounting suggestions and get your supplier invoices interpreted in an instant! All you need to do is double check the numbers.
-                </p>
-                <button className="h-11 rounded-[22px] bg-[#0F7A3A] text-white text-sm font-bold hover:bg-[#0B5E2D] w-full transition-colors">
-                  Read more about the interpretation
-                </button>
+            )}
+            {activeTab === 'invoices-received' && (
+              <div>
+                <InvoicesReceived />
               </div>
-              
-              {/* Card 2 - Manual Operation */}
-              <div className="bg-white rounded-xl p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
-                <h3 className="text-lg font-bold text-[#111827] mb-3">
-                  Manual operation
-                </h3>
-                <p className="text-sm text-[#374151] leading-6">
-                  Of course, it is also possible to work manually, then you simply click on the "Create supplier invoice" button in the upper right corner.
-                  In this <a href="#" className="text-[#2563EB] font-medium hover:underline">help section</a> you can read more about how to create a supplier invoice.
-                </p>
+            )}
+            {activeTab === 'send-for-interpretation' && (
+              <div>
+                <SendForInterpretation />
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
       
       {/* Bottom Payment Action Toolbar - Sticky - Only show for supplier invoices */}
-      {activeTab !== 'payments-out' && activeTab !== 'invoices-received' && activeTab !== 'send-for-interpretation' && (
+      {activeTab === 'supplier-invoices' && !showCreateForm && (
         <div className="
           w-full 
           max-w-[3100px] 
           mx-auto 
           sticky 
-          bottom-[-2rem] 
+          bottom-0 
           bg-white 
           border-t border-[#E5E7EB] 
-          px-23
-          py-5 
+          px-4
+          py-3 
           flex 
           items-center 
           justify-between
@@ -298,6 +885,7 @@ const SupplierInvoicesList: React.FC = () => {
           </div>
         </div>
       )}
+      
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

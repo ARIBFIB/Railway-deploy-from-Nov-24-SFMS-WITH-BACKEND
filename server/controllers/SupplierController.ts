@@ -100,7 +100,7 @@ export class SupplierController {
       .insert({
         foundation_id,
         supplier_number,
-        name,
+        supplier_name: name, // Map API 'name' field to database 'supplier_name' column
         corporate_personal_id,
         status: status || 'active',
         industry_code,
@@ -156,12 +156,16 @@ export class SupplierController {
       ...supplierUpdateData
     } = updateData;
 
+    // Map name field to supplier_name for update
+    const mappedUpdateData = {
+      ...supplierUpdateData,
+      ...(supplierUpdateData.name !== undefined ? { supplier_name: supplierUpdateData.name } : {}),
+      updated_at: new Date().toISOString()
+    };
+    
     const { data: supplier, error } = await supabase
       .from('suppliers')
-      .update({
-        ...supplierUpdateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(mappedUpdateData)
       .eq('id', id)
       .eq('foundation_id', foundation_id)
       .select()
@@ -271,7 +275,7 @@ export class SupplierController {
       .eq('foundation_id', foundation_id);
 
     if (q) {
-      query = query.or(`name.ilike.%${q}%,supplier_number.ilike.%${q}%,corporate_personal_id.ilike.%${q}%`);
+      query = query.or(`supplier_name.ilike.%${q}%,supplier_number.ilike.%${q}%,corporate_personal_id.ilike.%${q}%`);
     }
 
     if (status) {
@@ -279,7 +283,7 @@ export class SupplierController {
     }
 
     const { data: suppliers, error } = await query
-      .order('name', { ascending: true })
+      .order('supplier_name', { ascending: true })
       .limit(50);
 
     if (error) {
