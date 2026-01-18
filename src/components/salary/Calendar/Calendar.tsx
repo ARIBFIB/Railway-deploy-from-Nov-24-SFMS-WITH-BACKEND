@@ -1,276 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Statistic from '../Statistics/Statistic';
 import Forums from '../Forums/Forums';
 import Collection from '../Collection/Collection';
+import SalaryRun from '../SalaryRun/SalaryRun';
+import ImportHistoryCalendar from './ImportHistoryCalendar';
+import ExportSalaryRecord from './ExportSalaryRecord';
+import RetroactiveSalary from './RetroactiveSalary';
+import MassUpdateSalaries from './MassUpdateSalaries';
+import CalendarList from './CalendarList';
+import PersonnelRegister from './personnel/PersonnelRegister';
+
+// Import image assets
+import generalCalendarClock from '../../../assets/images/general_calendar_clock.png';
 
 const Calendar = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'inactive'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isImportHistoryOpen, setIsImportHistoryOpen] = useState(false);
+  const [isExportSalaryRecordOpen, setIsExportSalaryRecordOpen] = useState(false);
+  const [showPersonnelRegister, setShowPersonnelRegister] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Salary run state
-  const [salaryRunTab, setSalaryRunTab] = useState<'salary-run' | 'paye-tax-return' | 'posting-basis'>('salary-run');
 
-  const SalaryRunComponent = () => {
-    const [selectedPeriod, setSelectedPeriod] = useState('All periods');
-    const [selectedEmployee, setSelectedEmployee] = useState('All employees');
-    const [activeStatusFilter, setActiveStatusFilter] = useState('All');
-    
-    return (
-      <div className="bg-white max-w-[360px] md:max-w-4xl mx-auto p-[12px]" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: '11px' }}>
-        {/* Top Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0" style={{ minHeight: '40px', padding: '8px 12px' }}>
-          <div className="text-xs font-semibold text-[#212121] tracking-[0.6px] uppercase">
-            SALARY RUN
-          </div>
-          <div className="flex flex-col md:flex-row md:space-x-2 space-y-1.5 md:space-y-0">
-            <button className="flex items-center text-[11px] font-semibold text-[#1F1F1F] bg-[#FFC107] px-[10px] py-[6px] rounded-[16px] h-[28px]">
-              <span className="text-[12px] mr-[6px]">+</span>
-              Create payslip
-            </button>
-            <button className="flex items-center text-[11px] font-semibold text-white bg-[#2E7D32] px-[10px] py-[6px] rounded-[16px] h-[28px]">
-              Send payslip digitally
-            </button>
-          </div>
-        </div>
-
-        {/* Secondary Action Toolbar */}
-        <div className="flex flex-wrap items-center py-[6px] px-[12px]" style={{ minHeight: '36px', borderBottom: '1px solid #E0E0E0' }}>
-          <div className="flex items-center text-[11px] text-[#424242] mr-[14px] mb-1 md:mb-0">
-            <span className="text-[14px] text-[#616161] mr-[6px]">✉️</span>
-            Show scheduled
-          </div>
-          <div className="flex items-center text-[11px] text-[#BDBDBD] mr-[14px] mb-1 md:mb-0">
-            <span className="text-[14px] mr-[6px]">💬</span>
-            Comments
-          </div>
-          <div className="flex items-center text-[14px] text-[#616161] mr-[14px] mb-1 md:mb-0">
-            <span className="mr-[6px]">🔄</span>
-          </div>
-          <div className="flex items-center text-[14px] text-[#616161]">
-            <span className="mr-[6px]">🗑️</span>
-          </div>
-        </div>
-
-        {/* Tab Navigation Section */}
-        <div className="flex flex-wrap" style={{ padding: '0 12px', minHeight: '36px', borderBottom: '1px solid #E0E0E0' }}>
-          <button 
-            onClick={() => setSalaryRunTab('salary-run')} 
-            className={`text-[11px] font-medium mr-[24px] pb-[2px] mb-1 md:mb-0 ${salaryRunTab === 'salary-run' ? 'text-[#2E7D32]' : 'text-[#757575]'}`}
-          >
-            Salary run
-            {salaryRunTab === 'salary-run' && <div className="h-[2px] bg-[#2E7D32] mt-[1px]"></div>}
-          </button>
-          <button 
-            onClick={() => setSalaryRunTab('paye-tax-return')} 
-            className={`text-[11px] font-medium mr-[24px] pb-[2px] mb-1 md:mb-0 ${salaryRunTab === 'paye-tax-return' ? 'text-[#2E7D32]' : 'text-[#757575]'}`}
-          >
-            PAYE tax return
-            {salaryRunTab === 'paye-tax-return' && <div className="h-[2px] bg-[#2E7D32] mt-[1px]"></div>}
-          </button>
-          <button 
-            onClick={() => setSalaryRunTab('posting-basis')} 
-            className={`text-[11px] font-medium pb-[2px] ${salaryRunTab === 'posting-basis' ? 'text-[#2E7D32]' : 'text-[#757575]'}`}
-          >
-            Posting basis
-            {salaryRunTab === 'posting-basis' && <div className="h-[2px] bg-[#2E7D32] mt-[1px]"></div>}
-          </button>
-        </div>
-
-        {/* Main Call-to-Action Card */}
-        <div className="bg-[#7E7A8F] rounded-[12px] p-[12px] mt-[12px] flex flex-col md:flex-row items-start md:items-start">
-          <div className="text-white flex-1 mb-4 md:mb-0 md:mr-6">
-            <h3 className="font-semibold text-[13px] mb-[6px]">Time to pay salary.</h3>
-            <p className="text-[11px] text-[#F5F5F5] leading-[16px] mb-[6px]">
-              Click Create pay slip at the top right to create the pay run. You can also activate our help guide under Create pay slip that will guide you all the way through the payrun.
-            </p>
-            <p className="text-[11px] text-[#E0E0E0] leading-[16px] mb-[10px]">
-              If you need to review any of the different settings that you can make in Fortnox's salary, you will find more information under Read more settings.
-            </p>
-            <div className="flex flex-wrap">
-              <button className="text-[11px] font-semibold text-[#1F1F1F] bg-white px-[12px] py-[6px] rounded-[18px] h-[28px]">
-                Create Salary run
-              </button>
-              <button className="text-[11px] text-white border border-white px-[12px] py-[6px] rounded-[18px] h-[28px] ml-2 mt-2 md:mt-0 md:ml-[8px]">
-                Read more
-              </button>
-            </div>
-          </div>
-          {/* Hidden on XS, visible on larger screens */}
-          <div className="hidden md:flex items-center justify-center bg-[#607D8B] rounded-lg w-32 h-32">
-            <div className="text-center">
-              <div className="text-[#4CAF50] text-xl mb-1">💰</div>
-              <div className="text-[#FBC02D] text-lg">🪙</div>
-              <div className="text-white text-xs mt-2">→</div>
-            </div>
-          </div>
-        </div>
-        
-        {/* NEW: Informational Notice Card */}
-        <div className="w-full bg-white border border-[#BDBDBD] rounded-[12px] p-[12px] mb-[12px] mt-[12px]">
-          <div className="flex items-start">
-            <div className="flex-1 max-w-[240px]">
-              <p className="text-[11px] text-[#212121] leading-[16px]">
-                Fortnox Lön now supports sending a payment file directly to Danske Bank according to the new Pain.001 format. What you need is to activate a bank connection. Read more{' '}
-                <a href="#" className="text-[#1976D2] font-medium">here</a>
-                {' '}about how to get started.
-              </p>
-            </div>
-            <div className="ml-2 flex-shrink-0">
-              <div className="w-[36px] h-[36px] rounded-full border-[3px] border-[#0B3D2E] flex items-center justify-center">
-                <span className="text-[16px] font-bold text-[#0B3D2E]">i</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* NEW: Search Input Field */}
-        <div className="w-full mb-[12px] relative">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Employment ID, name, pay period"
-              className="w-full h-[32px] border border-[#E0E0E0] rounded-[6px] pl-[28px] pr-[8px] py-[6px] bg-white text-[11px] text-[#212121] placeholder-[#9E9E9E] focus:outline-none"
-            />
-            <span className="absolute left-[8px] top-1/2 transform -translate-y-1/2 text-[14px] text-[#757575]">🔍</span>
-          </div>
-        </div>
-        
-        {/* NEW: Filter Controls Section */}
-        <div className="flex flex-col gap-[8px] mb-[12px]">
-          {/* Salary Period Dropdown */}
-          <div>
-            <label className="text-[11px] text-[#616161] mb-[4px] block">Salary period</label>
-            <div className="relative">
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="w-full h-[32px] border border-[#E0E0E0] rounded-[6px] px-[8px] py-[6px] text-[11px] bg-white text-[#212121] appearance-none focus:outline-none"
-              >
-                <option>All periods</option>
-                <option>Period 1</option>
-                <option>Period 2</option>
-              </select>
-              <span className="absolute right-[8px] top-1/2 transform -translate-y-1/2 text-[#757575] pointer-events-none">▼</span>
-            </div>
-          </div>
-          
-          {/* Employee Dropdown */}
-          <div>
-            <label className="text-[11px] text-[#616161] mb-[4px] block">Employee</label>
-            <div className="relative">
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full h-[32px] border border-[#E0E0E0] rounded-[6px] px-[8px] py-[6px] text-[11px] bg-white text-[#212121] appearance-none focus:outline-none"
-              >
-                <option>All employees</option>
-                <option>Employee 1</option>
-                <option>Employee 2</option>
-              </select>
-              <span className="absolute right-[8px] top-1/2 transform -translate-y-1/2 text-[#757575] pointer-events-none">▼</span>
-            </div>
-          </div>
-          
-          {/* Clear Selection Button */}
-          <div className="flex justify-start">
-            <button className="text-[11px] font-medium text-white bg-[#BDBDBD] h-[28px] px-[12px] rounded-[16px]">
-              Clear selection
-            </button>
-          </div>
-        </div>
-        
-        {/* NEW: Status Filter Tabs */}
-        <div className="flex overflow-x-auto pb-[2px] mb-[10px] gap-[6px]">
-          {['All', 'Created', 'Approved', 'Late', 'Paid out'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveStatusFilter(tab)}
-              className={`h-[28px] px-[10px] text-[11px] rounded-[4px] whitespace-nowrap ${
-                activeStatusFilter === tab
-                  ? tab === 'All'
-                    ? 'bg-white border border-[#E0E0E0] text-[#424242]'
-                    : tab === 'Created'
-                    ? 'bg-[#F5F5F5] border border-[#9E9E9E] text-[#212121]'
-                    : tab === 'Approved'
-                    ? 'bg-[#FFF9C4] text-[#212121] border-0'
-                    : tab === 'Late'
-                    ? 'bg-[#E1F5FE] text-[#212121] border-0'
-                    : 'bg-[#E8F5E9] text-[#212121] border-0'
-                  : 'bg-white border border-[#E0E0E0] text-[#424242]'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        
-        {/* NEW: Table Controls */}
-        <div className="flex justify-end gap-[6px] mb-[12px]">
-          <button className="w-[28px] h-[28px] bg-[#F5F5F5] flex items-center justify-center">
-            <span className="text-[16px] text-[#424242]">📋</span>
-          </button>
-          <div className="w-[28px] h-[28px] bg-[#F5F5F5] rounded-[4px] flex items-center justify-center">
-            <span className="text-[11px] text-[#424242]">0</span>
-          </div>
-        </div>
-        
-        {/* NEW: Salary Table */}
-        <div className="w-full overflow-x-auto mb-[12px] border border-[#E0E0E0] rounded-[8px]">
-          <table className="w-full">
-            <thead>
-              <tr className="h-[36px] bg-white border-b-[2px] border-b-[#9E9E9E]">
-                {['Checkbox', 'PAYMENT DAY', 'PERIOD', 'EMPLOYEE ID', 'FIRST NAME', 'SURNAME', 'GROSS SALARY', 'DACHSUND', 'TAX-FREE', 'TO PAY', 'ALLOWANCE', 'STATUS', 'READY'].map((header) => (
-                  <th 
-                    key={header}
-                    className="px-[8px] text-[10px] font-semibold text-[#424242] uppercase text-left"
-                    style={{ fontSize: '10px' }}
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="h-[36px] bg-white border-b border-[#E0E0E0]">
-                {Array(13).fill(0).map((_, idx) => (
-                  <td key={idx} className="px-[8px] text-[11px] text-[#424242]">
-                    {idx >= 3 && idx <= 9 ? '0.00' : ''}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        
-        {/* NEW: Bottom Action Bar */}
-        <div className="pb-[70px] bg-white">
-          <div className="max-w-[360px] mx-auto flex items-center justify-between">
-            <button className="text-[11px] text-white bg-[#BDBDBD] h-[32px] px-[12px] rounded-[16px]">
-              Delete (0 selected)
-            </button>
-            
-            <div className="flex overflow-x-auto gap-[6px] pb-[2px]">
-              <button className="text-[11px] text-white bg-[#9E9E9E] h-[32px] px-[12px] rounded-[16px] whitespace-nowrap">
-                Checklist
-              </button>
-              <button className="text-[11px] text-white bg-[#BDBDBD] h-[32px] px-[12px] rounded-[16px] whitespace-nowrap">
-                Preview
-              </button>
-              <button className="text-[11px] text-white bg-[#BDBDBD] h-[32px] px-[12px] rounded-[16px] whitespace-nowrap">
-                Print authorization list
-              </button>
-              <button className="text-[11px] text-white bg-[#81C784] h-[32px] px-[12px] rounded-[16px] whitespace-nowrap">
-                Approve
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
   
   const HolidayCalculationComponent = () => {
     const [activeTab, setActiveTab] = useState('All');
@@ -501,7 +255,7 @@ const Calendar = () => {
                 Holiday debt ▾
               </button>
             </div>
-            <button className="h-[32px] px-[14px] text-[12px] font-semibold text-white bg-[#86C5A4] rounded-[16px]">
+            <button className="h-[32px] px-[14px] text-[12px] font-semibold text-white bg-[#86C5A4]">
               Printout
             </button>
           </div>
@@ -519,7 +273,7 @@ const Calendar = () => {
       case 'calendar':
         return !tab || tab === 'calendar';
       case 'salary-run':
-        return tab === 'payroll-processing' || tab === 'salary-run';
+        return tab === 'salary-run';
       case 'holiday':
         return tab === 'holiday-calculation';
       case 'statistic':
@@ -528,6 +282,10 @@ const Calendar = () => {
         return tab === 'Forums';
       case 'Collection':
         return tab === 'Collection';
+      case 'RetroactiveSalary':
+        return tab === 'retroactive-salary';
+      case 'MassUpdate':
+        return tab === 'mass-update';
       default:
         return false;
     }
@@ -539,7 +297,9 @@ const Calendar = () => {
     { id: 'holiday', label: 'Holiday calculation', active: getCurrentActiveNav('holiday') },
     { id: 'statistic', label: 'Statistic', active: getCurrentActiveNav('statistic') },
     { id: 'Forums', label: 'Forums', active: getCurrentActiveNav('Forums') },
-    { id: 'Collection', label: 'Collection', active: getCurrentActiveNav('Collection') }
+    { id: 'Collection', label: 'Collection', active: getCurrentActiveNav('Collection') },
+    { id: 'RetroactiveSalary', label: 'Retroactive salary', active: getCurrentActiveNav('RetroactiveSalary') },
+    { id: 'MassUpdate', label: 'Mass update salaries', active: getCurrentActiveNav('MassUpdate') }
   ];
 
   const filterTabs = [
@@ -578,6 +338,10 @@ const Calendar = () => {
                   navigate('/salary?tab=Forums');
                 } else if (item.id === 'Collection') {
                   navigate('/salary?tab=Collection');
+                } else if (item.id === 'RetroactiveSalary') {
+                  navigate('/salary?tab=retroactive-salary');
+                } else if (item.id === 'MassUpdate') {
+                  navigate('/salary?tab=mass-update');
                 }
               }}
               className={`text-xs font-medium mr-3 cursor-pointer ${
@@ -616,128 +380,85 @@ const Calendar = () => {
       {getCurrentActiveNav('holiday') ? (
         <HolidayCalculationComponent />
       ) : getCurrentActiveNav('salary-run') ? (
-        <SalaryRunComponent />
+        <SalaryRun />
       ) : getCurrentActiveNav('statistic') ? (
         <Statistic />
       ) : getCurrentActiveNav('Forums') ? (
         <Forums />
       ) : getCurrentActiveNav('Collection') ? (
         <Collection />
+      ) : getCurrentActiveNav('RetroactiveSalary') ? (
+        <RetroactiveSalary />
+      ) : getCurrentActiveNav('MassUpdate') ? (
+        <MassUpdateSalaries />
       ) : (
         <>
-          {/* Page Header Area */}
-          <div className="p-3">
-            <h1 className="text-sm font-semibold text-[#2C2C2C] tracking-[0.5px] uppercase">
-              CALENDAR - LIST
-            </h1>
-            
-            {/* Search Input */}
-            <div className="mt-2">
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#9E9E9E]">
-                  🔍
+          {showPersonnelRegister ? (
+            <PersonnelRegister />
+          ) : (
+            <>
+              {/* Welcome Banner */}
+              <div 
+                className="w-full h-[118px] rounded-[14px] bg-[#7E7A8F] p-[16px] pl-[20px] pr-[140px] shadow-[0px_4px_14px_rgba(0,0,0,0.14)] relative mb-[16px]"
+                style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+              >
+                <div>
+                  <h2 className="text-[13px] font-semibold text-white mb-[6px] leading-[16px]">Welcome to Fortnox Salary.</h2>
+                  <p className="text-[11px] leading-[15px] text-[#F2F2F2] max-w-[560px]">
+                    You are now in the calendar where you register attendance, absence and other information that must be included in the pay slip for the employees. But before you can start registering this, you need to register the employees in the staff register, you do this under Register - Staff.
+                  </p>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Employment ID, First name, Last name, Persona"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-9 pl-10 pr-3 text-xs border border-[#DADADA] rounded-lg bg-white text-[#4A4A4A] placeholder-[#9E9E9E] focus:outline-none focus:border-[#2E7D32]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Toolbar */}
-          <div className="px-3 mb-3">
-            <div className="flex flex-col space-y-2">
-              <button className="flex items-center text-xs text-[#4A4A4A] bg-transparent px-2 py-1.5 hover:bg-[#F5F5F5] rounded">
-                <span className="mr-1.5">📥</span>
-                Import history
-              </button>
-              <button className="flex items-center text-xs text-[#4A4A4A] bg-transparent px-2 py-1.5 hover:bg-[#F5F5F5] rounded">
-                <span className="mr-1.5">📤</span>
-                Import salary record
-              </button>
-              <button className="flex items-center text-xs text-[#4A4A4A] bg-transparent px-2 py-1.5 hover:bg-[#F5F5F5] rounded">
-                <span className="mr-1.5">📄</span>
-                Export salary record
-              </button>
-              <button className="flex items-center text-xs text-[#4A4A4A] bg-transparent px-2 py-1.5 hover:bg-[#F5F5F5] rounded">
-                <span className="mr-1.5">🔄</span>
-                Retroactive salary
-              </button>
-            </div>
-          </div>
-
-          {/* Information Banner */}
-          <div className="mx-3 mb-3 p-4 bg-[#7C7890] rounded-xl">
-            <div className="mb-2">
-              <h2 className="text-sm font-semibold text-white mb-2">
-                Welcome to Fortnox Salary.
-              </h2>
-              <p className="text-xs text-[#F1F1F1] leading-normal">
-                You are now in the calendar where you register attendance, absence and other information that must be included in the pay slip for the employees. But before you can start registering this, you need to register the employees in the staff register, you do this under Register - Staff.
-              </p>
-            </div>
-            <div className="flex space-x-2">
-              <button className="h-8 px-3.5 bg-white text-[#2C2C2C] text-xs font-medium rounded-full">
-                Go to personnel register
-              </button>
-              <button className="h-8 px-3.5 bg-[#8F8AA5] text-white text-xs font-medium rounded-full">
-                Read more
-              </button>
-            </div>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="px-3 mb-3">
-            <div className="flex space-x-2">
-              {filterTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`h-8 px-3 text-xs font-medium rounded ${
-                    activeTab === tab.id
-                      ? 'bg-[#EDEDED] text-[#2C2C2C]'
-                      : 'bg-white border border-[#DADADA] text-[#6F6F6F]'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Table Header - Empty State */}
-          <div className="mx-3">
-            <div className="border border-[#E0E0E0] rounded overflow-hidden">
-              <div className="h-10 bg-[#F4F4F4] border-b border-[#E0E0E0] flex items-center">
-                {tableHeaders.map((header, index) => (
-                  <div 
-                    key={index}
-                    className="px-3 text-[11px] font-semibold text-[#4A4A4A] uppercase tracking-wide"
-                    style={{ 
-                      width: index === 0 ? '80px' : 
-                             index === 1 ? '100px' : 
-                             index === 2 ? '100px' : 
-                             index === 3 ? '140px' : 
-                             index === 4 ? '90px' : '100px'
-                    }}
+                
+                <div className="flex mt-[12px] gap-[8px]">
+                  <button 
+                    className="h-[28px] px-[16px] bg-white text-[#4A4A4A] text-[11px] font-medium rounded-[16px] hover:bg-[#F4F4F4] transition-colors"
+                    onClick={() => setShowPersonnelRegister(true)}
                   >
-                    {header}
-                  </div>
-                ))}
+                    Go to personnel register
+                  </button>
+                  <button className="h-[28px] px-[16px] bg-transparent border border-[#E5E5E5] text-white text-[11px] font-medium rounded-[16px] hover:bg-[rgba(255,255,255,0.08)] transition-colors">
+                    Read more
+                  </button>
+                </div>
+                
+                {/* Illustration */}
+                <div className="absolute right-[24px] top-1/2 transform -translate-y-1/2 w-[110px] h-[86px] pointer-events-none">
+                  <img 
+                    src={generalCalendarClock} 
+                    alt="Calendar and clock illustration" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
               </div>
               
-              {/* Empty State Message */}
-              <div className="h-32 flex items-center justify-center text-[#6F6F6F] text-sm">
-                No data available
-              </div>
-            </div>
-          </div>
+              <CalendarList 
+                onImportHistoryClick={() => setIsImportHistoryOpen(true)}
+                onExportSalaryRecordClick={() => setIsExportSalaryRecordOpen(true)}
+              />
+            </>
+          )}
         </>
       )}
+      <ImportHistoryCalendar 
+        isOpen={isImportHistoryOpen} 
+        onClose={() => setIsImportHistoryOpen(false)} 
+      />
+      <ExportSalaryRecord 
+        isOpen={isExportSalaryRecordOpen} 
+        onClose={() => setIsExportSalaryRecordOpen(false)} 
+      />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        style={{ display: 'none' }} 
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            // Process the imported salary record file here
+            console.log('Imported salary record:', file.name);
+          }
+        }}
+      />
     </div>
   );
 };
