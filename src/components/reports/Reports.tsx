@@ -38,6 +38,13 @@ import { openCurrencyReportCustomer } from './currency-report-customer/CurrencyR
 import { openDueList } from './due-list/DueListConfig';
 import { openLedgerList } from './ledger-list/LedgerListConfig';
 import { openTopRatedCustomers } from './top-rated-customers/TopRatedCustomersConfig';
+import GrossSalaryList from './gross-salary-list/GrossSalaryList';
+import PersonnelList from './personnel-list/PersonnelList';
+import SalaryStatistics from './salary-statistics/SalaryStatistics';
+import SalarySurvey from './salary-survey/SalarySurvey';
+import SalaryTypeList from './salary-type-list/SalaryTypeList';
+import StaffCard from './staff-card/StaffCard';
+import AverageEmployees from './average-employees/AverageEmployees';
 
 
 interface ReportItem {
@@ -53,6 +60,7 @@ interface ReportsProps {
 
 const Reports: React.FC<ReportsProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'favorites' | 'all'>('all');
+  const [activeReport, setActiveReport] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({
     'balance-report': true,
     'performance-report': true,
@@ -1828,19 +1836,32 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
       <h3 className="text-[15px] font-semibold text-[#065F46] mb-2">Salary</h3>
       <div className="space-y-1">
         {[
-          { id: 'gross-salary-list', title: 'Gross salary list' },
-          { id: 'personnel-list', title: 'Personnel list' },
-          { id: 'salary-statistics', title: 'Salary statistics' },
-          { id: 'salary-survey', title: 'Salary survey' },
-          { id: 'salary-type-list', title: 'Salary type list' },
-          { id: 'staff-card', title: 'Staff card' },
-          { id: 'average-employees', title: 'The average number of employees' },
+          { id: 'gross-salary-list', title: 'Gross salary list', component: GrossSalaryList },
+          { id: 'personnel-list', title: 'Personnel list', component: PersonnelList },
+          { id: 'salary-statistics', title: 'Salary statistics', component: SalaryStatistics },
+          { id: 'salary-survey', title: 'Salary survey', component: SalarySurvey },
+          { id: 'salary-type-list', title: 'Salary type list', component: SalaryTypeList },
+          { id: 'staff-card', title: 'Staff card', component: StaffCard },
+          { id: 'average-employees', title: 'The average number of employees', component: AverageEmployees },
         ].map(report => (
-          <div key={report.id} className="flex items-center justify-between h-9 px-2 hover:bg-gray-50 hover:underline">
+          <div 
+            key={report.id} 
+            className="flex items-center justify-between h-9 px-2 hover:bg-gray-50 hover:underline cursor-pointer"
+            onClick={() => {
+              if (report.component && typeof report.component === 'function') {
+                setActiveReport(report.id);
+              } else {
+                toggleFavorite(report.id);
+              }
+            }}
+          >
             <span className="text-[14px] text-[#111827]">{report.title}</span>
             <Star 
               className={`w-4 h-4 cursor-pointer \${favorites[report.id] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB]'}`}
-              onClick={() => toggleFavorite(report.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(report.id);
+              }}
             />
           </div>
         ))}
@@ -1917,87 +1938,120 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
 
       {/* Reports Content */}
       <div>
-        {activeTab === 'favorites' ? (
-          <div className="py-4">
-            {favoriteReports.length > 0 ? (
-              <div className="space-y-4">
-                {/* Pinned Favorite Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {favoriteReports.map(report => (
-                    <div 
-                      key={report.id}
-                      className="flex items-center justify-between bg-[#F3F6F4] p-4 rounded-xl h-18 cursor-pointer hover:bg-[#E9F5EF] transition-colors duration-200"
-                      onClick={() => toggleFavorite(report.id)}
-                    >
-                      <div>
-                        <h3 className="text-[16px] font-semibold text-[#064E3B] leading-6">{report.title}</h3>
-                        <p className="text-[13px] font-normal text-[#065F46] mt-0.5">{report.subtitle}</p>
-                      </div>
-                      <Star 
-                        className={`w-4.5 h-4.5 ${favorites[report.id] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB]'}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                
-                {/* All reports section */}
-                <div className="mt-8">
-                  <AccountingReports />
-                  <AssetSupplierWarehouseReports />
-                  <DirectoriesListsReports />
-                  <SalaryReports />
-                </div>
-              </div>
-            ) : (
-              /* Favorites Empty State */
-              <div className="flex flex-col items-center py-4 px-2">
-                {/* Empty State Illustration */}
-                <div className="w-24 h-24 flex items-center justify-center">
-                  <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24">
-                    <path d="M48 12L60 24L48 36L36 24L48 12Z" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M48 36V12" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M24 48C24 44.6863 26.6863 42 30 42H66C69.3137 42 72 44.6863 72 48V72C72 75.3137 69.3137 78 66 78H30C26.6863 78 24 75.3137 24 72V48Z" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M36 60H48" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M60 60H66" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="42" cy="54" r="1" fill="#22C55E"/>
-                    <circle cx="54" cy="54" r="1" fill="#22C55E"/>
-                    <circle cx="60" cy="54" r="1" fill="#22C55E"/>
-                  </svg>
-                </div>
-                
-                {/* Primary Heading */}
-                <h2 className="text-[24px] font-semibold text-[#064E3B] text-center mt-5">
-                  Your tailored report view
-                </h2>
-                
-                {/* Supporting Description */}
-                <p className="text-[14px] text-[#374151] text-center max-w-[520px] mt-2 leading-5">
-                  You decide! Here you'll find the reports you want easily accessible.
-                  Add or update your favorites anytime under the tab 
-                  <span 
-                    className="text-[#065F46] font-medium cursor-pointer hover:underline"
-                    onClick={() => setActiveTab('all')}
-                  >
-                    All reports ›
-                  </span>
-                </p>
-              </div>
-            )}
-          </div>
+        {activeReport ? (
+          // Render the active report component
+          (() => {
+            // Define all reports that have components
+            const allReportsWithComponents = [
+              { id: 'gross-salary-list', title: 'Gross salary list', component: GrossSalaryList },
+              { id: 'personnel-list', title: 'Personnel list', component: PersonnelList },
+              { id: 'salary-statistics', title: 'Salary statistics', component: SalaryStatistics },
+              { id: 'salary-survey', title: 'Salary survey', component: SalarySurvey },
+              { id: 'salary-type-list', title: 'Salary type list', component: SalaryTypeList },
+              { id: 'staff-card', title: 'Staff card', component: StaffCard },
+              { id: 'average-employees', title: 'The average number of employees', component: AverageEmployees },
+            ];
+            
+            const report = allReportsWithComponents.find(r => r.id === activeReport);
+            
+            if (report && report.component) {
+              const Component = report.component;
+              return <Component />;
+            }
+            return null;
+          })()
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-            <div>
-              <AccountingReports />
-              <AssetSupplierWarehouseReports />
+          // Original content
+          activeTab === 'favorites' ? (
+            <div className="py-4">
+              {favoriteReports.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Pinned Favorite Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {favoriteReports.map(report => (
+                      <div 
+                        key={report.id}
+                        className="flex items-center justify-between bg-[#F3F6F4] p-4 rounded-xl h-18 cursor-pointer hover:bg-[#E9F5EF] transition-colors duration-200"
+                        onClick={() => toggleFavorite(report.id)}
+                      >
+                        <div>
+                          <h3 className="text-[16px] font-semibold text-[#064E3B] leading-6">{report.title}</h3>
+                          <p className="text-[13px] font-normal text-[#065F46] mt-0.5">{report.subtitle}</p>
+                        </div>
+                        <Star 
+                          className={`w-4.5 h-4.5 ${favorites[report.id] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB]'}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* All reports section */}
+                  <div className="mt-8">
+                    <AccountingReports />
+                    <AssetSupplierWarehouseReports />
+                    <DirectoriesListsReports />
+                    <SalaryReports />
+                  </div>
+                </div>
+              ) : (
+                /* Favorites Empty State */
+                <div className="flex flex-col items-center py-4 px-2">
+                  {/* Empty State Illustration */}
+                  <div className="w-24 h-24 flex items-center justify-center">
+                    <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-24 h-24">
+                      <path d="M48 12L60 24L48 36L36 24L48 12Z" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M48 36V12" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M24 48C24 44.6863 26.6863 42 30 42H66C69.3137 42 72 44.6863 72 48V72C72 75.3137 69.3137 78 66 78H30C26.6863 78 24 75.3137 24 72V48Z" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M36 60H48" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M60 60H66" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="42" cy="54" r="1" fill="#22C55E"/>
+                      <circle cx="54" cy="54" r="1" fill="#22C55E"/>
+                      <circle cx="60" cy="54" r="1" fill="#22C55E"/>
+                    </svg>
+                  </div>
+                  
+                  {/* Primary Heading */}
+                  <h2 className="text-[24px] font-semibold text-[#064E3B] text-center mt-5">
+                    Your tailored report view
+                  </h2>
+                  
+                  {/* Supporting Description */}
+                  <p className="text-[14px] text-[#374151] text-center max-w-[520px] mt-2 leading-5">
+                    You decide! Here you'll find the reports you want easily accessible.
+                    Add or update your favorites anytime under the tab 
+                    <span 
+                      className="text-[#065F46] font-medium cursor-pointer hover:underline"
+                      onClick={() => setActiveTab('all')}
+                    >
+                      All reports ›
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
-            <div>
-              <DirectoriesListsReports />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+              <div>
+                <AccountingReports />
+                <AssetSupplierWarehouseReports />
+              </div>
+              <div>
+                <DirectoriesListsReports />
+              </div>
+              <div>
+                <SalaryReports />
+              </div>
             </div>
-            <div>
-              <SalaryReports />
-            </div>
-          </div>
+          )
         )}
+      </div>
+      <div className="flex justify-end p-4 border-t">
+        <button 
+          className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+          onClick={() => setActiveReport(null)}
+        >
+          Back to Reports
+        </button>
       </div>
       </div> {/* Close the main container div */}
     </div>
