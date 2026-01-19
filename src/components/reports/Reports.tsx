@@ -1365,11 +1365,6 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
       })
       .catch(err => {
         console.error('Error loading LiquidityReportConfig:', err);
-        
-        // Fallback implementation in case dynamic import fails
-        if (typeof openLiquidityReportConfig === 'function') {
-          openLiquidityReportConfig();
-        }
       });
   };
 
