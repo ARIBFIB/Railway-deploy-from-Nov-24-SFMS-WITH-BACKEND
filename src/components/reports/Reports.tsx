@@ -31,6 +31,10 @@ import { openItemStatistics } from './item-statistics/ItemStatisticsConfig';
 import { openItemStatisticsAdvanced } from './item-statistics-advanced/ItemStatisticsAdvancedConfig';
 import { openQuoteOrderInvoiceList } from './quote-order-invoice-list/QuoteOrderInvoiceListConfig';
 import { openQuoteOrderInvoiceListTotalLed } from './quote-order-invoice-list-total-led/QuoteOrderInvoiceListTotalLedConfig';
+import { openSupplierDirectory } from './supplier-directory/SupplierDirectoryConfig';
+import { openWarehouseList } from './warehouse-list/WarehouseListConfig';
+import { openIntrastatBasis } from './intrastat-basis/IntrastatBasisConfig';
+import { openCurrencyReportCustomer } from './currency-report-customer/CurrencyReportCustomerConfig';
 
 
 interface ReportItem {
@@ -1566,6 +1570,10 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'item-statistics-advanced', title: 'Item statistics advanced', isSpecial: true },
           { id: 'quote-order-invoice-list', title: 'Quote/Order/invoice list', isSpecial: true },
           { id: 'quote-order-invoice-list-total-led', title: 'Quote/Order/invoice list total led', isSpecial: true },
+          { id: 'supplier-directory', title: 'Supplier directory', isSpecial: true },
+          { id: 'warehouse-list', title: 'Warehouse list', isSpecial: true },
+          { id: 'intrastat-basis', title: 'Intrastat basis', isSpecial: true },
+          { id: 'currency-report-customer', title: 'Currency report customer', isSpecial: true },
         ].map(report => (
           <div 
             key={report.id} 
@@ -1637,6 +1645,14 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openQuoteOrderInvoiceList();
               } else if (report.isSpecial && report.id === 'quote-order-invoice-list-total-led') {
                 openQuoteOrderInvoiceListTotalLed();
+              } else if (report.isSpecial && report.id === 'supplier-directory') {
+                openSupplierDirectory();
+              } else if (report.isSpecial && report.id === 'warehouse-list') {
+                openWarehouseList();
+              } else if (report.isSpecial && report.id === 'intrastat-basis') {
+                openIntrastatBasis();
+              } else if (report.isSpecial && report.id === 'currency-report-customer') {
+                openCurrencyReportCustomer();
               } else {
                 toggleFavorite(report.id);
               }
