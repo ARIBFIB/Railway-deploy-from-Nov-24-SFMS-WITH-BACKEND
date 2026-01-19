@@ -15,6 +15,17 @@ import { openVatReport } from './vat-report/VatReportConfig';
 import { openVoucherList } from './voucher-list/VoucherListConfig';
 import { openDepreciations } from './depreciations/DepreciationsConfig';
 import { openExportAssets } from './export-assets/ExportAssetsConfig';
+import { openFutureDepreciations } from './future-depreciations/FutureDepreciationsConfig';
+import { openMinimalDepreciation } from './minimal-depreciation/MinimalDepreciationConfig';
+import { openSalesDisposals } from './sales-disposals/SalesDisposalsConfig';
+import { openAssetGroups } from './asset-groups/AssetGroupsConfig';
+import { openAssetInformation } from './asset-information/AssetInformationConfig';
+import { openAssetList } from './asset-list/AssetListConfig';
+import { openDepreciation } from './depreciation/DepreciationConfig';
+import { openDepreciationPerMonth } from './depreciation-per-month/DepreciationPerMonthConfig';
+import { openAccountPlan } from './account-plan/AccountPlanConfig';
+import { openCustomerStatistics } from './customer-statistics/CustomerStatisticsConfig';
+import { openCustomerDirectory } from './customer-directory/CustomerDirectoryConfig';
 
 
 interface ReportItem {
@@ -1534,6 +1545,17 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'voucher-list', title: 'Voucher list', isSpecial: true },
           { id: 'depreciations', title: 'Depreciations', isSpecial: true },
           { id: 'export-assets', title: 'Export assets', isSpecial: true },
+          { id: 'future-depreciations', title: 'Future depreciations', isSpecial: true },
+          { id: 'minimal-depreciation', title: 'Minimal Depreciation', isSpecial: true },
+          { id: 'sales-disposals', title: 'Sales and disposals', isSpecial: true },
+          { id: 'asset-groups', title: 'Asset groups', isSpecial: true },
+          { id: 'asset-information', title: 'Asset information', isSpecial: true },
+          { id: 'asset-list', title: 'Asset list', isSpecial: true },
+          { id: 'depreciation', title: 'Depreciation', isSpecial: true },
+          { id: 'depreciation-per-month', title: 'Depreciation per month', isSpecial: true },
+          { id: 'account-plan', title: 'Account plan', isSpecial: true },
+          { id: 'customer-statistics', title: 'Customer statistics', isSpecial: true },
+          { id: 'customer-directory', title: 'Customer directory', isSpecial: true },
         ].map(report => (
           <div 
             key={report.id} 
@@ -1573,6 +1595,28 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openDepreciations();
               } else if (report.isSpecial && report.id === 'export-assets') {
                 openExportAssets();
+              } else if (report.isSpecial && report.id === 'future-depreciations') {
+                openFutureDepreciations();
+              } else if (report.isSpecial && report.id === 'minimal-depreciation') {
+                openMinimalDepreciation();
+              } else if (report.isSpecial && report.id === 'sales-disposals') {
+                openSalesDisposals();
+              } else if (report.isSpecial && report.id === 'asset-groups') {
+                openAssetGroups();
+              } else if (report.isSpecial && report.id === 'asset-information') {
+                openAssetInformation();
+              } else if (report.isSpecial && report.id === 'asset-list') {
+                openAssetList();
+              } else if (report.isSpecial && report.id === 'depreciation') {
+                openDepreciation();
+              } else if (report.isSpecial && report.id === 'depreciation-per-month') {
+                openDepreciationPerMonth();
+              } else if (report.isSpecial && report.id === 'account-plan') {
+                openAccountPlan();
+              } else if (report.isSpecial && report.id === 'customer-statistics') {
+                openCustomerStatistics();
+              } else if (report.isSpecial && report.id === 'customer-directory') {
+                openCustomerDirectory();
               } else {
                 toggleFavorite(report.id);
               }
