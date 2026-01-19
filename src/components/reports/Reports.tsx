@@ -4,6 +4,9 @@ import AccountAnalysisConfig from './account-analysis/AccountAnalysisConfig';
 import BalanceReportConfig from './balance-report/BalanceReportConfig';
 import DeletedVouchersConfig from './deleted-vouchers/DeletedVouchersConfig';
 import GeneralLedgerConfig from './general-ledger/GeneralLedgerConfig';
+import { openOpeningBalanceConfig } from './opening-balance/OpeningBalanceConfig';
+import { openPerformanceBudgetConfig } from './performance-budget/PerformanceBudgetConfig';
+import { openPerformanceReportConfig } from './performance-report/PerformanceReportConfig';
 
 
 interface ReportItem {
@@ -1368,6 +1371,57 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
       });
   };
 
+  // Function to open Opening Balance Report in a new window
+  const openOpeningBalance = () => {
+    // Dynamically import and execute the OpeningBalanceConfig
+    import('./opening-balance/OpeningBalanceConfig')
+      .then(module => {
+        // Execute the openOpeningBalanceConfig function
+        if (module.openOpeningBalanceConfig && typeof module.openOpeningBalanceConfig === 'function') {
+          module.openOpeningBalanceConfig();
+        } else {
+          console.error('OpeningBalanceConfig does not export openOpeningBalanceConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading OpeningBalanceConfig:', err);
+      });
+  };
+
+  // Function to open Performance Budget Report in a new window
+  const openPerformanceBudget = () => {
+    // Dynamically import and execute the PerformanceBudgetConfig
+    import('./performance-budget/PerformanceBudgetConfig')
+      .then(module => {
+        // Execute the openPerformanceBudgetConfig function
+        if (module.openPerformanceBudgetConfig && typeof module.openPerformanceBudgetConfig === 'function') {
+          module.openPerformanceBudgetConfig();
+        } else {
+          console.error('PerformanceBudgetConfig does not export openPerformanceBudgetConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading PerformanceBudgetConfig:', err);
+      });
+  };
+
+  // Function to open Performance Report in a new window
+  const openPerformanceReport = () => {
+    // Dynamically import and execute the PerformanceReportConfig
+    import('./performance-report/PerformanceReportConfig')
+      .then(module => {
+        // Execute the openPerformanceReportConfig function
+        if (module.openPerformanceReportConfig && typeof module.openPerformanceReportConfig === 'function') {
+          module.openPerformanceReportConfig();
+        } else {
+          console.error('PerformanceReportConfig does not export openPerformanceReportConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading PerformanceReportConfig:', err);
+      });
+  };
+
   // Get favorite reports
   const favoriteReports = [
     { id: 'balance-report', title: 'Balance report', subtitle: 'Accounting', section: 'Accounting' },
@@ -1393,9 +1447,9 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'deleted-vouchers', title: 'Deleted vouchers', isSpecial: true },
           { id: 'general-ledger', title: 'General ledger', isSpecial: true },
           { id: 'liquidity-report', title: 'Liquidity report', isSpecial: true },
-          { id: 'opening-balance', title: 'Opening balance' },
-          { id: 'performance-budget', title: 'Performance budget' },
-          { id: 'performance-report', title: 'Performance report' },
+          { id: 'opening-balance', title: 'Opening balance', isSpecial: true },
+          { id: 'performance-budget', title: 'Performance budget', isSpecial: true },
+          { id: 'performance-report', title: 'Performance report', isSpecial: true },
           { id: 'performance-report-advanced', title: 'Performance report advanced' },
           { id: 'period-allocations', title: 'Period allocations' },
         ].map(report => (
@@ -1415,6 +1469,12 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openGeneralLedger();
               } else if (report.isSpecial && report.id === 'liquidity-report') {
                 openLiquidityReport();
+              } else if (report.isSpecial && report.id === 'opening-balance') {
+                openOpeningBalance();
+              } else if (report.isSpecial && report.id === 'performance-budget') {
+                openPerformanceBudget();
+              } else if (report.isSpecial && report.id === 'performance-report') {
+                openPerformanceReport();
               } else {
                 toggleFavorite(report.id);
               }
