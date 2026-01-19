@@ -7,6 +7,14 @@ import GeneralLedgerConfig from './general-ledger/GeneralLedgerConfig';
 import { openOpeningBalanceConfig } from './opening-balance/OpeningBalanceConfig';
 import { openPerformanceBudgetConfig } from './performance-budget/PerformanceBudgetConfig';
 import { openPerformanceReportConfig } from './performance-report/PerformanceReportConfig';
+import { openPerformanceReportAdvancedConfig } from './performance-report-advanced/PerformanceReportAdvancedConfig';
+import { openPeriodAllocationsConfig } from './period-allocations/PeriodAllocationsConfig';
+import { openQuarterlyReportConfig } from './quarterly-report/QuarterlyReportConfig';
+import { openSystemDocumentationConfig } from './system-documentation/SystemDocumentationConfig';
+import { openVatReport } from './vat-report/VatReportConfig';
+import { openVoucherList } from './voucher-list/VoucherListConfig';
+import { openDepreciations } from './depreciations/DepreciationsConfig';
+import { openExportAssets } from './export-assets/ExportAssetsConfig';
 
 
 interface ReportItem {
@@ -1422,6 +1430,74 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
       });
   };
 
+  // Function to open Performance Report Advanced in a new window
+  const openPerformanceReportAdvanced = () => {
+    // Dynamically import and execute the PerformanceReportAdvancedConfig
+    import('./performance-report-advanced/PerformanceReportAdvancedConfig')
+      .then(module => {
+        // Execute the openPerformanceReportAdvancedConfig function
+        if (module.openPerformanceReportAdvancedConfig && typeof module.openPerformanceReportAdvancedConfig === 'function') {
+          module.openPerformanceReportAdvancedConfig();
+        } else {
+          console.error('PerformanceReportAdvancedConfig does not export openPerformanceReportAdvancedConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading PerformanceReportAdvancedConfig:', err);
+      });
+  };
+
+  // Function to open Period Allocations in a new window
+  const openPeriodAllocations = () => {
+    // Dynamically import and execute the PeriodAllocationsConfig
+    import('./period-allocations/PeriodAllocationsConfig')
+      .then(module => {
+        // Execute the openPeriodAllocationsConfig function
+        if (module.openPeriodAllocationsConfig && typeof module.openPeriodAllocationsConfig === 'function') {
+          module.openPeriodAllocationsConfig();
+        } else {
+          console.error('PeriodAllocationsConfig does not export openPeriodAllocationsConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading PeriodAllocationsConfig:', err);
+      });
+  };
+
+  // Function to open Quarterly Report in a new window
+  const openQuarterlyReport = () => {
+    // Dynamically import and execute the QuarterlyReportConfig
+    import('./quarterly-report/QuarterlyReportConfig')
+      .then(module => {
+        // Execute the openQuarterlyReportConfig function
+        if (module.openQuarterlyReportConfig && typeof module.openQuarterlyReportConfig === 'function') {
+          module.openQuarterlyReportConfig();
+        } else {
+          console.error('QuarterlyReportConfig does not export openQuarterlyReportConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading QuarterlyReportConfig:', err);
+      });
+  };
+
+  // Function to open System Documentation in a new window
+  const openSystemDocumentation = () => {
+    // Dynamically import and execute the SystemDocumentationConfig
+    import('./system-documentation/SystemDocumentationConfig')
+      .then(module => {
+        // Execute the openSystemDocumentationConfig function
+        if (module.openSystemDocumentationConfig && typeof module.openSystemDocumentationConfig === 'function') {
+          module.openSystemDocumentationConfig();
+        } else {
+          console.error('SystemDocumentationConfig does not export openSystemDocumentationConfig function');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading SystemDocumentationConfig:', err);
+      });
+  };
+
   // Get favorite reports
   const favoriteReports = [
     { id: 'balance-report', title: 'Balance report', subtitle: 'Accounting', section: 'Accounting' },
@@ -1450,8 +1526,14 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'opening-balance', title: 'Opening balance', isSpecial: true },
           { id: 'performance-budget', title: 'Performance budget', isSpecial: true },
           { id: 'performance-report', title: 'Performance report', isSpecial: true },
-          { id: 'performance-report-advanced', title: 'Performance report advanced' },
-          { id: 'period-allocations', title: 'Period allocations' },
+          { id: 'performance-report-advanced', title: 'Performance report advanced', isSpecial: true },
+          { id: 'period-allocations', title: 'Period allocations', isSpecial: true },
+          { id: 'quarterly-report', title: 'Quarterly report', isSpecial: true },
+          { id: 'system-documentation', title: 'System documentation', isSpecial: true },
+          { id: 'vat-report', title: 'VAT report', isSpecial: true },
+          { id: 'voucher-list', title: 'Voucher list', isSpecial: true },
+          { id: 'depreciations', title: 'Depreciations', isSpecial: true },
+          { id: 'export-assets', title: 'Export assets', isSpecial: true },
         ].map(report => (
           <div 
             key={report.id} 
@@ -1475,6 +1557,22 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openPerformanceBudget();
               } else if (report.isSpecial && report.id === 'performance-report') {
                 openPerformanceReport();
+              } else if (report.isSpecial && report.id === 'performance-report-advanced') {
+                openPerformanceReportAdvanced();
+              } else if (report.isSpecial && report.id === 'period-allocations') {
+                openPeriodAllocations();
+              } else if (report.isSpecial && report.id === 'quarterly-report') {
+                openQuarterlyReport();
+              } else if (report.isSpecial && report.id === 'system-documentation') {
+                openSystemDocumentation();
+              } else if (report.isSpecial && report.id === 'vat-report') {
+                openVatReport();
+              } else if (report.isSpecial && report.id === 'voucher-list') {
+                openVoucherList();
+              } else if (report.isSpecial && report.id === 'depreciations') {
+                openDepreciations();
+              } else if (report.isSpecial && report.id === 'export-assets') {
+                openExportAssets();
               } else {
                 toggleFavorite(report.id);
               }
