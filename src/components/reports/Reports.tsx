@@ -35,6 +35,9 @@ import { openSupplierDirectory } from './supplier-directory/SupplierDirectoryCon
 import { openWarehouseList } from './warehouse-list/WarehouseListConfig';
 import { openIntrastatBasis } from './intrastat-basis/IntrastatBasisConfig';
 import { openCurrencyReportCustomer } from './currency-report-customer/CurrencyReportCustomerConfig';
+import { openDueList } from './due-list/DueListConfig';
+import { openLedgerList } from './ledger-list/LedgerListConfig';
+import { openTopRatedCustomers } from './top-rated-customers/TopRatedCustomersConfig';
 
 
 interface ReportItem {
@@ -1574,6 +1577,9 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'warehouse-list', title: 'Warehouse list', isSpecial: true },
           { id: 'intrastat-basis', title: 'Intrastat basis', isSpecial: true },
           { id: 'currency-report-customer', title: 'Currency report customer', isSpecial: true },
+          { id: 'due-list', title: 'Due list', isSpecial: true },
+          { id: 'ledger-list', title: 'Ledger list', isSpecial: true },
+          { id: 'top-rated-customers', title: 'Top rated customers', isSpecial: true },
         ].map(report => (
           <div 
             key={report.id} 
@@ -1653,6 +1659,12 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openIntrastatBasis();
               } else if (report.isSpecial && report.id === 'currency-report-customer') {
                 openCurrencyReportCustomer();
+              } else if (report.isSpecial && report.id === 'due-list') {
+                openDueList();
+              } else if (report.isSpecial && report.id === 'ledger-list') {
+                openLedgerList();
+              } else if (report.isSpecial && report.id === 'top-rated-customers') {
+                openTopRatedCustomers();
               } else {
                 toggleFavorite(report.id);
               }
