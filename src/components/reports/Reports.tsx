@@ -26,6 +26,11 @@ import { openDepreciationPerMonth } from './depreciation-per-month/DepreciationP
 import { openAccountPlan } from './account-plan/AccountPlanConfig';
 import { openCustomerStatistics } from './customer-statistics/CustomerStatisticsConfig';
 import { openCustomerDirectory } from './customer-directory/CustomerDirectoryConfig';
+import { openItemDirectory } from './item-directory/ItemDirectoryConfig';
+import { openItemStatistics } from './item-statistics/ItemStatisticsConfig';
+import { openItemStatisticsAdvanced } from './item-statistics-advanced/ItemStatisticsAdvancedConfig';
+import { openQuoteOrderInvoiceList } from './quote-order-invoice-list/QuoteOrderInvoiceListConfig';
+import { openQuoteOrderInvoiceListTotalLed } from './quote-order-invoice-list-total-led/QuoteOrderInvoiceListTotalLedConfig';
 
 
 interface ReportItem {
@@ -1556,6 +1561,11 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'account-plan', title: 'Account plan', isSpecial: true },
           { id: 'customer-statistics', title: 'Customer statistics', isSpecial: true },
           { id: 'customer-directory', title: 'Customer directory', isSpecial: true },
+          { id: 'item-directory', title: 'Item directory', isSpecial: true },
+          { id: 'item-statistics', title: 'Item statistics', isSpecial: true },
+          { id: 'item-statistics-advanced', title: 'Item statistics advanced', isSpecial: true },
+          { id: 'quote-order-invoice-list', title: 'Quote/Order/invoice list', isSpecial: true },
+          { id: 'quote-order-invoice-list-total-led', title: 'Quote/Order/invoice list total led', isSpecial: true },
         ].map(report => (
           <div 
             key={report.id} 
@@ -1617,6 +1627,16 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openCustomerStatistics();
               } else if (report.isSpecial && report.id === 'customer-directory') {
                 openCustomerDirectory();
+              } else if (report.isSpecial && report.id === 'item-directory') {
+                openItemDirectory();
+              } else if (report.isSpecial && report.id === 'item-statistics') {
+                openItemStatistics();
+              } else if (report.isSpecial && report.id === 'item-statistics-advanced') {
+                openItemStatisticsAdvanced();
+              } else if (report.isSpecial && report.id === 'quote-order-invoice-list') {
+                openQuoteOrderInvoiceList();
+              } else if (report.isSpecial && report.id === 'quote-order-invoice-list-total-led') {
+                openQuoteOrderInvoiceListTotalLed();
               } else {
                 toggleFavorite(report.id);
               }
