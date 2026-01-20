@@ -10,6 +10,8 @@ import RetroactiveSalary from './RetroactiveSalary';
 import MassUpdateSalaries from './MassUpdateSalaries';
 import CalendarList from './CalendarList';
 import PersonnelRegister from './personnel/PersonnelRegister';
+import NewPersonnelRegisterList from './personnel/NewPersonnelRegisterList';
+import CreateStaffCard from './personnel/staff-card-create/CreateStaffCard';
 
 // Import image assets
 import generalCalendarClock from '../../../assets/images/general_calendar_clock.png';
@@ -20,6 +22,7 @@ const Calendar = () => {
   const [isImportHistoryOpen, setIsImportHistoryOpen] = useState(false);
   const [isExportSalaryRecordOpen, setIsExportSalaryRecordOpen] = useState(false);
   const [showPersonnelRegister, setShowPersonnelRegister] = useState(false);
+  const [showCreateStaffCard, setShowCreateStaffCard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -286,6 +289,8 @@ const Calendar = () => {
         return tab === 'retroactive-salary';
       case 'MassUpdate':
         return tab === 'mass-update';
+      case 'personnel-register':
+        return tab === 'personnel-register';
       default:
         return false;
     }
@@ -328,6 +333,8 @@ const Calendar = () => {
               onClick={() => {
                 if (item.id === 'calendar') {
                   navigate('/salary');
+                } else if (item.id === 'personnel-register') {
+                  navigate('/salary?tab=personnel-register');
                 } else if (item.id === 'salary-run') {
                   navigate('/salary?tab=salary-run');
                 } else if (item.id === 'holiday') {
@@ -391,52 +398,81 @@ const Calendar = () => {
         <RetroactiveSalary />
       ) : getCurrentActiveNav('MassUpdate') ? (
         <MassUpdateSalaries />
+      ) : showCreateStaffCard ? (
+        <div className="p-4">
+          <button 
+            className="text-[#2E7D32] hover:underline text-xs font-medium mb-4"
+            onClick={() => setShowCreateStaffCard(false)}
+          >
+            ← Back to Personnel Register
+          </button>
+          <CreateStaffCard />
+        </div>
+      ) : showPersonnelRegister ? (
+        <div className="p-4">
+          <button 
+            className="text-[#2E7D32] hover:underline text-xs font-medium mb-4"
+            onClick={() => {
+              setShowPersonnelRegister(false);
+              setShowCreateStaffCard(false);
+            }}
+          >
+            ← Back to Calendar
+          </button>
+          <NewPersonnelRegisterList onCreateStaffCard={() => setShowCreateStaffCard(true)} />
+        </div>
       ) : (
         <>
-          {showPersonnelRegister ? (
-            <PersonnelRegister />
-          ) : (
-            <>
-              {/* Welcome Banner */}
-              <div 
-                className="w-full h-[118px] rounded-[14px] bg-[#7E7A8F] p-[16px] pl-[20px] pr-[140px] shadow-[0px_4px_14px_rgba(0,0,0,0.14)] relative mb-[16px]"
-                style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+          {/* Welcome Banner */}
+          <div 
+            className="w-full h-[118px] rounded-[14px] bg-[#7E7A8F] p-[16px] pl-[20px] pr-[140px] shadow-[0px_4px_14px_rgba(0,0,0,0.14)] relative mb-[16px]"
+            style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+          >
+            <div>
+              <h2 className="text-[13px] font-semibold text-white mb-[6px] leading-[16px]">Welcome to Fortnox Salary.</h2>
+              <p className="text-[11px] leading-[15px] text-[#F2F2F2] max-w-[560px]">
+                You are now in the calendar where you register attendance, absence and other information that must be included in the pay slip for the employees. But before you can start registering this, you need to register the employees in the staff register, you do this under Register - Staff.
+              </p>
+            </div>
+            
+            <div className="flex mt-[12px] gap-[8px]">
+              <button 
+                className="h-[28px] px-[16px] bg-white text-[#4A4A4A] text-[11px] font-medium rounded-[16px] hover:bg-[#F4F4F4] transition-colors"
+                onClick={() => {
+                  setShowPersonnelRegister(true);
+                  setShowCreateStaffCard(false);
+                }}
               >
-                <div>
-                  <h2 className="text-[13px] font-semibold text-white mb-[6px] leading-[16px]">Welcome to Fortnox Salary.</h2>
-                  <p className="text-[11px] leading-[15px] text-[#F2F2F2] max-w-[560px]">
-                    You are now in the calendar where you register attendance, absence and other information that must be included in the pay slip for the employees. But before you can start registering this, you need to register the employees in the staff register, you do this under Register - Staff.
-                  </p>
-                </div>
-                
-                <div className="flex mt-[12px] gap-[8px]">
-                  <button 
-                    className="h-[28px] px-[16px] bg-white text-[#4A4A4A] text-[11px] font-medium rounded-[16px] hover:bg-[#F4F4F4] transition-colors"
-                    onClick={() => setShowPersonnelRegister(true)}
-                  >
-                    Go to personnel register
-                  </button>
-                  <button className="h-[28px] px-[16px] bg-transparent border border-[#E5E5E5] text-white text-[11px] font-medium rounded-[16px] hover:bg-[rgba(255,255,255,0.08)] transition-colors">
-                    Read more
-                  </button>
-                </div>
-                
-                {/* Illustration */}
-                <div className="absolute right-[24px] top-1/2 transform -translate-y-1/2 w-[110px] h-[86px] pointer-events-none">
-                  <img 
-                    src={generalCalendarClock} 
-                    alt="Calendar and clock illustration" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              </div>
-              
-              <CalendarList 
-                onImportHistoryClick={() => setIsImportHistoryOpen(true)}
-                onExportSalaryRecordClick={() => setIsExportSalaryRecordOpen(true)}
+                Go to personnel register
+              </button>
+              <button 
+                className="h-[28px] px-[16px] bg-[#FACC15] text-[#111827] text-[11px] font-medium rounded-[16px] hover:bg-[#EAB308] transition-colors"
+                onClick={() => {
+                  setShowPersonnelRegister(true);
+                  setShowCreateStaffCard(true);
+                }}
+              >
+                <span className="mr-[6px]">+</span>Create employee
+              </button>
+              <button className="h-[28px] px-[16px] bg-transparent border border-[#E5E5E5] text-white text-[11px] font-medium rounded-[16px] hover:bg-[rgba(255,255,255,0.08)] transition-colors">
+                Read more
+              </button>
+            </div>
+            
+            {/* Illustration */}
+            <div className="absolute right-[24px] top-1/2 transform -translate-y-1/2 w-[110px] h-[86px] pointer-events-none">
+              <img 
+                src={generalCalendarClock} 
+                alt="Calendar and clock illustration" 
+                className="w-full h-full object-contain"
               />
-            </>
-          )}
+            </div>
+          </div>
+          
+          <CalendarList 
+            onImportHistoryClick={() => setIsImportHistoryOpen(true)}
+            onExportSalaryRecordClick={() => setIsExportSalaryRecordOpen(true)}
+          />
         </>
       )}
       <ImportHistoryCalendar 

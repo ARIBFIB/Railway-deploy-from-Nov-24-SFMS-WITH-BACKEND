@@ -50,6 +50,7 @@ import WarehousesPage from './src/pages/WarehousesPage';
 import SuppliersPage from './src/pages/SuppliersPage';
 import WageTypesPage from './src/pages/WageTypesPage';
 import PersonnelRegisterPage from './src/pages/PersonnelRegisterPage';
+import CreateStaffCardPage from './src/components/salary/Calendar/personnel/CreateStaffCardPage';
 import { AccountAnalysisPage } from './src/pages/AccountAnalysisPage';
 import ItemList from './src/components/Item/ItemList';
 import ItemForm from './src/components/Item/ItemForm';
@@ -363,6 +364,18 @@ function App() {
                   <AppLayout onLogout={handleLogout}>
                     <SalaryPage />
                   </AppLayout>
+                </ProtectedRoute>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/salary/personnel/create-staff-card"
+            element={
+              isAuthenticated ? (
+                <ProtectedRoute requiredScreen="personnel-register" userRole={userRole}>
+                  <CreateStaffCardPage />
                 </ProtectedRoute>
               ) : (
                 <Navigate to="/login" replace />
