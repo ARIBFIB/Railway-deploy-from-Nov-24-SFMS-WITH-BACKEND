@@ -35,9 +35,14 @@ import { openSupplierDirectory } from './supplier-directory/SupplierDirectoryCon
 import { openWarehouseList } from './warehouse-list/WarehouseListConfig';
 import { openIntrastatBasis } from './intrastat-basis/IntrastatBasisConfig';
 import { openCurrencyReportCustomer } from './currency-report-customer/CurrencyReportCustomerConfig';
+import { openCurrencyReportSupplier } from './currency-report-supplier/CurrencyReportSupplierConfig';
 import { openDueList } from './due-list/DueListConfig';
+import { openSupplierDueList } from './supplier-due-list/SupplierDueListConfig';
 import { openLedgerList } from './ledger-list/LedgerListConfig';
 import { openTopRatedCustomers } from './top-rated-customers/TopRatedCustomersConfig';
+import { openSupplierStatistics } from './supplier-statistics/SupplierStatisticsConfig';
+import { openTopRatedSuppliers } from './top-rated-suppliers/TopRatedSuppliersConfig';
+import { openStockValueReport } from './stock-value-report/StockValueReportConfig';
 import GrossSalaryList from './gross-salary-list/GrossSalaryList';
 import PersonnelList from './personnel-list/PersonnelList';
 import SalaryStatistics from './salary-statistics/SalaryStatistics';
@@ -1585,6 +1590,8 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
           { id: 'warehouse-list', title: 'Warehouse list', isSpecial: true },
           { id: 'intrastat-basis', title: 'Intrastat basis', isSpecial: true },
           { id: 'currency-report-customer', title: 'Currency report customer', isSpecial: true },
+          { id: 'currency-report-supplier', title: 'Currency report supplier', isSpecial: true },
+          { id: 'supplier-due-list', title: 'Supplier due list', isSpecial: true },
           { id: 'due-list', title: 'Due list', isSpecial: true },
           { id: 'ledger-list', title: 'Ledger list', isSpecial: true },
           { id: 'top-rated-customers', title: 'Top rated customers', isSpecial: true },
@@ -1667,12 +1674,22 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
                 openIntrastatBasis();
               } else if (report.isSpecial && report.id === 'currency-report-customer') {
                 openCurrencyReportCustomer();
+              } else if (report.isSpecial && report.id === 'currency-report-supplier') {
+                openCurrencyReportSupplier();
+              } else if (report.isSpecial && report.id === 'supplier-due-list') {
+                openSupplierDueList();
               } else if (report.isSpecial && report.id === 'due-list') {
                 openDueList();
               } else if (report.isSpecial && report.id === 'ledger-list') {
                 openLedgerList();
               } else if (report.isSpecial && report.id === 'top-rated-customers') {
                 openTopRatedCustomers();
+              } else if (report.isSpecial && report.id === 'supplier-statistics') {
+                openSupplierStatistics();
+              } else if (report.isSpecial && report.id === 'top-rated-suppliers') {
+                openTopRatedSuppliers();
+              } else if (report.isSpecial && report.id === 'stock-value-report') {
+                openStockValueReport();
               } else {
                 toggleFavorite(report.id);
               }
@@ -1781,7 +1798,36 @@ const Reports: React.FC<ReportsProps> = ({ onClose }) => {
               Currency report customer
             </span>
             <Star 
-              className={`w-4 h-4 transition-all duration-200 \${favorites['currency-report-customer'] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'}`}
+              className={`w-4 h-4 transition-all duration-200 ${favorites['currency-report-supplier'] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'}`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Supplier Section */}
+      <div className="mb-4">
+        <h3 className="text-[15px] font-semibold text-[#065F46]">Supplier</h3>
+        <div className="space-y-1">
+          <div 
+            className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group hover:underline"
+            onClick={() => toggleFavorite('currency-report-supplier')}
+          >
+            <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
+              Currency report supplier
+            </span>
+            <Star 
+              className={`w-4 h-4 transition-all duration-200 ${favorites['currency-report-supplier'] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'}`}
+            />
+          </div>
+          <div 
+            className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group hover:underline"
+            onClick={() => toggleFavorite('supplier-due-list')}
+          >
+            <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
+              Supplier due list
+            </span>
+            <Star 
+              className={`w-4 h-4 transition-all duration-200 ${favorites['supplier-due-list'] ? 'text-[#FACC15] fill-current' : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'}`}
             />
           </div>
         </div>
