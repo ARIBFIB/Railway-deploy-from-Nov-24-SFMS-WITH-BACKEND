@@ -1,242 +1,110 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const ATFATKTab: React.FC = () => {
+const ATFATKTab = () => {
+  const [workingTimeEnum, setWorkingTimeEnum] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  const workingTimeOptions = [
+    'None',
+    'Full time',
+    'Part time',
+    'Shift based',
+    'Flexible hours',
+    'Remote work',
+    'Hybrid schedule'
+  ];
+
+  const handleSelect = (value: string) => {
+    setWorkingTimeEnum(value);
+    setIsDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
   return (
-    <div className="grid grid-cols-4 gap-x-6 gap-y-3.5">
-      {/* ATF/ATK Information Section */}
-      <div className="col-span-4">
-        <h3 className="text-xs font-semibold text-[#2B2B2B] mb-2">ATF/ATK information</h3>
-        <div className="grid grid-cols-4 gap-x-6 gap-y-3.5">
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK number
-            </label>
-            <input
-              type="text"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK type
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
+    <div className="bg-[#F7F7F7] p-[16px] pb-[80px] font-sans text-[12px]" style={{ fontFamily: 'Inter, Roboto, system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="bg-white mb-[16px]">
+        {/* Working Time Enumeration Dropdown */}
+        <div className="max-w-[420px] w-full mx-auto mt-[16px] mb-[24px]">
+          <label className="block text-[13px] font-medium text-[#2B2B2B] leading-[18px] mb-[6px]">
+            Working time enumeration
+          </label>
+          <div className="relative">
+            <div
+              className={`h-[36px] w-full min-w-[280px] px-[12px] py-[8px] pr-[36px] bg-white border border-[#CFCFCF] rounded-[4px] flex items-center justify-between cursor-pointer ${
+                isDropdownOpen ? 'border-[#1A7F37] shadow-[0_0_0_1px_#1A7F37]' : ''
+              }`}
+              onClick={toggleDropdown}
+              tabIndex={0}
+              role="combobox"
+              aria-expanded={isDropdownOpen}
+              aria-controls="working-time-dropdown"
             >
-              <option value="">Select</option>
-              <option value="atf">ATF</option>
-              <option value="atk">ATK</option>
-              <option value="both">Both</option>
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK start date
-            </label>
-            <input
-              type="date"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK end date
-            </label>
-            <input
-              type="date"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK category
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-            >
-              <option value="">Select</option>
-              <option value="category1">Category 1</option>
-              <option value="category2">Category 2</option>
-              <option value="category3">Category 3</option>
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK percentage
-            </label>
-            <input
-              type="number"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK amount
-            </label>
-            <input
-              type="number"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK status
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-            >
-              <option value="">Select</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ATF/ATK Settings Section */}
-      <div className="col-span-4 mt-4">
-        <h3 className="text-xs font-semibold text-[#2B2B2B] mb-2">ATF/ATK settings</h3>
-        <div className="grid grid-cols-4 gap-x-6 gap-y-3.5">
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK calculation method
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-            >
-              <option value="">Select</option>
-              <option value="percentage">Percentage</option>
-              <option value="fixed">Fixed Amount</option>
-              <option value="tiered">Tiered</option>
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK frequency
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-            >
-              <option value="">Select</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annually">Annually</option>
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK approval required
-            </label>
-            <div className="flex h-7 border border-[#DADADA] rounded-[4px] overflow-hidden">
-              <button
-                className={`flex-1 text-xs ${
-                  true ? 'bg-[#E0E0E0] text-[#2B2B2B]' : 'bg-white text-[#6F6F6F]'
+              <span className={`${workingTimeEnum ? 'text-[#9B9B9B]' : 'text-[#B5B5B5]'}`}>
+                {workingTimeEnum || 'None'}
+              </span>
+              <svg
+                className={`w-[10px] h-[10px] text-[#7A7A7A] transition-transform duration-200 ${
+                  isDropdownOpen ? 'rotate-180' : 'rotate-0'
                 }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                Yes
-              </button>
-              <button
-                className={`flex-1 text-xs ${
-                  false ? 'bg-[#E0E0E0] text-[#2B2B2B]' : 'bg-white text-[#6F6F6F]'
-                }`}
-              >
-                No
-              </button>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
             </div>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              ATF/ATK automatic renewal
-            </label>
-            <div className="flex h-7 border border-[#DADADA] rounded-[4px] overflow-hidden">
-              <button
-                className={`flex-1 text-xs ${
-                  false ? 'bg-[#E0E0E0] text-[#2B2B2B]' : 'bg-white text-[#6F6F6F]'
-                }`}
+            
+            {isDropdownOpen && (
+              <div
+                id="working-time-dropdown"
+                className="absolute top-[calc(100%+4px)] w-full bg-white border border-[#CFCFCF] rounded-[4px] z-[1000] shadow-[0_4px_10px_rgba(0,0,0,0.08)]"
+                role="listbox"
               >
-                Yes
-              </button>
-              <button
-                className={`flex-1 text-xs ${
-                  true ? 'bg-[#E0E0E0] text-[#2B2B2B]' : 'bg-white text-[#6F6F6F]'
-                }`}
-              >
-                No
-              </button>
-            </div>
+                {workingTimeOptions.map((option, index) => (
+                  <div
+                    key={index}
+                    className={`h-[32px] px-[12px] py-[8px] text-[13px] text-[#2B2B2B] cursor-pointer ${
+                      workingTimeEnum === option ? 'bg-[#E9F5EE] text-[#1A7F37]' : 'hover:bg-[#F3F3F3]'
+                    }`}
+                    onClick={() => handleSelect(option)}
+                    role="option"
+                    aria-selected={workingTimeEnum === option}
+                  >
+                    {option}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* ATF/ATK Compliance Section */}
-      <div className="col-span-4 mt-4">
-        <h3 className="text-xs font-semibold text-[#2B2B2B] mb-2">ATF/ATK compliance</h3>
-        <div className="grid grid-cols-4 gap-x-6 gap-y-3.5">
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              Compliance status
-            </label>
-            <select
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-            >
-              <option value="">Select</option>
-              <option value="compliant">Compliant</option>
-              <option value="non-compliant">Non-compliant</option>
-              <option value="pending-review">Pending Review</option>
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              Last compliance check
-            </label>
-            <input
-              type="date"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              Next compliance due
-            </label>
-            <input
-              type="date"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-          <div className="col-span-1">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              Compliance officer
-            </label>
-            <input
-              type="text"
-              className="w-full h-7 px-2 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white"
-              placeholder=""
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ATF/ATK Notes Section */}
-      <div className="col-span-4 mt-4">
-        <h3 className="text-xs font-semibold text-[#2B2B2B] mb-2">Notes</h3>
-        <div className="grid grid-cols-4 gap-x-6 gap-y-3.5">
-          <div className="col-span-4">
-            <label className="block text-xs font-medium text-[#2B2B2B] mb-1">
-              Additional notes
-            </label>
-            <textarea
-              className="w-full h-20 px-2 py-1 text-xs border border-[#DADADA] rounded-[4px] text-[#2B2B2B] bg-white resize-none"
-              placeholder=""
-            />
-          </div>
+      
+      {/* Footer Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 h-[64px] bg-white border-t border-[#E0E0E0] flex justify-between items-center px-[24px] z-[1000]">
+        <button 
+          className="h-[36px] px-[20px] bg-[#D6D6D6] text-white text-[13px] font-bold rounded-[18px] cursor-not-allowed"
+          disabled
+          aria-label="Delete record"
+        >
+          Delete
+        </button>
+        <div className="flex items-center space-x-[12px]">
+          <button 
+            className="h-[36px] px-[20px] bg-[#8E8E8E] text-white text-[13px] font-bold rounded-[18px] cursor-pointer"
+            aria-label="Cancel changes"
+          >
+            Cancel
+          </button>
+          <button 
+            className="h-[36px] px-[22px] bg-[#007A33] text-white text-[13px] font-bold rounded-[18px] cursor-pointer hover:bg-[#00662A]"
+            aria-label="Save changes"
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>

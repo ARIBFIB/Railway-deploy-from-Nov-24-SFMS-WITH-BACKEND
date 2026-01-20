@@ -445,7 +445,7 @@ const Calendar = () => {
               >
                 Go to personnel register
               </button>
-              <button 
+              {/* <button 
                 className="h-[28px] px-[16px] bg-[#FACC15] text-[#111827] text-[11px] font-medium rounded-[16px] hover:bg-[#EAB308] transition-colors"
                 onClick={() => {
                   setShowPersonnelRegister(true);
@@ -453,7 +453,7 @@ const Calendar = () => {
                 }}
               >
                 <span className="mr-[6px]">+</span>Create employee
-              </button>
+              </button> */}
               <button className="h-[28px] px-[16px] bg-transparent border border-[#E5E5E5] text-white text-[11px] font-medium rounded-[16px] hover:bg-[rgba(255,255,255,0.08)] transition-colors">
                 Read more
               </button>
