@@ -290,7 +290,7 @@ const openWarehouseList = () => {
       </body>
       </html>
     `);
-    
+    newWindow.document.close();
     newWindow.focus();
   }
 };

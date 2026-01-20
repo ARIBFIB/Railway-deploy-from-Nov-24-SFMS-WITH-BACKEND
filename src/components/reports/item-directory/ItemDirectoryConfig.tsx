@@ -395,7 +395,7 @@ const openItemDirectory = () => {
       </body>
       </html>
     `);
-    
+    newWindow.document.close();
     newWindow.focus();
   }
 };

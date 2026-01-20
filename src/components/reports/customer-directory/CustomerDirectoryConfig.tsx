@@ -269,7 +269,7 @@ const openCustomerDirectory = () => {
       </body>
       </html>
     `);
-    
+    newWindow.document.close();
     newWindow.focus();
   }
 };

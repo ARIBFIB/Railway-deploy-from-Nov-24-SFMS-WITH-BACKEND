@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Star, X, MessageCircle, FileText, BarChart3, ChevronDown } from 'lucide-react';
+import { openIntrastatBasis } from './intrastat-basis/IntrastatBasisConfig';
+import { openCurrencyReportCustomer } from './currency-report-customer/CurrencyReportCustomerConfig';
+import { openStockValueReport } from './stock-value-report/StockValueReportConfig';
 
 const ReportsTab: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'favorites' | 'all'>('all');
@@ -123,21 +126,34 @@ const ReportsTab: React.FC = () => {
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold text-[#065F46] mt-4">Intrastat</h3>
         <div className="space-y-1">
-          <div 
-            className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
-            onClick={() => toggleFavorite('intrastat-basis')}
-          >
-            <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
-              Intrastat basis
-            </span>
-            <Star 
-              className={`w-4 h-4 transition-all duration-200 ${
-                favorites['intrastat-basis'] 
-                  ? 'text-[#FACC15] fill-current' 
-                  : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
-              }`}
-            />
-          </div>
+          {
+            [
+              { id: 'intrastat-basis', title: 'Intrastat basis', onClick: () => openIntrastatBasis() },
+            ].map(report => (
+              <div 
+                key={report.id} 
+                className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
+                onClick={() => {
+                  if (report.onClick) {
+                    report.onClick();
+                  } else {
+                    toggleFavorite(report.id);
+                  }
+                }}
+              >
+                <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
+                  {report.title}
+                </span>
+                <Star 
+                  className={`w-4 h-4 transition-all duration-200 \${
+                    favorites[report.id] 
+                      ? 'text-[#FACC15] fill-current' 
+                      : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
+                  }`}
+                />
+              </div>
+            ))
+          }
         </div>
       </div>
 
@@ -145,21 +161,34 @@ const ReportsTab: React.FC = () => {
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold text-[#065F46]">Invoicing</h3>
         <div className="space-y-1">
-          <div 
-            className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
-            onClick={() => toggleFavorite('currency-report-customer')}
-          >
-            <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
-              Currency report customer
-            </span>
-            <Star 
-              className={`w-4 h-4 transition-all duration-200 ${
-                favorites['currency-report-customer'] 
-                  ? 'text-[#FACC15] fill-current' 
-                  : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
-              }`}
-            />
-          </div>
+          {
+            [
+              { id: 'currency-report-customer', title: 'Currency report customer', onClick: () => openCurrencyReportCustomer() },
+            ].map(report => (
+              <div 
+                key={report.id} 
+                className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
+                onClick={() => {
+                  if (report.onClick) {
+                    report.onClick();
+                  } else {
+                    toggleFavorite(report.id);
+                  }
+                }}
+              >
+                <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
+                  {report.title}
+                </span>
+                <Star 
+                  className={`w-4 h-4 transition-all duration-200 \${
+                    favorites[report.id] 
+                      ? 'text-[#FACC15] fill-current' 
+                      : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
+                  }`}
+                />
+              </div>
+            ))
+          }
         </div>
       </div>
 
@@ -167,21 +196,34 @@ const ReportsTab: React.FC = () => {
       <div>
         <h3 className="text-[15px] font-semibold text-[#065F46]">Warehouse</h3>
         <div className="space-y-1">
-          <div 
-            className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
-            onClick={() => toggleFavorite('stock-value-report')}
-          >
-            <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
-              Stock value report
-            </span>
-            <Star 
-              className={`w-4 h-4 transition-all duration-200 ${
-                favorites['stock-value-report'] 
-                  ? 'text-[#FACC15] fill-current' 
-                  : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
-              }`}
-            />
-          </div>
+          {
+            [
+              { id: 'stock-value-report', title: 'Stock value report', onClick: () => openStockValueReport() },
+            ].map(report => (
+              <div 
+                key={report.id} 
+                className="flex items-center justify-between py-1.5 px-1 hover:bg-[#F9FAFB] cursor-pointer group"
+                onClick={() => {
+                  if (report.onClick) {
+                    report.onClick();
+                  } else {
+                    toggleFavorite(report.id);
+                  }
+                }}
+              >
+                <span className="text-[14px] text-[#111827] group-hover:text-[#065F46] transition-colors duration-200">
+                  {report.title}
+                </span>
+                <Star 
+                  className={`w-4 h-4 transition-all duration-200 \${
+                    favorites[report.id] 
+                      ? 'text-[#FACC15] fill-current' 
+                      : 'text-[#D1D5DB] group-hover:text-[#9CA3AF]'
+                  }`}
+                />
+              </div>
+            ))
+          }
         </div>
       </div>
     </div>

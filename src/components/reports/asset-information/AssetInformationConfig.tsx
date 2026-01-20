@@ -128,7 +128,7 @@ const openAssetInformation = () => {
           <div class="mb-10">
             <div class="text-11 text-[#000000] mb-6">Date</div>
             <div class="flex items-center">
-              <input type="text" id="date-field" value="2026-01-19" class="text-11" />
+              <input type="text" id="date-field" value="2026-01-20" class="text-11" />
               <span class="calendar-icon">📅</span>
             </div>
           </div>
@@ -182,290 +182,371 @@ const openAssetInformation = () => {
             );
             
             if (reportWindow) {
-              reportWindow.document.write(\`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <meta charset="utf-8" />
-                  <title>Assets - Report</title>
-                  <style>
-                    body { 
-                      margin: 20px 24px; 
-                      font-family: Arial, Tahoma, Segoe UI, sans-serif; 
-                      font-size: 11px; 
-                      color: #000000; 
-                      background-color: #FFFFFF; 
-                      line-height: 1.3;
-                      overflow: auto;
-                    }
-                    .header-area { 
-                      display: flex; 
-                      justify-content: space-between; 
-                      align-items: flex-start; 
-                      margin-bottom: 20px;
-                    }
-                    .left-header { text-align: left; }
-                    .center-header { text-align: center; }
-                    .right-header { text-align: right; }
-                    .bold { font-weight: bold; }
-                    .text-10 { font-size: 10px; }
-                    .text-11 { font-size: 11px; }
-                    .text-12 { font-size: 12px; }
-                    .text-18 { font-size: 18px; }
-                    .mt-6 { margin-top: 6px; }
-                    .mb-12 { margin-bottom: 12px; }
-                    .block-divider { 
-                      height: 1px; 
-                      background-color: #000000; 
-                      margin: 12px 0;
-                    }
-                    .asset-block {
-                      padding: 10px 0;
-                    }
-                    .asset-grid {
-                      display: grid;
-                      grid-template-columns: 35% 30% 35%;
-                      gap: 10px;
-                    }
-                    .field-label {
-                      font-weight: bold;
-                      font-size: 11px;
-                      color: #000000;
-                      margin-bottom: 4px;
-                    }
-                    .field-value {
-                      font-weight: normal;
-                      font-size: 11px;
-                      color: #000000;
-                      margin-bottom: 4px;
-                    }
-                    .numeric-right {
-                      text-align: right;
-                    }
-                  </style>
-                </head>
-                <body>
-                  <!-- Header Area -->
-                  <div class="header-area">
-                    <div class="left-header">
-                      <div class="bold text-12">Test company</div>
-                    </div>
-                    <div class="center-header">
-                      <div class="bold text-18">Assets</div>
-                    </div>
-                    <div class="right-header">
-                      <div class="text-10">Printed 2026-01-19 17:05</div>
-                      <div class="text-10 mt-6">Date up to and including \${dateValue}</div>
-                    </div>
-                  </div>
-
-                  <!-- Asset Detail Blocks -->
-                  <div class="asset-block">
-                    <div class="asset-grid">
-                      <!-- Left Column: Identity & Acquisition -->
-                      <div>
-                        <div class="field-label">Asset number</div>
-                        <div class="field-value">101</div>
-                        
-                        <div class="field-label">Designation</div>
-                        <div class="field-value">Delivery Truck</div>
-                        
-                        <div class="field-label">Asset type</div>
-                        <div class="field-value">Vehicle</div>
-                        
-                        <div class="field-label">Acquisition value</div>
-                        <div class="field-value numeric-right">450 000,00</div>
-                        
-                        <div class="field-label">Acquisition date</div>
-                        <div class="field-value">2024-05-15</div>
-                        
-                        <div class="field-label">Write-off start</div>
-                        <div class="field-value">2024-05-15</div>
-                        
-                        <div class="field-label">Write off to residual value</div>
-                        <div class="field-value">45 000,00</div>
-                        
-                        <div class="field-label">Status</div>
-                        <div class="field-value">Active</div>
-                      </div>
-                      
-                      <!-- Middle Column: Depreciation Values -->
-                      <div>
-                        <div class="field-label">Depreciable amount</div>
-                        <div class="field-value numeric-right">405 000,00</div>
-                        
-                        <div class="field-label">Write-off basis</div>
-                        <div class="field-value numeric-right">405 000,00</div>
-                        
-                        <div class="field-label">Written off to</div>
-                        <div class="field-value numeric-right">45 000,00</div>
-                        
-                        <div class="field-label">Fully written-off</div>
-                        <div class="field-value numeric-right">No</div>
-                        
-                        <div class="field-label">Accumulated write-off brought forward</div>
-                        <div class="field-value numeric-right">45 000,00</div>
-                        
-                        <div class="field-label">Write-off during year</div>
-                        <div class="field-value numeric-right">45 000,00</div>
-                        
-                        <div class="field-label">Book value</div>
-                        <div class="field-value numeric-right">360 000,00</div>
-                      </div>
-                      
-                      <!-- Right Column: Lifetime & Meta -->
-                      <div>
-                        <div class="field-label">Remaining useful life</div>
-                        <div class="field-value">8 years</div>
-                        
-                        <div class="field-label">Useful life</div>
-                        <div class="field-value">10 years</div>
-                        
-                        <div class="field-label">Write-off method</div>
-                        <div class="field-value">Straight line</div>
-                        
-                        <div class="field-label">Cost center</div>
-                        <div class="field-value">Transport</div>
-                        
-                        <div class="field-label">Project</div>
-                        <div class="field-value">Logistics</div>
-                        
-                        <div class="field-label">ID number</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Manufacturer/Brand</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Insured with</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Insurance number</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Group</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Notes</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Room</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Location</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Section</div>
-                        <div class="field-value"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Divider -->
-                  <div class="block-divider"></div>
-                  
-                  <!-- Second Asset Block -->
-                  <div class="asset-block">
-                    <div class="asset-grid">
-                      <!-- Left Column -->
-                      <div>
-                        <div class="field-label">Asset number</div>
-                        <div class="field-value">102</div>
-                        
-                        <div class="field-label">Designation</div>
-                        <div class="field-value">Office Computer</div>
-                        
-                        <div class="field-label">Asset type</div>
-                        <div class="field-value">Equipment</div>
-                        
-                        <div class="field-label">Acquisition value</div>
-                        <div class="field-value numeric-right">25 000,00</div>
-                        
-                        <div class="field-label">Acquisition date</div>
-                        <div class="field-value">2025-03-10</div>
-                        
-                        <div class="field-label">Write-off start</div>
-                        <div class="field-value">2025-03-10</div>
-                        
-                        <div class="field-label">Write off to residual value</div>
-                        <div class="field-value">2 500,00</div>
-                        
-                        <div class="field-label">Status</div>
-                        <div class="field-value">Active</div>
-                      </div>
-                      
-                      <!-- Middle Column -->
-                      <div>
-                        <div class="field-label">Depreciable amount</div>
-                        <div class="field-value numeric-right">22 500,00</div>
-                        
-                        <div class="field-label">Write-off basis</div>
-                        <div class="field-value numeric-right">22 500,00</div>
-                        
-                        <div class="field-label">Written off to</div>
-                        <div class="field-value numeric-right">2 500,00</div>
-                        
-                        <div class="field-label">Fully written-off</div>
-                        <div class="field-value numeric-right">No</div>
-                        
-                        <div class="field-label">Accumulated write-off brought forward</div>
-                        <div class="field-value numeric-right">7 500,00</div>
-                        
-                        <div class="field-label">Write-off during year</div>
-                        <div class="field-value numeric-right">7 500,00</div>
-                        
-                        <div class="field-label">Book value</div>
-                        <div class="field-value numeric-right">15 000,00</div>
-                      </div>
-                      
-                      <!-- Right Column -->
-                      <div>
-                        <div class="field-label">Remaining useful life</div>
-                        <div class="field-value">2 years</div>
-                        
-                        <div class="field-label">Useful life</div>
-                        <div class="field-value">3 years</div>
-                        
-                        <div class="field-label">Write-off method</div>
-                        <div class="field-value">Straight line</div>
-                        
-                        <div class="field-label">Cost center</div>
-                        <div class="field-value">IT</div>
-                        
-                        <div class="field-label">Project</div>
-                        <div class="field-value">Office Upgrade</div>
-                        
-                        <div class="field-label">ID number</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Manufacturer/Brand</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Insured with</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Insurance number</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Group</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Notes</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Room</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Location</div>
-                        <div class="field-value"></div>
-                        
-                        <div class="field-label">Section</div>
-                        <div class="field-value"></div>
-                      </div>
-                    </div>
-                  </div>
-                </body>
-                </html>
-              \`);
+              var reportHtml = '<!DOCTYPE html>' +
+                '<html>' +
+                '<head>' +
+                '<meta charset="utf-8" />' +
+                '<title>Assets - Report</title>' +
+                '<style>' +
+                'body { ' +
+                'margin: 12px 16px 14px 16px; ' +
+                'font-family: Arial, Helvetica, Sans-serif; ' +
+                'font-size: 8px; ' +
+                'color: #000000; ' +
+                'background-color: #FFFFFF; ' +
+                'line-height: 1.4;' +
+                'overflow: auto;' +
+                '}' +
+                '.header-area { ' +
+                'display: flex; ' +
+                'justify-content: space-between; ' +
+                'align-items: center; ' +
+                'height: 48px;' +
+                'margin-bottom: 0;' +
+                '}' +
+                '.left-header { ' +
+                'font-size: 9px;' +
+                'font-weight: normal;' +
+                'color: #000000;' +
+                'padding-top: 4px;' +
+                'padding-left: 0;' +
+                'text-align: left;' +
+                '}' +
+                '.center-header { ' +
+                'font-size: 18px;' +
+                'font-weight: bold;' +
+                'color: #000000;' +
+                'text-align: center;' +
+                'vertical-align: middle;' +
+                'letter-spacing: 0px;' +
+                '}' +
+                '.right-header { ' +
+                'font-size: 8px;' +
+                'font-weight: normal;' +
+                'color: #000000;' +
+                'text-align: right;' +
+                'line-height: 10px;' +
+                '}' +
+                '.asset-block {' +
+                'width: 100%;' +
+                'padding-top: 8px;' +
+                'padding-bottom: 8px;' +
+                'background-color: #FFFFFF;' +
+                '}' +
+                '.asset-data-grid {' +
+                'display: grid;' +
+                'grid-template-columns: 34% 33% 33%;' +
+                'column-gap: 8px;' +
+                '}' +
+                '.label {' +
+                'font-size: 8px;' +
+                'font-weight: bold;' +
+                'color: #000000;' +
+                'text-align: left;' +
+                '}' +
+                '.value {' +
+                'font-size: 8px;' +
+                'font-weight: normal;' +
+                'color: #000000;' +
+                'text-align: left;' +
+                '}' +
+                '.label-value-container {' +
+                'display: flex;' +
+                'align-items: flex-start;' +
+                'margin-bottom: 2px;' +
+                '}' +
+                '.divider {' +
+                'width: 100%;' +
+                'height: 1px;' +
+                'background-color: #000000;' +
+                'margin-top: 6px;' +
+                'margin-bottom: 6px;' +
+                '}' +
+                '.secondary-info {' +
+                'font-size: 8px;' +
+                'font-weight: normal;' +
+                'color: #000000;' +
+                'line-height: 10px;' +
+                '}' +
+                '.info-section {' +
+                'display: grid;' +
+                'grid-template-columns: repeat(3, 1fr);' +
+                'gap: 0;' +
+                '}' +
+                '.info-field {' +
+                'margin-bottom: 10px;' +
+                '}' +
+                '.info-field:last-child {' +
+                'margin-bottom: 0;' +
+                '}' +
+                '</style>' +
+                '</head>' +
+                '<body>' +
+                '<!-- Header Area -->' +
+                '<div class="header-area">' +
+                '<div class="left-header">Test company</div>' +
+                '<div class="center-header">Assets</div>' +
+                '<div class="right-header">' +
+                'Printed: Printed 2026-01-20 09:02<br>' +
+                'Date info: Date up to and including 2026-01-20' +
+                '</div>' +
+                '</div>' +
+                '<!-- Asset 1 -->' +
+                '<div class="asset-block">' +
+                '<div class="asset-data-grid">' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Asset number</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">3</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Designation</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">"car"</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Asset type</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">1030 - Patent</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Acquisition value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">10,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Acquisition date</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2025-10-18</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off start</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2025-10-01</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write off to residual value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">5,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Status</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Not activated</span>' +
+                '</div>' +
+                '</div>' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Depreciable amount</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">5,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off basis</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">10,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Written off to</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2035-09-30</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Accumulated write-off brought forward</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">0,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off during year</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">0,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Book value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">10,00</span>' +
+                '</div>' +
+                '</div>' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Remaining useful life</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">10 years and 0 months</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Useful life</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">10 years and 0 months</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off method</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Straight</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Cost center</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">-</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Project</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">-</span>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<!-- Secondary Information Row -->' +
+                '<div class="info-section">' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">ID number</span><br>' +
+                '<span class="secondary-info">Manufacturer/Brand</span><br>' +
+                '<span class="secondary-info">Insured with</span><br>' +
+                '<span class="secondary-info">Insurance number</span><br>' +
+                '</div>' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">Group</span><br>' +
+                '<span class="secondary-info">Notes</span><br>' +
+                '<span class="secondary-info">Room</span><br>' +
+                '<span class="secondary-info">Location</span><br>' +
+                '</div>' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">Section</span><br>' +
+                '<span class="secondary-info">Style</span><br>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<!-- Divider between assets -->' +
+                '<div class="divider"></div>' +
+                '<!-- Asset 2 -->' +
+                '<div class="asset-block">' +
+                '<div class="asset-data-grid">' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Asset number</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">4</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Designation</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Building</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Asset type</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">1020 - Building</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Acquisition value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">500,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Acquisition date</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2025-05-15</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off start</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2025-06-01</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write off to residual value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">50,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Status</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Active</span>' +
+                '</div>' +
+                '</div>' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Depreciable amount</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">450,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off basis</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">450,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Written off to</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">2045-05-15</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Accumulated write-off brought forward</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">25,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off during year</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">25,00</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Book value</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">425,00</span>' +
+                '</div>' +
+                '</div>' +
+                '<div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Remaining useful life</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">15 years and 6 months</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Useful life</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">20 years and 0 months</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Write-off method</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Straight</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Cost center</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Facilities</span>' +
+                '</div>' +
+                '<div class="label-value-container">' +
+                '<span class="label">Project</span>' +
+                '<span style="margin-left: 8px;"></span>' +
+                '<span class="value">Construction</span>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '<!-- Secondary Information Row -->' +
+                '<div class="info-section">' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">ID number</span><br>' +
+                '<span class="secondary-info">Manufacturer/Brand</span><br>' +
+                '<span class="secondary-info">Insured with</span><br>' +
+                '<span class="secondary-info">Insurance number</span><br>' +
+                '</div>' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">Group</span><br>' +
+                '<span class="secondary-info">Notes</span><br>' +
+                '<span class="secondary-info">Room</span><br>' +
+                '<span class="secondary-info">Location</span><br>' +
+                '</div>' +
+                '<div class="info-field">' +
+                '<span class="secondary-info">Section</span><br>' +
+                '<span class="secondary-info">Style</span><br>' +
+                '</div>' +
+                '</div>' +
+                '</div>' +
+                '</body>' +
+                '</html>';
+                
+              reportWindow.document.write(reportHtml);
               
               reportWindow.focus();
             }

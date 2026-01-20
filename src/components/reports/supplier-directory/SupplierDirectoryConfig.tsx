@@ -122,12 +122,7 @@ const openSupplierDirectory = () => {
           // Handle download file button click
           document.getElementById('download-file').onclick = function() {
             // Generate CSV content
-            const csvContent = \`
-"Supplier No","Supplier Name","Address","Postal Code","City","Country","Phone","Email","Currency","Payment Terms","VAT Number","Status"
-"1001","ABC Supplies Ltd","Main Street 12","12345","Stockholm","SE","+461234567","info@abc.com","SEK","30 days","SE123456789","Active"
-"1002","XYZ Materials Inc","Oak Avenue 45","54321","Gothenburg","SE","+469876543","contact@xyz.com","EUR","60 days","SE987654321","Active"
-"1003","DEF Components AB","Park Lane 78","98765","Malmö","SE","+465551234","orders@def.com","SEK","Net cash","SE567891234","Inactive"
-\`.trim();
+            const csvContent = "\"Supplier No\",\"Supplier Name\",\"Address\",\"Postal Code\",\"City\",\"Country\",\"Phone\",\"Email\",\"Currency\",\"Payment Terms\",\"VAT Number\",\"Status\"\n\"1001\",\"ABC Supplies Ltd\",\"Main Street 12\",\"12345\",\"Stockholm\",\"SE\",\"+461234567\",\"info@abc.com\",\"SEK\",\"30 days\",\"SE123456789\",\"Active\"\n\"1002\",\"XYZ Materials Inc\",\"Oak Avenue 45\",\"54321\",\"Gothenburg\",\"SE\",\"+469876543\",\"contact@xyz.com\",\"EUR\",\"60 days\",\"SE987654321\",\"Active\"\n\"1003\",\"DEF Components AB\",\"Park Lane 78\",\"98765\",\"Malmö\",\"SE\",\"+465551234\",\"orders@def.com\",\"SEK\",\"Net cash\",\"SE567891234\",\"Inactive\"";
             
             // Create blob with UTF-8 encoding
             const blob = new Blob([csvContent], { 
@@ -152,9 +147,10 @@ const openSupplierDirectory = () => {
       </body>
       </html>
     `);
-    
+    newWindow.document.close();
     newWindow.focus();
   }
 };
 
 export { openSupplierDirectory };
+export default openSupplierDirectory;
