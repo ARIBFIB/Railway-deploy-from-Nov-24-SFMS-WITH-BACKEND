@@ -83,6 +83,7 @@ import supplierInvoiceRoutes from './routes/supplierInvoices';
 import payrollRoutes from './routes/payroll';
 import itemRoutes from './routes/itemRoutes';
 import paymentRoutes from './routes/payments';
+import staffRoutes from './routes/staff';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -218,6 +219,7 @@ app.use('/api/settings/registration-templates', registrationTemplatesRoutes);
 app.use('/api/settings/verification-series', verificationSeriesSettingsRoutes);
 app.use('/api/settings/reconcile-account', reconcileAccountSettingsRoutes);
 app.use('/api/reconciliation', reconciliationRoutes);
+app.use('/api/staff', staffRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorLogging);

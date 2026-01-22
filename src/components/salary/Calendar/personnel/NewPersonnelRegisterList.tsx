@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EmployeesSVG from '../../../../assets/images/employees.svg';
 import History from './History';
@@ -12,9 +12,42 @@ interface NewPersonnelRegisterListProps {
   onCreateStaffCard?: () => void;
 }
 
+interface StaffMember {
+  id: string;
+  employment_id: string;
+  first_name: string;
+  last_name: string;
+  personal_id: string;
+  date_of_birth: string;
+  gender: string;
+  nationality: string;
+  marital_status: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  email: string;
+  phone: string;
+  mobile: string;
+  emergency_contact: string;
+  next_of_kin_name: string;
+  next_of_kin_relationship: string;
+  next_of_kin_phone: string;
+  next_of_kin_email: string;
+  admin_rights: boolean;
+  view_only: boolean;
+  edit_permissions: boolean;
+  access_to_payroll: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const NewPersonnelRegisterList: React.FC<NewPersonnelRegisterListProps> = ({ onCreateStaffCard }) => {
   const [activeTab, setActiveTab] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const navigate = useNavigate();
   
   // Track which modals are open
@@ -26,6 +59,43 @@ const NewPersonnelRegisterList: React.FC<NewPersonnelRegisterListProps> = ({ onC
     printOutReport: false,
     createFosRequest: false,
   });
+
+  const fetchStaffMembers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/staff');
+      if (response.ok) {
+        const data = await response.json();
+        setStaffMembers(data);
+      } else {
+        console.error('Failed to fetch staff members:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching staff members:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaffMembers();
+  }, []);
+
+  const handleSelectStaff = (id: string) => {
+    if (selectedStaffIds.includes(id)) {
+      setSelectedStaffIds(selectedStaffIds.filter(staffId => staffId !== id));
+    } else {
+      setSelectedStaffIds([...selectedStaffIds, id]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedStaffIds.length === staffMembers.length) {
+      setSelectedStaffIds([]);
+    } else {
+      setSelectedStaffIds(staffMembers.map(staff => staff.id));
+    }
+  };
 
   const tabs = ['All', 'Active', 'Not complete', 'Inactive'];
 
@@ -63,7 +133,14 @@ const NewPersonnelRegisterList: React.FC<NewPersonnelRegisterListProps> = ({ onC
               {/* Primary CTA */}
               <button 
                 className="h-[32px] px-[14px] bg-[#FACC15] text-[#111827] text-[12px] font-semibold rounded-[16px] hover:bg-[#EAB308] transition-colors flex items-center"
-                onClick={onCreateStaffCard || (() => navigate('/salary/personnel/create-staff-card'))}
+                onClick={() => {
+                  if (onCreateStaffCard) {
+                    onCreateStaffCard();
+                  } else {
+                    // Navigate to create staff card and provide a callback to refresh the list
+                    navigate('/salary/personnel/create-staff-card');
+                  }
+                }}
               >
                 <span className="text-[12px] mr-[6px]">+</span>
                 Create employee
@@ -199,46 +276,92 @@ const NewPersonnelRegisterList: React.FC<NewPersonnelRegisterListProps> = ({ onC
                   key={header}
                   className="text-[11px] font-semibold text-[#374151] uppercase px-[8px] flex items-center tracking-[0.5px]"
                 >
-                  {header}
+                  {header === 'Checkbox' ? (
+                    <input 
+                      type="checkbox" 
+                      className="w-[16px] h-[16px] border border-[#D1D5DB] rounded"
+                      checked={selectedStaffIds.length === staffMembers.length && staffMembers.length > 0}
+                      onChange={handleSelectAll}
+                    />
+                  ) : header}
                 </div>
               ))}
             </div>
             
-            {/* Empty Table State */}
-            <div className="h-[120px] bg-white flex items-center justify-center">
-              <div className="text-center text-[#757575]">
-                <p>No employees found</p>
-                <p className="text-[12px] mt-[4px]">Add employees to get started</p>
+            {/* Staff Members List */}
+            {loading ? (
+              <div className="h-[120px] bg-white flex items-center justify-center">
+                <div className="text-center text-[#757575]">
+                  <p>Loading employees...</p>
+                </div>
               </div>
-            </div>
+            ) : staffMembers.length === 0 ? (
+              <div className="h-[120px] bg-white flex items-center justify-center">
+                <div className="text-center text-[#757575]">
+                  <p>No employees found</p>
+                  <p className="text-[12px] mt-[4px]">Add employees to get started</p>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#E5E7EB]">
+                {staffMembers.map((staff) => (
+                  <div 
+                    key={staff.id}
+                    className="grid grid-cols-[36px_80px_120px_120px_200px_120px_200px_180px_120px_140px_180px] items-center py-[8px] hover:bg-[#F9FAFB]"
+                  >
+                    <div className="px-[8px]">
+                      <input 
+                        type="checkbox" 
+                        className="w-[16px] h-[16px] border border-[#D1D5DB] rounded"
+                        checked={selectedStaffIds.includes(staff.id)}
+                        onChange={() => handleSelectStaff(staff.id)}
+                      />
+                    </div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">{staff.employment_id}</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">{staff.first_name}</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">{staff.last_name}</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">{staff.personal_id}</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                    <div className="px-[8px] text-[12px] text-[#374151]">-</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Footer Bulk Actions */}
           <div className="h-[64px] px-[16px] flex justify-between items-center bg-white mt-[16px]">
             <div className="flex items-center">
               <button 
-                className="h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] opacity-40"
-                disabled
+                className={`h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] ${selectedStaffIds.length > 0 ? 'opacity-100' : 'opacity-40'}`}
+                disabled={selectedStaffIds.length === 0}
               >
                 Deactivate
               </button>
               <button 
-                className="h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] opacity-40 ml-[8px]"
-                disabled
+                className={`h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] ${selectedStaffIds.length > 0 ? 'opacity-100' : 'opacity-40'} ml-[8px]`}
+                disabled={selectedStaffIds.length === 0}
               >
                 Delete
               </button>
-              <span className="text-[12px] text-[#6B7280] ml-[12px]">(0 selected)</span>
+              <span className="text-[12px] text-[#6B7280] ml-[12px]">({selectedStaffIds.length} selected)</span>
             </div>
             
             <div className="flex items-center">
               <button 
-                className="h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] mr-[8px]"
-                disabled
+                className={`h-[32px] px-[16px] bg-[#D1D5DB] text-white text-[12px] rounded-[16px] mr-[8px] ${selectedStaffIds.length > 0 ? 'opacity-100' : 'opacity-40'}`}
+                disabled={selectedStaffIds.length === 0}
               >
                 Change selected
               </button>
-              <button className="h-[32px] px-[16px] bg-[#9AC9A2] text-white text-[12px] font-semibold rounded-[16px]">
+              <button 
+                className={`h-[32px] px-[16px] bg-[#9AC9A2] text-white text-[12px] font-semibold rounded-[16px] ${selectedStaffIds.length > 0 ? 'opacity-100' : 'opacity-40'}`}
+                disabled={selectedStaffIds.length === 0}
+              >
                 Activate
               </button>
             </div>

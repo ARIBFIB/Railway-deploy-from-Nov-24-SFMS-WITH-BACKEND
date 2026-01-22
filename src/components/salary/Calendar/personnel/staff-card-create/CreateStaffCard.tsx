@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Menu, Printer, Copy, FileText, RotateCcw } from 'lucide-react';
+import { Plus, Menu, Printer, Copy, FileText, RotateCcw, Loader2 } from 'lucide-react';
 import StaffInformationTab from './StaffInformationTab';
 import TaxTab from './TaxTab';
 import EmploymentTab from './EmploymentTab';
@@ -9,9 +9,59 @@ import ATFATKTab from './ATFATKTab';
 import ReportsTab from './ReportsTab';
 import BalanceBroughtForwardTab from './BalanceBroughtForwardTab';
 
-const CreateStaffCard: React.FC = () => {
+interface CreateStaffCardProps {
+  onStaffCreated?: () => void;
+}
+
+const CreateStaffCard: React.FC<CreateStaffCardProps> = ({ onStaffCreated }) => {
   const [activeTab, setActiveTab] = useState('staff-information');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState({});
+
+  const handleSave = async (data?: any) => {
+    setIsLoading(true);
+    try {
+      // Use passed data or fallback to formData state
+      const saveData = data || formData;
+      
+      // Call API to create staff member
+      const response = await fetch('/api/staff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(saveData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create staff member');
+      }
+      
+      const result = await response.json();
+      console.log('Staff member created:', result);
+      
+      // Optionally redirect or show success message
+      alert('Staff member created successfully!');
+      
+      // Call the callback if provided
+      if (onStaffCreated) {
+        onStaffCreated();
+      }
+      
+    } catch (error: unknown) {
+      console.error('Error creating staff member:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert('Error creating staff member: ' + errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFormChange = (data: any) => {
+    setFormData(data);
+  };
 
   const tabs = [
     { id: 'staff-information', label: 'Staff information' },
@@ -27,7 +77,7 @@ const CreateStaffCard: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'staff-information':
-        return <StaffInformationTab />;
+        return <StaffInformationTab onChange={handleFormChange} onSave={handleSave} />;
       case 'tax':
         return <TaxTab />;
       case 'employment':
@@ -43,7 +93,7 @@ const CreateStaffCard: React.FC = () => {
       case 'balance-brought-forward':
         return <BalanceBroughtForwardTab />;
       default:
-        return <StaffInformationTab />;
+        return <StaffInformationTab onChange={handleFormChange} onSave={handleSave} />;
     }
   };
 
@@ -188,8 +238,17 @@ const CreateStaffCard: React.FC = () => {
             <button className="bg-[#9E9E9E] text-white h-7.5 px-3.5 text-xs font-medium rounded-[16px]">
               Cancel
             </button>
-            <button className="bg-[#2E7D32] text-white h-7.5 px-4 text-xs font-semibold rounded-[16px]">
-              Save
+            <button 
+              className={`bg-[#2E7D32] text-white h-7.5 px-4 text-xs font-semibold rounded-[16px] ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => handleSave()}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  Saving...
+                </>
+              ) : 'Save'}
             </button>
           </div>
         </div>
