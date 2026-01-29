@@ -3,8 +3,10 @@ import { useLocation } from 'react-router-dom';
 import { Search, Plus, MoreHorizontal, Printer, RotateCcw, Trash2, Eye, EyeOff, Book, Upload, Download, FileText, RefreshCw, Users, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import CreateEmployeeModal from '../components/CreateEmployeeModal';
-import { StaffCategories } from '../components/StaffCategories';
+import { PersonnelCategoriesList } from '../components/PersonnelCategories/PersonnelCategoriesList';
+import { PersonnelCategoriesForm } from '../components/PersonnelCategories/PersonnelCategoriesForm';
 import { personnelService } from '../services/personnelService';
+import { personnelCategoriesService, type PersonnelCategory } from '../services/personnelCategoriesService';
 
 interface Employee {
   id: string;
@@ -32,6 +34,9 @@ const PersonnelRegisterPage: React.FC = () => {
   const [salaryYear, setSalaryYear] = useState('2025');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'staff' | 'categories'>('staff');
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [personnelCategories, setPersonnelCategories] = useState<PersonnelCategory[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Handle URL parameters for tab navigation
   useEffect(() => {
@@ -43,6 +48,49 @@ const PersonnelRegisterPage: React.FC = () => {
       setActiveTab('staff');
     }
   }, [location.search]);
+
+  // Load personnel categories when on categories tab
+  useEffect(() => {
+    if (activeTab === 'categories') {
+      loadPersonnelCategories();
+    }
+  }, [activeTab]);
+
+  const loadPersonnelCategories = async () => {
+    try {
+      // Get foundation ID from localStorage or user context
+      let foundationId = localStorage.getItem('foundation_id');
+      
+      // If no foundation ID in localStorage, try to get from user data
+      if (!foundationId) {
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            foundationId = user.foundation_id;
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+        }
+      }
+      
+      // Use the actual foundation ID from your database
+      if (!foundationId) {
+        foundationId = '47935ef6-8b3e-4ceb-86c2-7ad9cdbbb3a9'; // System Administration foundation
+        console.log('Using System Administration foundation ID');
+      }
+      
+      const categories = await personnelCategoriesService.list(foundationId);
+      setPersonnelCategories(categories);
+    } catch (error) {
+      console.error('Failed to load personnel categories:', error);
+      setToast({
+        message: 'Failed to load personnel categories',
+        type: 'error'
+      });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,7 +151,71 @@ const PersonnelRegisterPage: React.FC = () => {
   };
 
   const handleCreateEmployee = () => {
-    setShowCreateModal(true);
+    if (activeTab === 'categories') {
+      setShowCategoryForm(true);
+    } else {
+      setShowCreateModal(true);
+    }
+  };
+
+  const handleShowCategoryList = () => {
+    setShowCategoryForm(false);
+  };
+
+  const handleSaveCategory = async (categoryData: { name: string; type: string }) => {
+    try {
+      // Get foundation ID with the same logic as loading
+      let foundationId = localStorage.getItem('foundation_id');
+      
+      if (!foundationId) {
+        const userData = localStorage.getItem('user_data');
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            foundationId = user.foundation_id;
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+          }
+        }
+      }
+      
+      // Use the actual foundation ID from your database
+      if (!foundationId) {
+        foundationId = '47935ef6-8b3e-4ceb-86c2-7ad9cdbbb3a9'; // System Administration foundation
+        console.log('Using System Administration foundation ID for save operation');
+      }
+      
+      await personnelCategoriesService.create({
+        ...categoryData,
+        foundation_id: foundationId
+      });
+      
+      setToast({
+        message: 'The category was created.',
+        type: 'success'
+      });
+      
+      // Refresh the list
+      await loadPersonnelCategories();
+      setShowCategoryForm(false);
+      
+      // Clear toast after 3 seconds
+      setTimeout(() => setToast(null), 3000);
+    } catch (error: any) {
+      console.error('Failed to create personnel category:', error);
+      const errorMessage = error.message || 'Failed to create category. Please try again.';
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    // For now, just show the form is closed
+    // Actual delete implementation would need category ID
+    setShowCategoryForm(false);
   };
 
   const handleCreateModalClose = () => {
@@ -220,11 +332,33 @@ const PersonnelRegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Render different content based on active tab */}
-      {activeTab === 'categories' ? (
-        <div className="px-6 py-6">
-          <StaffCategories />
+      {/* Toast Notification */}
+      {toast && (
+        <div 
+          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === 'success' ? 'bg-green-500' : 
+            toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+          } text-white`}
+        >
+          {toast.message}
         </div>
+      )}
+      {/* Render different content based on active tab and form state */}
+      {activeTab === 'categories' ? (
+        showCategoryForm ? (
+          <PersonnelCategoriesForm 
+            onShowList={handleShowCategoryList}
+            onSave={handleSaveCategory}
+            onDelete={handleDeleteCategory}
+          />
+        ) : (
+          <div className="px-6 py-6">
+            <PersonnelCategoriesList 
+              onCreateNew={handleCreateEmployee} 
+              categories={personnelCategories}
+            />
+          </div>
+        )
       ) : (
         <>
           {/* Header */}

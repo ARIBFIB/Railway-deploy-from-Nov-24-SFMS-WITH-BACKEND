@@ -85,6 +85,7 @@ import itemRoutes from './routes/itemRoutes';
 import paymentRoutes from './routes/payments';
 import staffRoutes from './routes/staff';
 import emailSettingsRoutes from './routes/emailSettings';
+import personnelCategoriesRoutes from './routes/personnelCategories';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -186,6 +187,7 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/transaction-accounts', transactionAccountsRoutes);
 app.use('/api/wage-types', wageTypesRoutes);
 app.use('/api/personnel', personnelRoutes);
+app.use('/api/personnel-categories', personnelCategoriesRoutes);
 app.use('/api/salary-agreements', salaryAgreementsRoutes);
 app.use('/api/working-hours-schedules', workingHoursSchedulesRoutes);
 app.use('/api/account-plan', accountPlanRoutes);
