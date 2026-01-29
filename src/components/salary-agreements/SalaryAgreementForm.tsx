@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import XSDropdown, { type DropdownOption } from './XSDropdown';
+import { salaryAgreementsService, type CreateSalaryAgreementData } from '../../services/salaryAgreementsService';
 
 interface FormData {
   name: string;
@@ -62,6 +63,7 @@ interface FormData {
 interface SalaryAgreementFormProps {
   onBackToList: () => void;
   onSave: (data: FormData) => void;
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 interface ExpandedSections {
@@ -71,7 +73,7 @@ interface ExpandedSections {
   [key: string]: boolean;
 }
 
-const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList, onSave }) => {
+const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList, onSave, showToast }) => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     staffType: 'blue-collar',
@@ -148,9 +150,67 @@ const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList,
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    try {
+      // Prepare data for API
+      const apiData: CreateSalaryAgreementData = {
+        name: formData.name,
+        staff_type: formData.staffType,
+        agreement_template: formData.agreementTemplate,
+        salary_period: formData.salaryPeriod,
+        atf: {
+          enabled: formData.atf.enabled,
+          period: formData.atf.period,
+          showOnPayslip: formData.atf.showOnPayslip
+        },
+        atk: {
+          enabled: formData.atk.enabled,
+          period: formData.atk.period,
+          showOnPayslip: formData.atk.showOnPayslip
+        },
+        holiday: {
+          earningYear: formData.holiday.earningYear,
+          startDate: {
+            day: formData.holiday.startDay,
+            month: formData.holiday.startMonth
+          },
+          entitlement: formData.holiday.entitlementDays,
+          fullDaysOnly: formData.holiday.fullDaysOnly,
+          rule: formData.holiday.rule,
+          holidayPay: formData.holiday.payPerDay,
+          minimumWage: formData.holiday.minimumWage,
+          compliesWithAnnualLeaveAct: formData.holiday.compliesWithAnnualLeaveAct,
+          variableSupplementPerDay: formData.holiday.variableSupplementPerDay,
+          sicknessDeduction: formData.holiday.sicknessDeduction,
+          sickWaitingPeriod: formData.holiday.sickWaitingPeriod,
+          automaticSchedule: formData.holiday.automaticSchedule,
+          automaticFullDay: formData.holiday.automaticFullDay,
+          settings: formData.holiday.settings,
+          salaryTypes: formData.holiday.salaryTypes
+        }
+      };
+      
+      // Get foundation ID from user context
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const foundationId = user.foundation_id || '47935ef6-8b3e-4ceb-86c2-7ad9cdbbb3a9';
+      
+      console.log('Creating agreement for foundation:', foundationId);
+      
+      await salaryAgreementsService.create(apiData, foundationId);
+      
+      // Show success toast
+      showToast('The agreement was created.', 'success');
+      
+      // Call onSave callback and go back to list
+      onSave(formData);
+      onBackToList();
+      
+    } catch (error) {
+      console.error('Failed to create salary agreement:', error);
+      showToast('Failed to create salary agreement. Please try again.', 'error');
+    }
   };
 
   const handleATFChange = (field: keyof typeof formData.atf, value: any) => {
@@ -1340,11 +1400,9 @@ const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList,
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-        {/* Settings Table Section - New Addition */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
+          
+          {/* Settings Table Section - Moved inside General accordion */}
+          <div className="mt-4 pt-2 border-t border-gray-200">
           {/* Table Card Container */}
           <div className="w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
             {/* Section Title */}
@@ -1401,10 +1459,9 @@ const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList,
               </table>
             </div>
           </div>
-        </div>
-
-        {/* Salary Types Formulas Section - Updated Compact Version */}
-        <div className="mt-4 pt-2 border-t border-gray-200">
+          
+          {/* Salary Types Formulas Section - Moved inside General accordion */}
+          <div className="mt-4 pt-2">
           {/* Section Title */}
           <h3 className="text-sm font-semibold text-gray-800 mb-2">
             Salary types formulas
@@ -1447,6 +1504,8 @@ const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList,
         </div>
       </div>
     </div>
+    </div>
+  </div>
 
       {/* Global Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-gray-300 shadow-[0_-2px_6px_rgba(0,0,0,0.06)] z-1000 flex items-center justify-end px-3 pt-2 pb-2">
@@ -1460,6 +1519,7 @@ const SalaryAgreementForm: React.FC<SalaryAgreementFormProps> = ({ onBackToList,
       </div>
     </div>
   </div>
+</div>
   );
 };
 
