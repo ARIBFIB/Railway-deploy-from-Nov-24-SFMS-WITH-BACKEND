@@ -1,0 +1,439 @@
+/* Main container styles */
+.container {
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+.viewContent {
+  padding: 0;
+}
+
+.viewInnerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Form styles */
+.form {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Grid layout styles */
+.flexRow {
+  display: flex;
+  margin-bottom: 15px;
+  gap: 20px;
+}
+
+.colSpan10 {
+  flex: 10;
+}
+
+.colSpan5 {
+  flex: 5;
+}
+
+.colSpan6 {
+  flex: 6;
+}
+
+.colSpan12 {
+  flex: 12;
+}
+
+.colOffset1Left {
+  margin-left: 8.33%;
+}
+
+.colOffset1Right {
+  margin-right: 8.33%;
+}
+
+/* Header styles */
+.createHeader {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+/* Form element styles */
+h2 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+  margin: 0 0 5px 0;
+}
+
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.xl {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+.xl:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.metadata {
+  background-color: #f9f9f9;
+}
+
+.textRight {
+  text-align: right;
+}
+
+.date {
+  position: relative;
+}
+
+/* Information panel styles */
+.informationContainer {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-top: 23px;
+  margin-bottom: 10px;
+}
+
+.informationContainer h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.informationContainer p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.informationContainer p:last-child {
+  margin-bottom: 0;
+}
+
+/* Expander styles */
+.formExpanderControl {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 20px 0 10px;
+  font-weight: 600;
+  color: #333;
+  transition: background-color 0.3s;
+}
+
+.formExpanderControl:hover {
+  background-color: #e2e8f0;
+}
+
+.formExpanderControl.expanded::before {
+  content: "−";
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.formExpanderControl:not(.expanded)::before {
+  content: "+";
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.formExpander {
+  overflow: hidden;
+  transition: height 0.3s ease;
+}
+
+.expanderContent {
+  padding: 0 15px;
+}
+
+/* Radio button styles */
+.radioGroup {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.radio input {
+  margin-right: 5px;
+}
+
+.toggleradio {
+  margin-right: 5px;
+}
+
+/* Toggle switch styles */
+.toggleContainer {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+  margin-bottom: 15px;
+}
+
+.toggleContainer input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mover {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.mover:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.onoff:checked + .mover {
+  background-color: #2196f3;
+}
+
+.onoff:checked + .mover:before {
+  transform: translateX(26px);
+}
+
+.toggleOnoff {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #666;
+}
+
+.toggleOnoff:first-of-type {
+  left: 5px;
+}
+
+.toggleOnoff:last-of-type {
+  right: 5px;
+}
+
+.onoff:checked + .mover + .toggleOnoff:first-of-type {
+  color: white;
+}
+
+.onoff:not(:checked) + .mover + .toggleOnoff:last-of-type {
+  color: white;
+}
+
+/* Table styles */
+.tableContainer {
+  margin: 15px 0;
+}
+
+.fortnoxTableContainer {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tblFortnoxBas {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableBordered {
+  border: 1px solid #ddd;
+}
+
+.rowsizeMedium td {
+  padding: 8px;
+}
+
+.tableHover tr:hover {
+  background-color: #f5f5f5;
+}
+
+.table th {
+  background-color: #f1f1f1;
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.defaultTd {
+  padding: 8px;
+}
+
+.cellInput input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  text-align: right;
+}
+
+/* Tooltip styles */
+.iconQuestionSign {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  color: #2196f3;
+  cursor: help;
+  position: relative;
+}
+
+.iconQuestionSign:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 100;
+  font-size: 12px;
+  max-width: 300px;
+  white-space: normal;
+}
+
+/* Area wrapper styles */
+.ftgavtalAreaWrapper {
+  margin: 20px 0;
+  padding: 15px;
+  border: 1px solid #eaeaea;
+  border-radius: 4px;
+}
+
+/* Button styles */
+.floaterToolbar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.ftForm {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ftLeft, .ftRight {
+  display: flex;
+}
+
+.ftBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.action {
+  padding: 8px 16px;
+}
+
+.secondary {
+  background-color: #e2e8f0;
+  color: #333;
+}
+
+.secondary:hover {
+  background-color: #cbd5e0;
+}
+
+.confirm {
+  background-color: #2196f3;
+  color: white;
+}
+
+.confirm:hover {
+  background-color: #0d8aee;
+}
+
+/* Utility classes */
+.hidden {
+  display: none;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.text {
+  display: block;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .flexRow {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .colSpan5, .colSpan6, .colSpan10, .colSpan12 {
+    flex: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .colOffset1Left, .colOffset1Right {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}

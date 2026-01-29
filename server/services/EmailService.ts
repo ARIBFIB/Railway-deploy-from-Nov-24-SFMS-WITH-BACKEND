@@ -16,16 +16,22 @@ export interface EmailAttachment {
 
 export class EmailService {
   private static transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host: process.env.SMTP_HOST || 'localhost',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: false,
-    auth: {
+    auth: process.env.SMTP_USER && process.env.SMTP_PASS ? {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
-    }
+    } : undefined
   });
 
   static async sendEmail(options: EmailOptions): Promise<void> {
+    // Check if SMTP is configured
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.warn('SMTP not configured. Email sending is disabled.');
+      throw new Error('SMTP configuration is missing. Please configure SMTP settings in the admin panel.');
+    }
+
     try {
       const mailOptions = {
         from: process.env.SMTP_USER,
@@ -40,7 +46,7 @@ export class EmailService {
       console.log('Email sent successfully to:', options.to);
     } catch (error) {
       console.error('Failed to send email:', error);
-      throw new Error('Email sending failed');
+      throw new Error(`Email sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

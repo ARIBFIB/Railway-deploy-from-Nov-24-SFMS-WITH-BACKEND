@@ -43,7 +43,7 @@ import SalaryPage from './src/pages/SalaryPage';
 import QuotesPage from './src/pages/QuotesPage';
 import { WorkingHoursSchedulePage } from './src/pages/WorkingHoursSchedulePage';
 import { ArticlesPage } from './src/pages/ArticlesPage';
-import { SalaryAgreementsPage } from './src/pages/SalaryAgreementsPage';
+import SalaryAgreementsPage from './src/pages/SalaryAgreementsPage';
 import AccountPlanPage from './src/pages/AccountPlanPage';
 import CustomerPage from './src/pages/CustomerPage';
 import WarehousesPage from './src/pages/WarehousesPage';

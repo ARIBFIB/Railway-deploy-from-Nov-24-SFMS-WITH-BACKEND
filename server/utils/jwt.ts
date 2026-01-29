@@ -41,14 +41,37 @@ export const generateToken = (payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
  * Verify and decode a JWT token
  */
 export const verifyToken = (token: string): JWTPayload => {
+  console.log('=== 🔍 VERIFY TOKEN FUNCTION START ===');
+  console.log('Token length:', token.length);
+  console.log('JWT_SECRET being used:', JWT_SECRET.substring(0, 20) + '...');
+  console.log('Expected issuer:', 'sfms-api');
+  console.log('Expected audience:', 'sfms-client');
+  
   try {
+    console.log('Attempting JWT verification...');
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'sfms-api',
       audience: 'sfms-client'
     }) as JWTPayload;
+    
+    console.log('✅ JWT VERIFICATION SUCCESSFUL');
+    console.log('Decoded payload:', decoded);
     return decoded;
   } catch (error) {
+    console.error('❌ JWT VERIFICATION FAILED');
+    console.error('Verification error:', {
+      error_message: error instanceof Error ? error.message : 'Unknown error',
+      error_name: error?.constructor?.name || 'Unknown',
+      token_provided: !!token,
+      secret_used: JWT_SECRET ? 'Yes' : 'No'
+    });
+    
+    // Log the raw error
+    console.error('Raw verification error:', error);
+    
     throw new Error('Invalid or expired token');
+  } finally {
+    console.log('=== 🔍 VERIFY TOKEN FUNCTION END ===');
   }
 };
 

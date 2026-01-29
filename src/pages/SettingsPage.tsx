@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Bell, Globe, Shield, Palette, Database, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, Globe, Shield, Palette, Database, Calendar, Mail } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { EmailSettingsService } from '../services/EmailSettingsService';
+import type { EmailSettings } from '../types/emailSettings';
 
 export const SettingsPage: React.FC = () => {
   const [notifications, setNotifications] = useState({
@@ -20,6 +22,23 @@ export const SettingsPage: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_secure: false,
+    sender_email: '',
+    sender_name: 'Foundation Management System',
+    default_html_template: '<p>This is a test email to verify your SMTP configuration.</p>'
+  });
+  const [testEmail, setTestEmail] = useState({
+    to_email: '',
+    subject: 'Test Email from Foundation Management System',
+    html_template: '<p>This is a test email to verify your SMTP configuration.</p>'
+  });
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleNotificationChange = (key: string, value: boolean) => {
     setNotifications(prev => ({
@@ -42,6 +61,89 @@ export const SettingsPage: React.FC = () => {
       setLoading(false);
     }, 1000);
   };
+
+  const handleEmailSettingChange = (key: keyof EmailSettings, value: string | number | boolean) => {
+    setEmailSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleTestEmailChange = (key: string, value: string) => {
+    setTestEmail(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const loadEmailSettings = async () => {
+    try {
+      const config = await EmailSettingsService.getSMTPConfig();
+      setEmailSettings({
+        ...config,
+        default_html_template: config.default_html_template || '<p>This is a test email to verify your SMTP configuration.</p>'
+      });
+      
+      // Also initialize the test email template with the saved default
+      setTestEmail(prev => ({
+        ...prev,
+        html_template: config.default_html_template || '<p>This is a test email to verify your SMTP configuration.</p>'
+      }));
+    } catch (error) {
+      console.error('Failed to load email settings:', error);
+    }
+  };
+
+  const saveEmailSettings = async () => {
+    setEmailLoading(true);
+    try {
+      await EmailSettingsService.updateSMTPConfig({
+        ...emailSettings,
+        default_html_template: testEmail.html_template
+      });
+      setTestResult({ success: true, message: 'Email settings saved successfully! You can now test the configuration.' });
+      setTimeout(() => setTestResult(null), 3000);
+    } catch (error) {
+      setTestResult({ success: false, message: error instanceof Error ? error.message : 'Failed to save email settings' });
+      setTimeout(() => setTestResult(null), 5000);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const sendTestEmail = async () => {
+    if (!testEmail.to_email) {
+      setTestResult({ success: false, message: 'Please enter a recipient email address' });
+      return;
+    }
+
+    setEmailLoading(true);
+    setTestResult(null);
+    try {
+      const result = await EmailSettingsService.testEmail(
+        testEmail.to_email,
+        testEmail.subject,
+        testEmail.html_template
+      );
+      setTestResult({ success: true, message: result.message });
+      setTimeout(() => setTestResult(null), 5000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send test email';
+      setTestResult({ 
+        success: false, 
+        message: errorMessage.includes('SMTP configuration is missing') 
+          ? 'Please configure SMTP settings first before sending test emails.' 
+          : errorMessage 
+      });
+      setTimeout(() => setTestResult(null), 5000);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadEmailSettings();
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -220,6 +322,150 @@ export const SettingsPage: React.FC = () => {
                 <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                 <option value="YYYY-MM-DD">YYYY-MM-DD</option>
               </select>
+            </div>
+          </div>
+        </Card>
+
+        {/* Email Settings */}
+        <Card title="Email Configuration" subtitle="Configure SMTP settings for email notifications">
+          <div className="space-y-6">
+            {/* SMTP Configuration */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <Mail className="w-5 h-5 mr-2 text-blue-500" />
+                SMTP Settings
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Host</label>
+                  <input
+                    type="text"
+                    value={emailSettings.smtp_host}
+                    onChange={(e) => handleEmailSettingChange('smtp_host', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="smtp.gmail.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Port</label>
+                  <input
+                    type="number"
+                    value={emailSettings.smtp_port}
+                    onChange={(e) => handleEmailSettingChange('smtp_port', parseInt(e.target.value) || 587)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="587"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Username</label>
+                  <input
+                    type="text"
+                    value={emailSettings.smtp_user}
+                    onChange={(e) => handleEmailSettingChange('smtp_user', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="your-email@gmail.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">SMTP Password</label>
+                  <input
+                    type="password"
+                    value={emailSettings.smtp_pass}
+                    onChange={(e) => handleEmailSettingChange('smtp_pass', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Your app password"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sender Email</label>
+                  <input
+                    type="email"
+                    value={emailSettings.sender_email}
+                    onChange={(e) => handleEmailSettingChange('sender_email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="your-email@gmail.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sender Name</label>
+                  <input
+                    type="text"
+                    value={emailSettings.sender_name}
+                    onChange={(e) => handleEmailSettingChange('sender_name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Foundation Management System"
+                  />
+                </div>
+              </div>
+              
+              <div className="mt-4 flex items-center">
+                <input
+                  type="checkbox"
+                  id="smtp_secure"
+                  checked={emailSettings.smtp_secure}
+                  onChange={(e) => handleEmailSettingChange('smtp_secure', e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="smtp_secure" className="ml-2 block text-sm text-gray-900">
+                  Use SSL/TLS encryption
+                </label>
+              </div>
+            </div>
+
+            {/* Test Email Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Test Email Configuration</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Recipient Email</label>
+                  <input
+                    type="email"
+                    value={testEmail.to_email}
+                    onChange={(e) => handleTestEmailChange('to_email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="test@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Subject</label>
+                  <input
+                    type="text"
+                    value={testEmail.subject}
+                    onChange={(e) => handleTestEmailChange('subject', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Test Email from Foundation Management System"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">HTML Template</label>
+                  <textarea
+                    value={testEmail.html_template}
+                    onChange={(e) => handleTestEmailChange('html_template', e.target.value)}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    placeholder="<p>This is a test email...</p>"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Test Result */}
+            {testResult && (
+              <div className={`p-4 rounded-lg ${testResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <p className={`text-sm ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                  {testResult.message}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3 pt-4">
+              <Button onClick={saveEmailSettings} loading={emailLoading}>
+                Save Settings
+              </Button>
+              <Button variant="secondary" onClick={sendTestEmail} loading={emailLoading}>
+                Send Test Email
+              </Button>
             </div>
           </div>
         </Card>
