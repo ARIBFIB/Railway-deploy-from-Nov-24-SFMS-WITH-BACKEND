@@ -174,7 +174,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
                     >
-                      Staff - Categories
+                    Personnel - Categories
                     </button>
                     <button
                       onClick={() => {

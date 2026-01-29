@@ -231,10 +231,43 @@ export const PersonnelCategoriesList: React.FC<PersonnelCategoriesListProps> = (
               Create new personnel category
             </button>
           </div>
+          
         </div>
+
+        
         
         {/* Right Panel - Info Panel (30%) */}
         <div className="lg:col-span-4">
+            {/* Primary Action Button (Desktop) */}
+          <div className="hidden sm:flex justify-center mt-4 mb-6">
+            <button
+              onClick={onCreateNew}
+              style={{
+                height: '34px',
+                padding: '0 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: '#FFC107',
+                color: '#000000',
+                borderRadius: '18px',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFB300';
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#FFC107';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span style={{ fontSize: '14px', marginRight: '6px' }}>+</span>
+              Create new personnel category
+            </button>
+          </div>
           <div 
             style={{
               backgroundColor: '#FFFFFF',
@@ -274,7 +307,7 @@ export const PersonnelCategoriesList: React.FC<PersonnelCategoriesListProps> = (
           </div>
           
           {/* Primary Action Button (Desktop) */}
-          <div className="hidden sm:flex justify-center mt-4">
+          {/* <div className="hidden sm:flex justify-center mt-4">
             <button
               onClick={onCreateNew}
               style={{
@@ -302,7 +335,7 @@ export const PersonnelCategoriesList: React.FC<PersonnelCategoriesListProps> = (
               <span style={{ fontSize: '14px', marginRight: '6px' }}>+</span>
               Create new personnel category
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
