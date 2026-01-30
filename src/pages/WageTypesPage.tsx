@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MoreHorizontal, Printer, RotateCcw, Trash2, Eye, EyeOff, Upload, Download, List } from 'lucide-react';
+import { Search, MoreHorizontal, Printer, RotateCcw, Trash2, Eye, EyeOff, Upload, Download, List, ChevronDown, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { wageTypesService } from '../services/wageTypesService';
+import DraggableModal from '../components/DraggableModal';
 
 interface WageType {
   id: string;
@@ -45,6 +46,9 @@ const WageTypesPage: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeTab, setActiveTab] = useState<'salaryTypes' | 'registrationCodes' | 'wageTypeControl'>('salaryTypes');
   const [salaryForm, setSalaryForm] = useState('monthly');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSalaryTablesModalOpen, setIsSalaryTablesModalOpen] = useState(false);
 
   const [wageTypes, setWageTypes] = useState<WageType[]>([]);
   const [registrationCodes, setRegistrationCodes] = useState<RegistrationCode[]>([]);
@@ -349,15 +353,24 @@ const WageTypesPage: React.FC = () => {
 
           {/* Global Actions */}
           <div className="flex items-center space-x-4 mt-2">
-            <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
+            <button 
+              className="flex items-center space-x-1 text-gray-600 hover:text-gray-800"
+              onClick={() => setIsImportModalOpen(true)}
+            >
               <Upload className="w-4 h-4" />
               <span>Import salary type table</span>
             </button>
-            <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
+            <button 
+              className="flex items-center space-x-1 text-gray-600 hover:text-gray-800"
+              onClick={() => setIsExportModalOpen(true)}
+            >
               <Download className="w-4 h-4" />
               <span>Export salary type table</span>
             </button>
-            <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
+            <button 
+              className="flex items-center space-x-1 text-gray-600 hover:text-gray-800"
+              onClick={() => setIsSalaryTablesModalOpen(true)}
+            >
               <List className="w-4 h-4" />
               <span>Salary type tables</span>
             </button>
@@ -921,6 +934,329 @@ const WageTypesPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Import Salary Type Table Modal */}
+      <DraggableModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="IMPORT SALARY TYPE TABLE"
+      >
+        <div className="grid grid-cols-3 gap-4 text-xs">
+          {/* Row 1 - Dropdown Fields */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Staff type
+            </label>
+            <div className="relative">
+              <select className="w-full h-8 px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option>Blue-collar</option>
+                <option>White-collar</option>
+                <option>Management</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Agreement template
+            </label>
+            <div className="relative">
+              <select className="w-full h-8 px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option>Blue-collar</option>
+                <option>White-collar</option>
+                <option>Management</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Import type
+            </label>
+            <div className="relative">
+              <select className="w-full h-8 px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option>Import as a new salary type</option>
+                <option>Update existing salary type</option>
+                <option>Replace all salary types</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          
+          {/* Row 2 - Text Input Fields */}
+          <div className="col-span-3 grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                New salary type table, code
+              </label>
+              <input
+                type="text"
+                placeholder="Enter a code for the new salary type"
+                className="w-full h-8 px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 bg-white"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                New salary type table, Name
+              </label>
+              <input
+                type="text"
+                placeholder="Enter name for the new salary type"
+                className="w-full h-8 px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 bg-white"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* Footer Action Area */}
+        <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end space-x-3">
+          <button
+            onClick={() => setIsImportModalOpen(false)}
+            className="h-8 px-4.5 text-xs font-semibold bg-gray-500 text-white rounded-full hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            className="h-8 px-4.5 text-xs font-semibold bg-[#0B8043] text-white rounded-full hover:bg-[#0A6E3B] hover:shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-all"
+          >
+            Import file
+          </button>
+        </div>
+      </DraggableModal>
+      
+      {/* Export Salary Table Modal */}
+      <DraggableModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="EXPORT SALARY TABLE"
+        width="720px"
+        maxWidth="92vw"
+        headerHeight="52px"
+        headerBg="#063F2E"
+        headerPadding="0 20px"
+        boxShadow="0 14px 32px rgba(0,0,0,0.18)"
+        draggingBoxShadow="0 18px 40px rgba(0,0,0,0.25)"
+        titleFontSize="14px"
+        titleLetterSpacing="0.6px"
+        contentPadding="22px 24px 20px"
+      >
+        <div className="grid grid-cols-3 gap-4.5 mb-4.5">
+          {/* Staff Type Dropdown */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Staff type
+            </label>
+            <div className="relative">
+              <select className="w-full h-9 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option>Blue-collar</option>
+                <option>White-collar</option>
+                <option>Management</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          
+          {/* Agreement Template Dropdown */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Agreement template
+            </label>
+            <div className="relative">
+              <select className="w-full h-9 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option>Blue-collar</option>
+                <option>White-collar</option>
+                <option>Management</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+          
+          {/* Salary Type Table Dropdown */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Salary type table
+            </label>
+            <div className="relative">
+              <select className="w-full h-9 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white text-gray-900">
+                <option value="">Select salary type table</option>
+                <option>Standard Table</option>
+                <option>Custom Table 1</option>
+                <option>Custom Table 2</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Informational Text Block */}
+        <div className="max-w-[640px] mt-1.5 mb-5">
+          <p className="text-sm text-gray-600 leading-[18px]">
+            The export function exports all the different salary types and salary types with changed names. The file can then be imported into Fortnox Salary against a new or already existing salary type table.
+          </p>
+        </div>
+        
+        {/* Footer Action Area */}
+        <div className="flex justify-end space-x-3.5 pt-3.5 pb-4.5 border-t border-gray-200">
+          <button
+            onClick={() => setIsExportModalOpen(false)}
+            className="h-9 px-5.5 text-sm font-semibold bg-gray-500 text-white rounded-2xl hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            className="h-9 px-6 text-sm font-semibold bg-[#0A7A3D] text-white rounded-2xl hover:bg-[#086833] hover:shadow-[0_3px_8px_rgba(0,0,0,0.22)] transition-all"
+          >
+            Export
+          </button>
+        </div>
+      </DraggableModal>
+      
+      {/* Salary Type Tables Modal */}
+      <DraggableModal
+        isOpen={isSalaryTablesModalOpen}
+        onClose={() => setIsSalaryTablesModalOpen(false)}
+        title="SALARY TYPE TABLES"
+        width="820px"
+        maxWidth="95vw"
+        headerHeight="54px"
+        headerBg="#063F2E"
+        headerPadding="0 22px"
+        boxShadow="0 14px 34px rgba(0,0,0,0.20)"
+        draggingBoxShadow="0 20px 40px rgba(0,0,0,0.28)"
+        titleFontSize="14px"
+        titleLetterSpacing="0.7px"
+        contentPadding="18px 20px 14px"
+      >
+        {/* Top Table Controls */}
+        <div className="flex justify-end items-center gap-2 mb-3">
+          <button className="w-7 h-7 bg-gray-100 rounded flex items-center justify-center">
+            <span className="text-gray-600 text-lg">☰</span>
+          </button>
+          <select className="h-7 w-11 text-xs bg-gray-100 rounded px-2 appearance-none">
+            <option>3</option>
+            <option>5</option>
+            <option>10</option>
+          </select>
+          <ChevronDown className="w-2.5 h-2.5 text-gray-500 -ml-6 pointer-events-none" />
+          <span className="text-xs text-gray-500 mx-1.5">of 2</span>
+          <div className="flex items-center gap-1">
+            <button className="text-gray-500 text-sm opacity-40">|&lt;</button>
+            <button className="text-gray-500 text-sm opacity-40">&lt;</button>
+            <button className="w-7 h-7 bg-[#0A7A3D] text-white text-sm font-semibold rounded flex items-center justify-center">1</button>
+            <button className="text-gray-500 text-sm">&gt;</button>
+            <button className="text-gray-500 text-sm">&gt;|</button>
+          </div>
+        </div>
+        
+        {/* Table Container */}
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+          {/* Table Header */}
+          <div className="flex border-b-2 border-gray-400 h-10">
+            <div className="bg-gray-400 text-white font-semibold text-sm flex items-center px-3.5 border-r border-gray-300">
+              CODE
+            </div>
+            <div className="font-semibold text-sm text-gray-600 flex items-center px-3.5 border-r border-gray-200">
+              STAFF TYPE
+            </div>
+            <div className="font-semibold text-sm text-gray-600 flex items-center px-3.5">
+              NAME
+            </div>
+          </div>
+          
+          {/* Table Body */}
+          <div>
+            {/* Row 1 */}
+            <div className="flex h-11 border-b border-gray-200">
+              <div className="text-sm text-gray-800 flex items-center px-3.5 border-r border-gray-200">
+                Work Std.
+              </div>
+              <div className="text-sm text-gray-800 flex items-center px-3.5 border-r border-gray-200">
+                Worker
+              </div>
+              <div className="text-sm text-gray-800 flex items-center px-3.5">
+                Standard worker
+              </div>
+            </div>
+            
+            {/* Row 2 */}
+            <div className="flex h-11 border-b border-gray-200">
+              <div className="text-sm text-gray-800 flex items-center px-3.5 border-r border-gray-200">
+                Tjm Std
+              </div>
+              <div className="text-sm text-gray-800 flex items-center px-3.5 border-r border-gray-200">
+                Official
+              </div>
+              <div className="text-sm text-gray-800 flex items-center px-3.5">
+                Standard officials
+              </div>
+            </div>
+            
+            {/* Editable Row */}
+            <div className="flex h-11">
+              <div className="flex items-center px-3.5 border-r border-gray-200">
+                <input 
+                  type="text" 
+                  defaultValue="NewTable" 
+                  className="w-full h-8.5 text-sm border border-gray-300 rounded px-2.5"
+                />
+              </div>
+              <div className="flex items-center px-3.5 border-r border-gray-200">
+                <div className="relative w-full">
+                  <select className="w-full h-8.5 text-sm border border-gray-300 rounded px-2.5 appearance-none">
+                    <option>Blue-collar</option>
+                    <option>White-collar</option>
+                    <option>Management</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+              <div className="flex items-center px-3.5 justify-between">
+                <input 
+                  type="text" 
+                  placeholder="Enter name" 
+                  className="w-full h-8.5 text-sm border border-gray-300 rounded px-2.5"
+                />
+                <button className="ml-2 text-gray-500 hover:text-red-600">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Bottom Pagination */}
+        <div className="flex justify-end items-center gap-2 mt-2.5">
+          <button className="w-7 h-7 bg-gray-100 rounded flex items-center justify-center">
+            <span className="text-gray-600 text-lg">☰</span>
+          </button>
+          <select className="h-7 w-11 text-xs bg-gray-100 rounded px-2 appearance-none">
+            <option>3</option>
+            <option>5</option>
+            <option>10</option>
+          </select>
+          <ChevronDown className="w-2.5 h-2.5 text-gray-500 -ml-6 pointer-events-none" />
+          <span className="text-xs text-gray-500 mx-1.5">of 2</span>
+          <div className="flex items-center gap-1">
+            <button className="text-gray-500 text-sm opacity-40">|&lt;</button>
+            <button className="text-gray-500 text-sm opacity-40">&lt;</button>
+            <button className="w-7 h-7 bg-[#0A7A3D] text-white text-sm font-semibold rounded flex items-center justify-center">1</button>
+            <button className="text-gray-500 text-sm">&gt;</button>
+            <button className="text-gray-500 text-sm">&gt;|</button>
+          </div>
+        </div>
+        
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white pt-3 border-t border-gray-200">
+          <div className="flex justify-end">
+            <button className="h-9 px-6.5 text-sm font-semibold bg-[#9BC9AF] text-white rounded-2xl hover:bg-[#0A7A3D] transition-colors">
+              Save
+            </button>
+          </div>
+        </div>
+      </DraggableModal>
     </div>
   );
 };
