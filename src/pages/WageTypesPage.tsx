@@ -49,6 +49,16 @@ const WageTypesPage: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSalaryTablesModalOpen, setIsSalaryTablesModalOpen] = useState(false);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  
+  // Filter panel state
+  const [salaryTypeFilter, setSalaryTypeFilter] = useState('All');
+  const [affectsHolidayFilter, setAffectsHolidayFilter] = useState('All');
+  const [employerContributionFilter, setEmployerContributionFilter] = useState('All');
+  const [preliminaryTaxFilter, setPreliminaryTaxFilter] = useState('All');
+  const [holidayEntitlementFilter, setHolidayEntitlementFilter] = useState('All');
+  const [payeTaxReturnFilter, setPayeTaxReturnFilter] = useState('');
+  const [defaultAccountFilter, setDefaultAccountFilter] = useState('');
 
   const [wageTypes, setWageTypes] = useState<WageType[]>([]);
   const [registrationCodes, setRegistrationCodes] = useState<RegistrationCode[]>([]);
@@ -185,6 +195,16 @@ const WageTypesPage: React.FC = () => {
       );
       setSelectedWageTypes([]);
     }
+  };
+
+  const clearFilters = () => {
+    setSalaryTypeFilter('All');
+    setAffectsHolidayFilter('All');
+    setEmployerContributionFilter('All');
+    setPreliminaryTaxFilter('All');
+    setHolidayEntitlementFilter('All');
+    setPayeTaxReturnFilter('');
+    setDefaultAccountFilter('');
   };
 
   const handleActivate = () => {
@@ -344,9 +364,10 @@ const WageTypesPage: React.FC = () => {
               </div>
               <button
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                 aria-label="Advanced search"
               >
-                Advanced search
+                {isFilterPanelOpen ? 'Close extended search' : 'Extended search'}
               </button>
             </div>
           </div>
@@ -882,6 +903,205 @@ const WageTypesPage: React.FC = () => {
                 <RotateCcw className="w-4 h-4" />
                 <span>Reset</span>
               </button>
+              {isFilterPanelOpen && (
+                <div className="mt-4 bg-white p-4 border border-gray-200 rounded-lg">
+                  <div className="grid grid-cols-3 gap-9" style={{ fontFamily: 'Inter, Roboto, Arial, sans-serif', boxSizing: 'border-box' }}>
+                    {/* Column 1 */}
+                    <div>
+                      {/* Salary type */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Salary type
+                        </div>
+                        <div className="flex h-8.5 border border-gray-400 rounded overflow-hidden bg-gray-100">
+                          <button 
+                            className={`px-4.5 text-sm ${salaryTypeFilter === 'All' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setSalaryTypeFilter('All')}
+                          >
+                            All
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${salaryTypeFilter === 'Gross' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setSalaryTypeFilter('Gross')}
+                          >
+                            Gross
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${salaryTypeFilter === 'Net' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setSalaryTypeFilter('Net')}
+                          >
+                            Net
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${salaryTypeFilter === 'Benefits' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'}`}
+                            onClick={() => setSalaryTypeFilter('Benefits')}
+                          >
+                            Benefits
+                          </button>
+                        </div>
+                      </div>
+                                
+                      {/* Affects holiday processing */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Affects holiday processing
+                        </div>
+                        <div className="flex h-8.5 border border-gray-400 rounded overflow-hidden bg-gray-100">
+                          <button 
+                            className={`px-4.5 text-sm ${affectsHolidayFilter === 'All' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setAffectsHolidayFilter('All')}
+                          >
+                            All
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${affectsHolidayFilter === 'Yes' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setAffectsHolidayFilter('Yes')}
+                          >
+                            Yes
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${affectsHolidayFilter === 'No' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'}`}
+                            onClick={() => setAffectsHolidayFilter('No')}
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                                
+                      {/* Employer's contribution */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Employer's contribution
+                        </div>
+                        <div className="flex h-8.5 border border-gray-400 rounded overflow-hidden bg-gray-100">
+                          <button 
+                            className={`px-4.5 text-sm ${employerContributionFilter === 'All' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setEmployerContributionFilter('All')}
+                          >
+                            All
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${employerContributionFilter === 'Yes' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setEmployerContributionFilter('Yes')}
+                          >
+                            Yes
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${employerContributionFilter === 'No' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'}`}
+                            onClick={() => setEmployerContributionFilter('No')}
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                              
+                    {/* Column 2 */}
+                    <div>
+                      {/* Preliminary tax */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Preliminary tax
+                        </div>
+                        <div className="flex flex-wrap h-8.5 border border-gray-400 rounded overflow-hidden bg-gray-100">
+                          <button 
+                            className={`px-4.5 text-sm ${preliminaryTaxFilter === 'All' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setPreliminaryTaxFilter('All')}
+                          >
+                            All
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${preliminaryTaxFilter === 'Tax table' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setPreliminaryTaxFilter('Tax table')}
+                          >
+                            Tax table
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${preliminaryTaxFilter === 'One-off tax' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setPreliminaryTaxFilter('One-off tax')}
+                          >
+                            One-off tax
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${preliminaryTaxFilter === 'No tax' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'}`}
+                            onClick={() => setPreliminaryTaxFilter('No tax')}
+                          >
+                            No tax
+                          </button>
+                        </div>
+                      </div>
+                                
+                      {/* Type of holiday entitlement */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Type of holiday entitlement
+                        </div>
+                        <div className="flex h-8.5 border border-gray-400 rounded overflow-hidden bg-gray-100">
+                          <button 
+                            className={`px-4.5 text-sm ${holidayEntitlementFilter === 'All' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setHolidayEntitlementFilter('All')}
+                          >
+                            All
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${holidayEntitlementFilter === 'Variable' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'} border-r border-gray-400`}
+                            onClick={() => setHolidayEntitlementFilter('Variable')}
+                          >
+                            Variable
+                          </button>
+                          <button 
+                            className={`px-4.5 text-sm ${holidayEntitlementFilter === 'Worked hours' ? 'bg-white text-gray-800 font-medium shadow-inner' : 'bg-gray-100 text-gray-600'}`}
+                            onClick={() => setHolidayEntitlementFilter('Worked hours')}
+                          >
+                            Worked hours
+                          </button>
+                        </div>
+                      </div>
+                                
+                      {/* Field PAYE tax return */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Field PAYE tax return
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Enter PAYE tax return"
+                          value={payeTaxReturnFilter}
+                          onChange={(e) => setPayeTaxReturnFilter(e.target.value)}
+                          className="w-full h-8.5 text-sm border border-gray-300 rounded px-2.5 focus:outline-none focus:border-[#0A7A3D] focus:ring-1 focus:ring-[#0A7A3D]/25"
+                        />
+                      </div>
+                    </div>
+                              
+                    {/* Column 3 */}
+                    <div>
+                      {/* Default account */}
+                      <div className="mb-4.5">
+                        <div className="text-sm font-medium text-gray-700 mb-1.5" style={{ lineHeight: '1.2' }}>
+                          Default account
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Enter default account"
+                          value={defaultAccountFilter}
+                          onChange={(e) => setDefaultAccountFilter(e.target.value)}
+                          className="w-full h-8.5 text-sm border border-gray-300 rounded px-2.5 focus:outline-none focus:border-[#0A7A3D] focus:ring-1 focus:ring-[#0A7A3D]/25"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                            
+                  {/* Clear Button */}
+                  <div className="mt-4.5 flex justify-start">
+                    <button 
+                      className="h-9 px-7 text-sm font-semibold bg-gray-500 text-white rounded-2xl hover:bg-gray-600 transition-colors"
+                      onClick={clearFilters}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={handleDisable}
                 disabled={

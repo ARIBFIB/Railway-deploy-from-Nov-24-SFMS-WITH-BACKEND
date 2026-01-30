@@ -222,7 +222,6 @@ dist/
 .pnp.*
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -309,3 +308,4 @@ playwright-report/
 # Misc
 *.tgz
 *.tar.gz
+config.bat

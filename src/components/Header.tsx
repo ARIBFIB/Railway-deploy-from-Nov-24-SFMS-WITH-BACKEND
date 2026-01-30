@@ -79,30 +79,12 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                   <div className="py-1">
                     <button
                       onClick={() => {
-                        navigate('/working-hours-schedule');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Working hours schedule
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/articles');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Articles
-                    </button>
-                    <button
-                      onClick={() => {
                         navigate('/salary-agreements');
                         setRegisterDropdownOpen(false);
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
                     >
-                      Agreement for salaries
+                      Salary agreement
                     </button>
                     <button
                       onClick={() => {
@@ -133,42 +115,6 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                     </button>
                     <button
                       onClick={() => {
-                        navigate('/warehouses');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Warehouses
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/suppliers');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Suppliers
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/wage-types');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Wage types and codes
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate('/personnel-register');
-                        setRegisterDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
-                    >
-                      Staff
-                    </button>
-                    <button
-                      onClick={() => {
                         navigate('/personnel-register?tab=categories');
                         setRegisterDropdownOpen(false);
                       }}
@@ -186,6 +132,68 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                     >
                       Project
                     </button>
+                    <button
+                      onClick={() => {
+                        navigate('/wage-types');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Salary type and codes
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/personnel-register');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Staff
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/working-hours-schedule');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Working hours schedule
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/articles');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Articles
+                    </button>
+                    
+                    
+                    
+                    
+                    <button
+                      onClick={() => {
+                        navigate('/warehouses');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Warehouses
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/suppliers');
+                        setRegisterDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-100"
+                    >
+                      Suppliers
+                    </button>
+                    
+                    
+                    
+                    
                     <button
                       onClick={() => {
                         navigate('/transaction-accounts');
